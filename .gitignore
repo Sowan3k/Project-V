@@ -44,3 +44,4 @@ desktop.ini
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+.neon
