@@ -49,6 +49,9 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-02 | **Database credential rotated on every branch** | `reset_postgres_role_password` on `production`, `vercel-dev` and `phase-0-migration-rehearsal` | ✅ Rotated. The previously exposed password was verified **still live on `vercel-dev` and `phase-0-migration-rehearsal`** before rotation — branches inherit the role password — and REJECTED on all three afterwards |
+| 2026-09-02 | Refreshed local credential works | `neon deploy` → `npm run db:objects` | ✅ `.env.local` regenerated; schema reads correctly |
+| 2026-09-02 | Rotation actually took effect in the deployment | Authenticated fetch of the deployed `/api/health` | ✅ Went 200 → 503 `unreachable`, confirming the build's snapshot holds the now-dead credential. Needs a Vercel env re-sync + rebuild |
 | 2026-09-02 | **CI is green on GitHub Actions** | GitHub REST API, runs 1–5 on `main` | ✅ 5/5 `success`; latest run's steps Install / Lint / Typecheck / Unit and architecture tests / Build all pass in 80s — closes OF-2 |
 | 2026-09-02 | **No credential has ever been committed** | Enumerated all 111 blobs in the full history and scanned each for connection strings, `npg_` passwords, Neon hostnames, API keys, `sk-`/`ghp_`/`AKIA` tokens | ✅ Zero matches. `.env.local` and `.neon` were never tracked; `.env.example` holds placeholders only |
 | 2026-09-02 | No personal email address is in the repository history | Same blob scan, matching common mail providers | ✅ Zero matches; commits carry the GitHub `noreply` address |
@@ -349,6 +352,15 @@ Two consequences, stated rather than discovered later:
   `Phases.md`, source comments and tests point at CLAUDE.md sections and invariant numbers.
   Those citations remain accurate and useful to anyone working from a full local checkout;
   they are dangling for someone reading only the public repository.
+
+### Credential rotation, 2026-09-02
+
+The database password was rotated after it appeared in a chat transcript and its host became
+public. One finding worth carrying forward: **Neon branches inherit the role password**, so
+rotating the default branch is not enough. The exposed password was verified still live on
+`vercel-dev` and `phase-0-migration-rehearsal` after `production` had been rotated, and was
+only dead once all three were done. Any future rotation must cover every branch, and must be
+verified by attempting the old credential rather than assumed.
 
 ### Rules from here
 
