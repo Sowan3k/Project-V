@@ -55,7 +55,14 @@ export default defineConfig({
         // The local server runs against the TEST database, never production. The route
         // journey spec seeds a route to walk through, and seeded test data must not reach
         // production (content track rules, content/README.md).
-        command: 'npm run build && dotenv -e .env.test.local -- npm run start -- --port 3100',
+        //
+        // On a workstation that database is named in `.env.test.local`. In CI there is no
+        // such file — the workflow supplies `DATABASE_URL` for a throwaway Postgres service
+        // container directly, so prefixing with `dotenv -e` there would fail on a missing
+        // file. Same guarantee either way: never production.
+        command: process.env.CI
+          ? 'npm run build && npm run start -- --port 3100'
+          : 'npm run build && dotenv -e .env.test.local -- npm run start -- --port 3100',
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 180_000,

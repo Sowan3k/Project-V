@@ -92,3 +92,62 @@ jobs:
 
       - name: Integration tests
         run: npx vitest run --config vitest.db.config.mts
+
+  e2e:
+    name: end-to-end journey
+    runs-on: ubuntu-latest
+    # The same throwaway Postgres as the integration job, for the same reasons: CI must
+    # never touch `production`, and the journey spec seeds a route to walk through.
+    #
+    # Added 2026-09-03. Until then E2E ran only on a workstation, against the remote Neon
+    # test branch — which meant the one suite that proves a reader can actually get from the
+    # front page to a field was also the one suite whose result depended on a home network.
+    # A verification path that is unavailable when the network is bad is not a verification
+    # path (Test.md §14).
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: vindeshi
+          POSTGRES_PASSWORD: vindeshi
+          POSTGRES_DB: vindeshi_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://vindeshi:vindeshi@localhost:5432/vindeshi_test
+      DATABASE_URL_UNPOOLED: postgresql://vindeshi:vindeshi@localhost:5432/vindeshi_test
+      TEST_DATABASE_URL: postgresql://vindeshi:vindeshi@localhost:5432/vindeshi_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Apply migrations to an empty database
+        run: npx prisma migrate deploy
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end journey
+        # Builds and starts the production build against the container, then walks
+        # landing → search → ribbon → road → step → field at 360px and 1280px, with
+        # JavaScript both on and off.
+        run: npx playwright test
+
+      - name: Upload the report when the journey fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
