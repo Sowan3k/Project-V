@@ -54,3 +54,8 @@ next-env.d.ts
 
 # playwright browsers cache marker
 .playwright-cache/
+
+# Project guidance kept local, never published (decided 2026-09-02).
+# CLAUDE.md holds the working rules, invariants and conventions for this repo. It stays on
+# disk and is read at the start of every session — it is simply not uploaded.
+CLAUDE.md

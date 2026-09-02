@@ -334,6 +334,22 @@ removes a layer of defence in depth: it gives a target for credential stuffing a
 earlier commits of this file. The thing that actually closes that exposure is rotating the
 database password, not editing the current tree.
 
+### CLAUDE.md is not published (decided 2026-09-02)
+
+`CLAUDE.md` holds the working rules, invariants and conventions for this repo. It stays on
+disk, is read at the start of every session, and is gitignored — it is simply not uploaded.
+
+Two consequences, stated rather than discovered later:
+
+- **It is still in the public history.** It was tracked from commit `64f5a1c` until
+  2026-09-02 and remains readable in those commits. Untracking stops future publication; it
+  does not retract past publication. Removing it from history needs a rewrite and a force
+  push, which is a separate, destructive decision.
+- **Tracked files still reference it.** Roughly 70 references across `Status.md`,
+  `Phases.md`, source comments and tests point at CLAUDE.md sections and invariant numbers.
+  Those citations remain accurate and useful to anyone working from a full local checkout;
+  they are dangling for someone reading only the public repository.
+
 ### Rules from here
 
 1. **Never write a connection string, endpoint hostname, password, API key, token or
@@ -344,3 +360,5 @@ database password, not editing the current tree.
 3. Re-run the history scan before any future visibility change, and after any incident.
 4. Treat the rotation trigger as: a credential left the password manager, **or** its host
    became public. Either one alone is worth rotating; both together is not optional.
+5. `CLAUDE.md` is gitignored and must stay that way. If a rule in it needs to be visible to
+   outside contributors, restate that rule in a tracked file rather than un-ignoring it.

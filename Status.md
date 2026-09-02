@@ -137,6 +137,15 @@ allow list. The row is redacted going forward and the rule is written into CLAUD
 `Test.md` §10 — but redaction does not remove it from history, so the exposure is closed by
 rotating the password, not by editing the tree.
 
+**`CLAUDE.md` is no longer published.** You asked for it to stay local, so it is untracked
+and gitignored. It remains on disk and is still read at the start of every session — nothing
+about the working process changes. Two things are worth being explicit about: it was tracked
+from commit `64f5a1c` until now, so it is **still readable in the public history** (removing
+that needs a history rewrite and force push, which is a separate decision); and roughly 70
+references to it across `Status.md`, `Phases.md`, source comments and tests now dangle for
+anyone reading only the public repository, though they stay accurate for a full local
+checkout. Recorded in `Test.md` §10.
+
 **Rotation is now worth doing rather than optional.** Two things happened this session that
 are each survivable alone: the connection string was pasted into a chat transcript, and the
 database hostname became public. Together they are the two halves of the same credential.
