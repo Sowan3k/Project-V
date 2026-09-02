@@ -74,25 +74,47 @@ Playwright assertions pass at 360px and 1280px, `/api/health` returns 200 agains
 | 7 | **No category colour palette defined.** | The exact maturity labels and colour palette are open decisions (CLAUDE.md §11). Phase 0 defines only neutral and brand tokens — inventing the six semantic category colours now would be answering an open decision by accident. |
 | 8 | **No coverage reporting yet.** | Coverage of an empty shell is a meaningless number that invites optimising it. Revisit at Phase 3 with the revision engine. Recorded as a deliberate gap in `Test.md` §6, not left silent. |
 
-### Blockers
+### Deployment (approved during the session)
 
-**Vercel preview deploys — needs your decision.** This is the one Phase 0 exit criterion
-still open: *"Playwright smoke test loads the deployed preview."* The smoke suite passes
-10/10 against a local production build and is already parameterised
-(`E2E_BASE_URL=<url> npm run test:e2e`), so closing this is one command once a deployment
-exists. What is missing is the deployment itself, and creating it is not mine to decide:
+You approved linking the repository, so this is done and the last exit criterion is closed.
 
-- Your Vercel account (`noor-mohammad-sowans-projects`, hobby plan) has no project for this
-  repository.
-- Linking `Sowan3k/Project-V` publishes the shell at a public URL.
-- A working `/api/health` requires the Neon `DATABASE_URL` and `DATABASE_URL_UNPOOLED` to be
-  stored in Vercel — real database credentials leaving this machine for a third party.
+`main` was merged and pushed to `Sowan3k/Project-V`, and Vercel project
+**`vindeshi-express`** (`prj_hglC3xtSYshW4poAdpcxQ0WvaGL7`) is linked to it with `main` as
+the production branch. Every push now builds automatically.
 
-Tracked as `Test.md` OF-1.
+- **Live:** `https://vindeshi-express-noor-mohammad-sowans-projects.vercel.app`
+- Built in 45s with **no database configured**, which usefully confirms that `next build`
+  never touches Postgres — the health route is `force-dynamic` and nothing else queries.
+- **Playwright: 11/11 against the deployed build**, at 360px and 1280px. Phase 0 exit
+  criterion "Playwright smoke test loads the deployed preview" is met.
 
-**CI has not been observed running on GitHub** (`Test.md` OF-2). The workflow is committed
-and its exact command chain was verified locally in a clean checkout, but no GitHub Actions
-run has executed. Closes on the first push.
+**Deployment Protection is on** — correct, since the repository is private and the shell is
+unfinished. Rather than weakening it, `e2e/deployment-access.setup.ts` was added: a
+Playwright setup project that visits a short-lived share URL once, saves the resulting
+cookie as storage state, and lets the browser projects reuse it. When `E2E_BYPASS_URL` is
+unset — the local default — it does nothing. A share token lasts under a day, so automated
+CI against a protected deployment should later use Vercel's Protection Bypass for
+Automation secret as an `x-vercel-protection-bypass` header instead.
+
+**Two things left for you, neither blocking Phase 1:**
+
+1. **The deployed `/api/health` returns 503** (`Test.md` OF-3). The page renders correctly;
+   the probe honestly reports `degraded` because the Vercel project has no `DATABASE_URL`
+   or `DATABASE_URL_UNPOOLED`. Add both in the Vercel project settings, or connect the
+   Vercel–Neon integration. There is no tool in this environment for writing Vercel
+   environment variables, and the credentials are yours to place.
+2. **No GitHub Actions run has been inspected** (`Test.md` OF-2). The workflow is pushed and
+   its exact command chain was verified against a real clone, but the repository is private
+   and this environment has no GitHub token. Check the Actions tab.
+
+### Left in place for you to review
+
+Neon branch `phase-0-migration-rehearsal` (`br-dark-forest-aejlwdbw`) — you asked to keep
+it. It costs nothing and preserves the rehearsal evidence. Delete it whenever you like:
+
+```
+neon branches delete phase-0-migration-rehearsal
+```
 
 ### Issues found
 
@@ -117,19 +139,26 @@ rehearsal recipe that leaves `.env.local` and `.neon` untouched.
 explicitly in `prisma.config.ts` — it printed the right directory while looking elsewhere.
 Worth remembering before Phase 2.
 
-**Left in place for you to review:** Neon branch `phase-0-migration-rehearsal`
-(`br-dark-forest-aejlwdbw`). It is the rehearsal evidence and costs nothing to keep. Delete
-it with `neon branches delete phase-0-migration-rehearsal` when you no longer want it — I
-did not, because deleting is irreversible and nothing required it.
+**Word held the MHT baseline copy open, which blocked `git checkout`.** Merging to `main`
+failed with `unable to unlink old '..._Baseline.mht': Invalid argument` because WINWORD
+had the file locked. Rather than killing your Word process — it might have held unsaved
+work — `main` was moved forward with `git reset --soft` followed by a mixed reset, which
+reaches the same commit without rewriting a single file. `git diff HEAD` then confirmed
+the working tree matched the commit exactly before pushing. Worth knowing: keeping the
+baseline open in Word will block any git operation that has to rewrite it.
 
 ### Next step
 
-**Phase 0 is complete except for the Vercel deployment.** Nothing in Phase 1 depends on it:
-Phase 1 is two throwaway kill spikes driven by hand-written JSON fixtures, with no database
-and no deployment. So the deploy decision can be settled in parallel rather than blocking.
+**Phase 0 is complete. All five exit criteria are met.**
 
-Awaiting approval to begin **Phase 1 — kill spikes** (Spike A: ribbon-to-road renderer;
-Spike B: revision graph).
+Awaiting approval to begin **Phase 1 — kill spikes**: Spike A (ribbon-to-road renderer:
+can one data-driven renderer draw every route shape on a phone with no route-specific
+code?) and Spike B (revision graph: does a branching graph with append-only revisions
+support concurrent edits, structural diffing and archival?). Both are throwaway code
+driven by hand-written JSON fixtures — no database, no deployment, nothing shipped.
+
+Before Phase 2 closes, the FR coverage audit still owed from session 2 must run: verify
+every FR-01…FR-80 appears in exactly one phase (Phases.md, open plan items).
 
 ---
 

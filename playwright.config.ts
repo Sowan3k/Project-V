@@ -3,16 +3,28 @@ import { defineConfig, devices } from '@playwright/test'
 /**
  * Phase 0 smoke coverage.
  *
- * By default this builds nothing and starts nothing remote: it runs the production build
- * locally so the smoke test is meaningful from a clean checkout with no deployment.
+ * By default this starts nothing remote: it builds and runs the production build locally,
+ * so the smoke suite is meaningful from a clean checkout with no deployment.
  *
- * Set E2E_BASE_URL to point the same specs at a deployed Vercel preview instead — that is
- * the Phase 0 exit criterion "Playwright smoke test loads the deployed preview".
+ * Point the same specs at a deployed Vercel preview with E2E_BASE_URL — that is the
+ * Phase 0 exit criterion "Playwright smoke test loads the deployed preview":
  *
- *   E2E_BASE_URL=https://<preview>.vercel.app npm run test:e2e
+ *   E2E_BASE_URL=https://<deployment> npm run test:e2e
+ *
+ * If that deployment has Vercel Deployment Protection enabled, also set E2E_BYPASS_URL to
+ * a share URL; see e2e/deployment-access.setup.ts.
  */
 const baseURL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3100'
 const usingDeployedTarget = Boolean(process.env.E2E_BASE_URL)
+
+/** Where the setup project saves the deployment-protection bypass cookie. */
+export const STORAGE_STATE = 'test-results/.deployment-access.json'
+
+const viewports = {
+  // 360px is a first-class target, not an afterthought (CLAUDE.md §7).
+  'mobile-360': { width: 360, height: 780 },
+  'desktop-1280': { width: 1280, height: 800 },
+} as const
 
 export default defineConfig({
   testDir: './e2e',
@@ -25,12 +37,12 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [
-    // 360px is a first-class target, not an afterthought (CLAUDE.md §7).
-    {
-      name: 'mobile-360',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 360, height: 780 } },
-    },
-    { name: 'desktop-1280', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } } },
+    { name: 'setup', testMatch: /.*\.setup\.ts/ },
+    ...Object.entries(viewports).map(([name, viewport]) => ({
+      name,
+      use: { ...devices['Desktop Chrome'], viewport, storageState: STORAGE_STATE },
+      dependencies: ['setup'],
+    })),
   ],
   webServer: usingDeployedTarget
     ? undefined

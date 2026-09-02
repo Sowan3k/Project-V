@@ -28,8 +28,8 @@ Read alongside [CLAUDE.md](CLAUDE.md) §6 (the 25 invariants) and [Phases.md](Ph
 | Playwright (E2E) | ✅ | Playwright 1.62.1, Chromium. Two projects: `mobile-360` and `desktop-1280`. |
 | E2E target selection | ✅ | Local production build by default; `E2E_BASE_URL` points the same specs at a deployed preview. |
 | Test database strategy | ✅ | Scratch branch via `neon branches create` — never run tests against `production`. No test yet connects to a database. |
-| CI pipeline | 🟡 | `.github/workflows/ci.yml`: lint → typecheck → test → build on push to `main` and every PR. **Not yet observed running on GitHub.** |
-| Vercel preview deploys | ⬜ | Not created — see Open failures. |
+| CI pipeline | 🟡 | `.github/workflows/ci.yml`: lint → typecheck → test → build on push to `main` and every PR. Command chain verified locally from a real clone; **the GitHub Actions run itself has not been observed** (private repo, no token in this environment). |
+| Vercel deployment | ✅ | Project `vindeshi-express` linked to `Sowan3k/Project-V`; production branch `main`. Deployment Protection is on (repo is private) — the setup project in `e2e/deployment-access.setup.ts` handles it. |
 | Coverage reporting | ⬜ | Not set up. Deliberate: coverage of a shell is a meaningless number. Revisit at Phase 3. |
 
 **Command reference** (once Phase 0 lands):
@@ -49,6 +49,12 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-02 | **Playwright smoke suite against the deployed Vercel build** | `E2E_BASE_URL` + `E2E_BYPASS_URL` → `npm run test:e2e` | ✅ 11/11 passed at 360px and 1280px against `vindeshi-express-noor-mohammad-sowans-projects.vercel.app` |
+| 2026-09-02 | Vercel build succeeds with no database configured | Vercel build log for `dpl_BQ94Rr8b6RLHPqiarift3EmkdknY` | ✅ Built in 45s; 4 routes; confirms `next build` never touches the database |
+| 2026-09-02 | Deployed page renders the shell and the Bengali brand | `curl` through the share cookie | ✅ `<title>Vindeshi Express — Community-maintained routes for studying abroad</title>`, brand renders |
+| 2026-09-02 | Deployed `/api/health` degrades safely without credentials | `curl` through the share cookie | 🟡 503 `{"status":"degraded","database":"unreachable","branch":null}` — correct behaviour, but the deployment has no `DATABASE_URL` yet. See OF-3 |
+| 2026-09-02 | Playwright suite still green against a local build after the setup project was added | `npm run test:e2e` | ✅ 11/11 |
+| 2026-09-02 | Real `git clone` of the branch builds and tests clean | Clone → `npm ci` → lint → typecheck → test → build; `enums.prisma` checked out with LF | ✅ 84 tests; no CRLF; build succeeded |
 | 2026-09-02 | Full check chain passes from a clean checkout | `npm ci` → `lint` → `typecheck` → `test` → `build` in a fresh copy of tracked files, no `.env.local`, dummy `DATABASE_URL` | ✅ All five pass; 84 tests; build emits 4 routes |
 | 2026-09-02 | Enum-duplication guard actually fails the build | Wrote `src/tmp_probe/violation.ts` containing `'community_submission'` | ✅ Failed with the offending path named; probe deleted |
 | 2026-09-02 | Generated Prisma enum staleness guard fails the build | Appended a bogus `enum Tampered` to `prisma/schema/enums.prisma` | ✅ Failed with "is stale. Run `npm run prisma:enums`"; file restored |
@@ -166,7 +172,8 @@ nothing real is standing behind it until Phase 4.
 | Generated Prisma enums are not stale | 4 | ✅ | `tests/architecture/prisma-enums-generated.test.ts` |
 | Renderer import boundary is armed | 10 | 🟡 | `tests/architecture/renderer-import-boundary.test.ts` |
 | Zero `any` in `src/`, rule configured as an error | 2 | ✅ | `tests/architecture/no-any-in-src.test.ts` |
-| Shell renders, locale redirect, no verification claim, no 360px overflow, health probe leaks nothing | 10 | 🟡 | `e2e/smoke.spec.ts` — local build only, see OF-1 |
+| Shell renders, locale redirect, no verification claim, no 360px overflow, health probe leaks nothing | 10 | ✅ | `e2e/smoke.spec.ts` — green against both a local production build and the deployed Vercel build |
+| Deployment-protection bypass for E2E | 1 | ✅ | `e2e/deployment-access.setup.ts` |
 
 Each of the four architecture guards was **also confirmed to fail** when deliberately
 violated (§2). A guard nobody has watched fail is a guard that may do nothing.
@@ -200,8 +207,8 @@ Populated as phases land. One row per feature area.
 
 | # | What | Guards | Status |
 |---|---|---|---|
-| OF-1 | **Playwright smoke test has not run against a deployed preview.** It passes 10/10 against a local production build, but no Vercel project exists for this repository, so the Phase 0 exit criterion "Playwright smoke test loads the deployed preview" is unmet. | Phase 0 exit criteria; the deploy path itself | ❌ Open — needs a Vercel project linked to `Sowan3k/Project-V` and `DATABASE_URL` / `DATABASE_URL_UNPOOLED` set in its environment. `E2E_BASE_URL=<url> npm run test:e2e` then closes it. |
-| OF-2 | **CI has not been observed running on GitHub.** `.github/workflows/ci.yml` is committed and its exact command chain was verified locally in a clean checkout, but no run has executed on GitHub Actions. | "lint + typecheck + unit on every commit" | ❌ Open — closes on the first push to `main`. |
+| OF-2 | **CI has not been observed running on GitHub.** `.github/workflows/ci.yml` is committed and pushed, and its exact command chain was verified locally against a real clone, but no GitHub Actions run has been inspected — the repository is private and this environment has no GitHub token. | "lint + typecheck + unit on every commit" | 🟡 Open — check the Actions tab on the next push. |
+| OF-3 | **The deployed `/api/health` returns 503.** The page renders, but Vercel has no `DATABASE_URL` / `DATABASE_URL_UNPOOLED`, so the probe correctly reports `degraded`. Local runs against Neon return 200. | Runtime database reachability in the deployed environment | 🟡 Open — add both variables in the Vercel project (or connect the Vercel–Neon integration). Not a code defect. |
 
 > When a test fails, add it here with the failing output and the FR/invariant it guards.
 > Remove the row only when it passes — never by deleting the test.

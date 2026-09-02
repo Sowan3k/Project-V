@@ -31,7 +31,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 
 | # | Phase | Ends with | State |
 |---|---|---|---|
-| 0 | Foundation spine | Deployed empty shell, green CI | 🟡 |
+| 0 | Foundation spine | Deployed empty shell, green CI | ✅ |
 | 1 | Kill spikes: renderer + revision graph | Two go/no-go answers, throwaway code | ⬜ |
 | 2 | Route graph + revision ledger schema | The irreversible migration | ⬜ |
 | 3 | Revision write engine | The only door into shared knowledge | ⬜ |
@@ -71,7 +71,7 @@ vocabulary and a proven deploy path.
 
 **Exit criteria**
 - ✅ `lint`, `typecheck`, `test`, `build` all pass from a clean checkout
-- ❌ Playwright smoke test loads the deployed preview — **the one criterion still open**
+- ✅ Playwright smoke test loads the deployed preview — 11/11 against the Vercel deployment
 - ✅ A migration applies on a scratch branch, then on `production`, with no data loss
 - ✅ A test fails the build if any enum literal appears in more than one source file
 - ✅ Zero `any` in `src/`; lint rule enforces it
@@ -100,8 +100,14 @@ Decisions taken while building, all recorded in `Status.md` (session 4):
   silently disables every type-aware rule — including `no-explicit-any`, which is a
   Phase 0 exit criterion.
 
-**Still open:** no Vercel project exists for this repository, so the smoke test has run
-only against a local production build. See `Test.md` §5, OF-1.
+**All five exit criteria are met.** Vercel project `vindeshi-express` is linked to
+`Sowan3k/Project-V` on the `main` production branch, and the smoke suite passes against
+the deployed build as well as a local one.
+
+Two follow-ups remain, neither blocking Phase 1 (`Test.md` §5): the deployed
+`/api/health` returns 503 until `DATABASE_URL` and `DATABASE_URL_UNPOOLED` are added to
+the Vercel project (OF-3), and no GitHub Actions run has been inspected from this
+environment (OF-2).
 
 ---
 
