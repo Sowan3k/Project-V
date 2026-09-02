@@ -347,6 +347,30 @@ interface ActivityRow {
   readonly lastChangedAt: Date | null
 }
 
+/**
+ * Public follower aggregates — FR-10, FR-41.
+ *
+ * Lives here, on the anonymous read path, rather than in `src/server/journeys/` — where every
+ * function is required to take a user id. A count over everybody's journeys legitimately has
+ * no user, and putting it here keeps that rule absolute instead of carving an exception into
+ * it (invariant 5).
+ *
+ * Two counts and nothing else. Archived journeys are excluded: somebody who unfollowed is not
+ * a follower, even though their private data is deliberately kept.
+ */
+async function followerAggregates(
+  routeId: string,
+): Promise<{ followerCount: number; selfReportedCompletionCount: number }> {
+  const [followerCount, selfReportedCompletionCount] = await Promise.all([
+    prisma.journey.count({ where: { routeId, archivedAt: null } }),
+    prisma.journey.count({
+      where: { routeId, archivedAt: null, selfReportedCompletedAt: { not: null } },
+    }),
+  ])
+
+  return { followerCount, selfReportedCompletionCount }
+}
+
 async function routeActivity(routeId: string, now: Date): Promise<ActivityRow> {
   const since = new Date(now.getTime() - RECENT_ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1000)
 
@@ -404,6 +428,7 @@ export async function getRouteBySlug(
   const graph = toGraph(route.steps, route.edges)
   const standings = await fieldStandings([route.id], now)
   const activity = await routeActivity(route.id, now)
+  const followers = await followerAggregates(route.id)
   const standing = standings.get(route.id)
 
   return {
@@ -430,6 +455,7 @@ export async function getRouteBySlug(
       disputedCount: standing?.disputedCount ?? 0,
       lastConfirmedAt: standing?.lastConfirmedAt ?? null,
       ...activity,
+      ...followers,
     },
     steps: route.steps.map((s) => ({
       id: s.id,

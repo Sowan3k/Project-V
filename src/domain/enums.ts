@@ -100,6 +100,27 @@ export const FIELD_APPLICABILITIES = [
 export type FieldApplicability = (typeof FIELD_APPLICABILITIES)[number]
 
 /**
+ * What a follower may record about one step of their own journey — FR-24, §12.1.
+ *
+ * These five are the baseline's own list, verbatim: "not started, in progress, completed,
+ * skipped or not applicable". `skipped` and `not_applicable` are distinct on purpose — a step
+ * a student chose not to do and a step that never applied to them are different facts, and
+ * collapsing them would lose the difference for no gain.
+ *
+ * Private state. Never revisioned, never visible to another ordinary user (FR-26, BR-16,
+ * D-10, invariant 5), and never evidence of anything: the platform does not verify that a
+ * student did what they say they did, and does not ask them to prove it (FR-25, §12.2).
+ */
+export const JOURNEY_STEP_STATUSES = [
+  'not_started',
+  'in_progress',
+  'completed',
+  'skipped',
+  'not_applicable',
+] as const
+export type JourneyStepStatus = (typeof JOURNEY_STEP_STATUSES)[number]
+
+/**
  * Challenge reasons — REQUIREMENTS.md §17.4.
  * A challenge says "this may be wrong". Distinct from a report (CLAUDE.md §5).
  */
@@ -202,6 +223,7 @@ export const RouteLifecycleState = valueMap(ROUTE_LIFECYCLE_STATES)
 export const ChangeSeverity = valueMap(CHANGE_SEVERITIES)
 export const LinkTrustClass = valueMap(LINK_TRUST_CLASSES)
 export const FieldApplicability = valueMap(FIELD_APPLICABILITIES)
+export const JourneyStepStatus = valueMap(JOURNEY_STEP_STATUSES)
 export const ChallengeReason = valueMap(CHALLENGE_REASONS)
 export const ReportReason = valueMap(REPORT_REASONS)
 
@@ -220,6 +242,7 @@ export const DOMAIN_ENUMS = {
   ChangeSeverity: CHANGE_SEVERITIES,
   LinkTrustClass: LINK_TRUST_CLASSES,
   FieldApplicability: FIELD_APPLICABILITIES,
+  JourneyStepStatus: JOURNEY_STEP_STATUSES,
   ChallengeReason: CHALLENGE_REASONS,
   ReportReason: REPORT_REASONS,
 } as const satisfies Record<string, readonly string[]>

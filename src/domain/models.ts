@@ -50,10 +50,20 @@ export type RevisionModel = (typeof REVISION_MODELS)[number]
 /**
  * Private per-user state. Scoped to one user, never public, never revisioned.
  *
- * Phase 7 creates these tables. They are named here in advance so the classification test
- * forces the right answer at that moment rather than after the fact.
+ * Phase 3 named `Journey` and `JourneyStepProgress` here before either table existed, so that
+ * Phase 7 would have to make this decision consciously rather than by copying whichever
+ * pattern was nearest. Phase 7 added `JourneyTask` and the build refused to compile until it
+ * was classified, which is the mechanism working exactly as intended.
+ *
+ * What membership here means in practice: the write guard lets these through untouched, so
+ * they are edited in place rather than appended to; nothing about them enters a public
+ * history; and every read of them is scoped to one user id (FR-26, BR-16, D-10, invariant 5).
  */
-export const PRIVATE_USER_STATE_MODELS = ['Journey', 'JourneyStepProgress'] as const
+export const PRIVATE_USER_STATE_MODELS = [
+  'Journey',
+  'JourneyStepProgress',
+  'JourneyTask',
+] as const
 export type PrivateUserStateModel = (typeof PRIVATE_USER_STATE_MODELS)[number]
 
 /**
@@ -61,8 +71,12 @@ export type PrivateUserStateModel = (typeof PRIVATE_USER_STATE_MODELS)[number]
  *
  * `User` sits here rather than in shared knowledge because a handle is not a community
  * contribution — it is not revised, confirmed or challenged.
+ *
+ * `Account` and `Session` are Auth.js storage. They are not private *journey* state — a
+ * session token is operational, not something a student wrote — but they are every bit as
+ * personal, and nothing outside `src/server/auth` reads them.
  */
-export const SUPPORTING_MODELS = ['User', 'PlatformMeta'] as const
+export const SUPPORTING_MODELS = ['User', 'PlatformMeta', 'Account', 'Session'] as const
 export type SupportingModel = (typeof SUPPORTING_MODELS)[number]
 
 export const MODEL_CLASSIFICATION = {

@@ -1,6 +1,7 @@
 import type {
   FieldApplicability,
   FieldCategory,
+  JourneyStepStatus,
   LinkTrustClass,
   SourceClass,
   RouteLifecycleState,
@@ -310,6 +311,18 @@ export const en = {
       disputed: (n: number) => `${n} disputed or contested`,
       recentChanges: (n: number, days: number) =>
         n === 1 ? `1 change in the last ${days} days` : `${n} changes in the last ${days} days`,
+      /**
+       * FR-41 and invariant 17, in the wording itself. §26 is explicit that the copy reads
+       * "116 users marked this journey completed" and never "116 verified visas" — we do not
+       * check, and the sentence must not imply that we did.
+       */
+      followers: (n: number) =>
+        n === 0 ? 'Nobody is following this route yet' : n === 1 ? '1 person is following this route' : `${n} people are following this route`,
+      selfReportedCompletions: (n: number) =>
+        n === 1
+          ? '1 user marked this journey completed'
+          : `${n} users marked this journey completed`,
+      selfReportedNote: 'Self-reported by followers. Nobody checked, and nobody was asked to prove anything.',
       firstPublished: 'First published',
       lastChanged: 'Last changed',
       lastConfirmed: 'Last confirmed',
@@ -322,6 +335,76 @@ export const en = {
       noVerificationClaim:
         'Vindeshi Express does not verify routes. Nothing here has been checked by an authority, and the absence of a warning is not evidence that there is nothing wrong. Confirm anything that matters against the official source before you rely on it.',
     },
+  },
+
+
+  /**
+   * My Journey — Phase 7. FR-23, FR-24, FR-26, FR-41.
+   *
+   * The wording carries two guarantees the code cannot: that this is private, and that
+   * nothing here is checked by anyone.
+   */
+  journey: {
+    tab: 'My journey',
+    title: 'My journey',
+    indexTitle: 'My journeys',
+    indexLede: 'Routes you are following, and the progress you have recorded on each. Only you can see this.',
+    indexEmpty: 'You are not following any routes yet. Open a route and choose “Follow this route” to start one.',
+    privateBadge: 'Private to you',
+    privateExplainer:
+      'Your progress, dates and notes are visible only to you. No other user can see them, and the platform never asks you to upload a document to prove anything.',
+    follow: 'Follow this route',
+    following: 'You are following this route',
+    unfollow: 'Stop following',
+    unfollowNote: 'Your notes and dates are kept, and come back if you follow again.',
+    resume: 'Follow again',
+    resumed: 'Your earlier progress is back.',
+    deletePermanently: 'Delete this journey permanently',
+    deleteExplainer: 'Erases your progress, dates and notes for this route. This cannot be undone.',
+    signInToFollow: 'Sign in to follow this route and track your progress privately.',
+    progressTitle: 'Your progress',
+    overall: (done: number, total: number) => `${done} of ${total} steps marked done`,
+    status: 'Status',
+    targetDate: 'Target date',
+    actualDate: 'Completed on',
+    privateNote: 'Private note',
+    privateNotePlaceholder: 'Only you will ever read this.',
+    save: 'Save',
+    saved: 'Saved',
+    markCompleted: 'Mark this journey completed',
+    unmarkCompleted: 'Not completed after all',
+    completedNote: 'You marked this journey completed. This is your own record — the platform does not verify it.',
+    tasksTitle: 'Your own tasks',
+    tasksLede: 'Things that matter to you and do not belong in the public route.',
+    taskPlaceholder: 'Something to remember',
+    addTask: 'Add',
+    removeTask: 'Remove',
+    noTasks: 'No personal tasks yet.',
+    routeChangedNote: 'This route is maintained by the community and may change. Your progress stays as you left it.',
+  },
+
+  journeyStepStatus: {
+    not_started: 'Not started',
+    in_progress: 'In progress',
+    completed: 'Completed',
+    skipped: 'Skipped',
+    not_applicable: 'Not applicable to me',
+  } satisfies Record<JourneyStepStatus, string>,
+
+  auth: {
+    signIn: 'Sign in',
+    signOut: 'Sign out',
+    signInTitle: 'Sign in',
+    signInLede:
+      'You never need an account to read this platform. Signing in lets you contribute corrections and keep a private journey.',
+    withGoogle: 'Continue with Google',
+    whatWeStore: 'What we keep',
+    whatWeStoreBody:
+      'Your email address, so we recognise you when you come back. Nothing else — not your name, not your photograph. You appear to other people only as a generated handle.',
+    yourHandle: 'Your public handle',
+    handleExplainer: 'This is how contributions appear to others. It is not your name.',
+    notConfigured:
+      'Sign-in is not configured on this deployment yet. Reading works without an account.',
   },
 
   routeLifecycle: {

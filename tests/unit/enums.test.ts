@@ -11,6 +11,7 @@ import {
   DOMAIN_ENUMS,
   FIELD_CATEGORIES,
   LINK_TRUST_CLASSES,
+  JOURNEY_STEP_STATUSES,
   REPORT_REASONS,
   ROUTE_LIFECYCLE_STATES,
   SOURCE_CLASSES,
@@ -113,8 +114,9 @@ describe('domain vocabulary matches the requirements baseline', () => {
         LINK_TRUST_CLASSES,
         CHALLENGE_REASONS,
         REPORT_REASONS,
+        JOURNEY_STEP_STATUSES,
       ]),
     )
-    expect(Object.keys(DOMAIN_ENUMS)).toHaveLength(12)
+    expect(Object.keys(DOMAIN_ENUMS)).toHaveLength(13)
   })
 })

@@ -1,0 +1,175 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Private journeys and identity — Phase 7.
+//
+// Everything in this file is **private user state**, and it is deliberately governed by
+// different rules from the route graph in route.prisma:
+//
+//   * **It is not revisioned.** A journey note is not a contribution. It is edited in place,
+//     it never appears in a public history, and it must never travel through the revision
+//     service (FR-26, BR-16, D-10, invariant 5). `src/domain/models.ts` classifies these
+//     models as `privateUserState`, which is what keeps the write guard out of their way and
+//     the revision engine out of their business.
+//
+//   * **It links to the live route, never a copy.** `Journey.routeId` points at the real
+//     route and `JourneyStepProgress.stepId` at the real step, so a follower sees the route
+//     evolve underneath them rather than a snapshot frozen on the day they followed
+//     (FR-27, D-11, invariant 18).
+//
+//   * **A public change can never erase it.** Every relation into shared knowledge is
+//     `onDelete: Restrict`, so the database itself refuses to remove a step that somebody's
+//     progress points at. Archiving a step is not deleting it, so progress survives that too
+//     (FR-30, BR-17, D-12, invariant 8).
+//
+//   * **There is nowhere to put a document.** No file, blob, attachment or upload column
+//     exists anywhere in this file, and none may be added. The platform does not ask a
+//     student to prove they sat an exam in order to tick a box (FR-25, BR-06, D-09,
+//     invariant 6), and it is not a repository for passports, transcripts, bank statements
+//     or visas (§24.1, invariant 7).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A signed-in user's private instance of a public route (FR-23, §12).
+///
+/// > Live public route + private user progress = My Journey.
+///
+/// One per user per route, enforced by the database rather than by the application: a second
+/// journey on the same route would silently split a student's progress in two.
+model Journey {
+  id      String @id @default(cuid())
+  userId  String
+  /// Cascade, uniquely in this schema: if a person deletes their account, their private
+  /// state goes with it. That is the opposite of the rule for shared knowledge, and it is
+  /// the right rule here — this is their data, not the community's.
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  routeId String
+  /// Restrict, and the live route. Following does not fork a detached copy (invariant 18).
+  route   Route  @relation(fields: [routeId], references: [id], onDelete: Restrict)
+
+  startedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Self-reported and nothing more (FR-41, BR-20, invariant 17).
+  ///
+  /// We do not check whether this person actually flew. Aggregates built from this column
+  /// must say "users marked this completed" and never "verified".
+  selfReportedCompletedAt DateTime?
+
+  /// Unfollowing archives; re-following restores (owner's decision, 2026-09-03).
+  ///
+  /// Months of private notes should not be destroyed by a mis-click, and "I stopped
+  /// following" is not the same statement as "erase my data". Erasing is a separate,
+  /// explicitly worded action that really does delete these rows — see `deleteJourney` in
+  /// src/server/journeys/service.ts.
+  archivedAt DateTime?
+
+  progress JourneyStepProgress[]
+  tasks    JourneyTask[]
+
+  @@unique([userId, routeId])
+  @@index([routeId])
+  @@index([userId, archivedAt])
+  @@map("journeys")
+}
+
+/// What one follower recorded about one step. Private to them (FR-24, §12.1, §12.3).
+model JourneyStepProgress {
+  id        String  @id @default(cuid())
+  journeyId String
+  journey   Journey @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+
+  /// The live step. Restrict: the database refuses to delete a step somebody is tracking,
+  /// so a public edit cannot silently take a follower's progress with it (invariant 8).
+  stepId String
+  step   Step   @relation(fields: [stepId], references: [id], onDelete: Restrict)
+
+  status JourneyStepStatus @default(not_started)
+
+  /// The student's own planning dates. `targetDate` is what they intend; `actualDate` is
+  /// what they say happened. Neither is evidence and neither is checked (§12.2).
+  targetDate DateTime?
+  actualDate DateTime?
+
+  /// A personal notebook line. Never public, never searchable by anyone else, never part of
+  /// route history (§12.1, invariant 5).
+  privateNote String?
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([journeyId, stepId])
+  @@index([stepId])
+  @@map("journey_step_progress")
+}
+
+/// "Optional personal tasks that do not belong in the public route" (§12.1).
+///
+/// The pressure-release valve that keeps private notes out of shared knowledge: a student who
+/// needs to remember "ask Rifat for his SOP" has somewhere to put it that is not a route
+/// field. Without this, that text ends up in the public route, which is exactly the
+/// contamination invariant 5 exists to prevent.
+model JourneyTask {
+  id        String  @id @default(cuid())
+  journeyId String
+  journey   Journey @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+
+  /// Optionally pinned to a step. A task may also belong to the journey as a whole.
+  stepId String?
+  step   Step?   @relation(fields: [stepId], references: [id], onDelete: Restrict)
+
+  label     String
+  doneAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([journeyId])
+  @@map("journey_tasks")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Auth.js storage.
+//
+// Deliberately minimal. §24.2: "collect only what is necessary to identify an account and
+// preserve the user's private journey." The standard Auth.js Prisma schema also carries the
+// provider's `name` and `image`; both are omitted here, and the adapter in
+// src/server/auth/adapter.ts drops them on the way in. A real name and a profile photograph
+// are precisely what §24.3 says a contributor need not expose, and the safest place for data
+// we do not need is nowhere.
+//
+// `VerificationToken` is likewise absent: it exists for the email sign-in flow, which this
+// platform does not use. Adding a table "for later" is what invariant 7 warns against.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// One external sign-in provider linked to a user. Written only by the Auth.js adapter.
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+/// A signed-in browser session.
+///
+/// Database sessions rather than JWTs, for two reasons that matter here: signing out or
+/// deleting an account revokes access immediately rather than whenever a token expires, and
+/// the E2E suite can create a session row directly instead of the application needing a
+/// test-only sign-in path that could ever exist in production.
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires      DateTime
+
+  @@index([userId])
+  @@map("sessions")
+}

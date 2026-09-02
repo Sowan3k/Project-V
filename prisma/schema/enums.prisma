@@ -94,6 +94,14 @@ enum FieldApplicability {
   intake
 }
 
+enum JourneyStepStatus {
+  not_started
+  in_progress
+  completed
+  skipped
+  not_applicable
+}
+
 enum ChallengeReason {
   obsolete
   incorrect

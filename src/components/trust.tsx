@@ -306,6 +306,7 @@ function RoutePassportEvidence({
     t.trust.passport.disputed(passport.disputedCount),
     t.trust.passport.needsReview(passport.needsReviewCount),
     t.trust.passport.recentChanges(passport.recentChangeCount, RECENT_ACTIVITY_WINDOW_DAYS),
+    t.trust.passport.followers(passport.followerCount),
   ]
 
   return (
@@ -324,6 +325,16 @@ function RoutePassportEvidence({
           </div>
         ))}
       </dl>
+
+      {/* Self-reported completions, worded as self-reported — FR-41, §26, invariant 17.
+          "116 users marked this journey completed", never "116 verified visas". The note
+          below it is not decoration: without it a count reads as a platform claim. */}
+      {passport.selfReportedCompletionCount === 0 ? null : (
+        <p className="mt-2">
+          {t.trust.passport.selfReportedCompletions(passport.selfReportedCompletionCount)}{' '}
+          <span className="text-ink-500">{t.trust.passport.selfReportedNote}</span>
+        </p>
+      )}
     </div>
   )
 }

@@ -121,6 +121,10 @@ jobs:
       DATABASE_URL: postgresql://vindeshi:vindeshi@localhost:5432/vindeshi_test
       DATABASE_URL_UNPOOLED: postgresql://vindeshi:vindeshi@localhost:5432/vindeshi_test
       TEST_DATABASE_URL: postgresql://vindeshi:vindeshi@localhost:5432/vindeshi_test
+      # Auth.js refuses to start without a secret. This one is throwaway and public by
+      # design: it signs cookies for a container that lives for the length of one CI run.
+      # The deployment's own secret is set in Vercel and never appears in this repository.
+      AUTH_SECRET: ci-only-secret-not-used-anywhere-else
     steps:
       - uses: actions/checkout@v4
 

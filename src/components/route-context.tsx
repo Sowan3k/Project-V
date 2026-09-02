@@ -19,7 +19,7 @@ import type { RouteDetail } from '@/server/routes/read'
  * (persistent context, meaningful URL changes, tabs for major sibling views), not
  * one-page-per-click.
  */
-export type RouteTab = 'overview' | 'history'
+export type RouteTab = 'overview' | 'history' | 'journey'
 
 export function RouteContext({
   route,
@@ -35,8 +35,16 @@ export function RouteContext({
   children: React.ReactNode
 }) {
   const base = `/${locale}/routes/${route.slug}`
+  // "My journey" is a tab, not a separate destination, and it is shown to everyone.
+  //
+  // A journey is a *view of this route* for one reader — the same object at a different
+  // density of personal detail — so it belongs beside Overview and History rather than at
+  // some other address that loses the route (CLAUDE.md §7.1). Showing the tab to anonymous
+  // visitors too keeps the URL stable and deep-linkable; the page itself explains what
+  // signing in would give them, which is more useful than a tab that appears from nowhere.
   const tabs: { id: RouteTab; label: string; href: string }[] = [
     { id: 'overview', label: t.route.tabOverview, href: base },
+    { id: 'journey', label: t.journey.tab, href: `${base}/journey` },
     { id: 'history', label: t.route.tabHistory, href: `${base}/history` },
   ]
 

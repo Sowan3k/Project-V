@@ -273,6 +273,8 @@ function baselineRoute(overrides: Partial<RouteTrustInput> = {}): RouteTrustInpu
     recentChangeCount: 3,
     lastChangedAt: daysAgo(20),
     lastConfirmedAt: daysAgo(5),
+    followerCount: 12,
+    selfReportedCompletionCount: 3,
     ...overrides,
   }
 }
@@ -310,10 +312,30 @@ describe('invariant 14 / test 14 — counts describe, they never decide', () => 
         contributorCount: 5_000,
         confirmedCount: 100_000,
         informationCount: 100_000,
+        // Phase 7 added followers, which is exactly the number a ranking system would reach
+        // for first. It changes nothing here (FR-71, BR-32, invariant 14).
+        followerCount: 250_000,
+        selfReportedCompletionCount: 90_000,
       }),
     )
     expect(adored.lifecycleState).toBe<RouteLifecycleState>('experimental')
     expect(adored.cautions).toContain('lifecycle_not_established')
+  })
+
+  it('does not let followers or completions silence any caution', () => {
+    const popular = routePassport(
+      baselineRoute({
+        lifecycleState: 'experimental',
+        contributorCount: 1,
+        confirmedCount: 0,
+        disputedCount: 4,
+        followerCount: 100_000,
+        selfReportedCompletionCount: 40_000,
+      }),
+    )
+    for (const caution of ['lifecycle_not_established', 'no_confirmations', 'single_contributor', 'disputed_information'] as const) {
+      expect(popular.cautions).toContain(caution)
+    }
   })
 })
 

@@ -38,7 +38,14 @@
 model User {
   id        String   @id @default(cuid())
   /// Public handle. Never a real name and never an email (§24.1, §24.3).
+  ///
+  /// Generated, not chosen from the sign-in provider. A handle derived from a Google display
+  /// name would publish the real identity §24.3 says a contributor need not expose, and it
+  /// would do so by default, which is the worst way to make that choice for someone.
   handle    String   @unique
+  /// The only thing kept from the provider, and only to recognise a returning account
+  /// (§24.2). Never displayed, never used as an identifier in any URL or public surface.
+  email     String?  @unique
   createdAt DateTime @default(now())
 
   createdRoutes  Route[]            @relation("RouteCreator")
@@ -46,6 +53,12 @@ model User {
   stepRevisions  StepRevision[]
   edgeRevisions  StepEdgeRevision[]
   fieldRevisions FieldRevision[]
+
+  // Private state (journey.prisma). Cascades on account deletion: this is the person's own
+  // data, unlike the shared knowledge above, which survives them.
+  journeys Journey[]
+  accounts Account[]
+  sessions Session[]
 
   @@map("users")
 }
@@ -90,6 +103,8 @@ model Route {
   revisions RouteRevision[] @relation("RouteRevisions")
   steps     Step[]
   edges     StepEdge[]
+  /// Private follower journeys. The link is live: following does not fork a copy (FR-27).
+  journeys  Journey[]
 
   @@index([originCountry, destinationCountry, studyLevel])
   @@index([lifecycleState])
@@ -137,6 +152,11 @@ model Step {
   fields        Field[]
   outgoingEdges StepEdge[]     @relation("StepEdgeFrom")
   incomingEdges StepEdge[]     @relation("StepEdgeTo")
+
+  // Private follower state pointing at this step. Restrict on both, so the database refuses
+  // to delete a step somebody is tracking (invariant 8).
+  journeyProgress JourneyStepProgress[]
+  journeyTasks    JourneyTask[]
 
   @@index([routeId])
   @@map("steps")

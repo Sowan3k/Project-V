@@ -257,6 +257,22 @@ export interface RouteTrustInput extends RouteTrustSnapshot {
   readonly createdAt: Date
   /** Distinct authors across every revision of the route, its steps, edges and fields. */
   readonly contributorCount: number
+  /**
+   * How many people follow this route, and how many of them say they finished — FR-10, FR-41.
+   *
+   * **Counts, and only counts.** No ids, no dates, no per-step breakdown, nothing that could
+   * be narrowed back to one person's progress (§12.3, invariant 5, test 5b). A follower count
+   * says how many; it can never say who, or where they have got to.
+   *
+   * `selfReportedCompletionCount` is exactly what its name says. Nobody verified it, nobody
+   * was asked to prove anything, and the copy that renders it must read "users marked this
+   * completed" rather than anything resembling a verified visa (FR-41, §26, invariant 17).
+   *
+   * And note where they sit: as *evidence* in the passport, never as a lever. A route with
+   * ten thousand followers does not thereby become established (invariant 14, FR-71, BR-32).
+   */
+  readonly followerCount: number
+  readonly selfReportedCompletionCount: number
   /** Revisions inside the recent window — FR-62 activity, reported as a count. */
   readonly recentChangeCount: number
   readonly lastChangedAt: Date | null

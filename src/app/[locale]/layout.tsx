@@ -63,7 +63,7 @@ export default async function LocaleLayout({
           {t.common.skipToContent}
         </a>
         <div className="flex min-h-dvh flex-col">
-          <SiteHeader dictionary={t} />
+          <SiteHeader dictionary={t} locale={locale} />
           <main id="main" className="flex-1">
             {children}
           </main>
