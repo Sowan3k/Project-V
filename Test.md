@@ -109,11 +109,18 @@ acceptable is shipping the phase without them.**
 
 ### Rendering
 
+Invariant 24 prohibits destination- or route-specific *rendering logic*, not the appearance of
+destination names in data, labels, alt text or fixtures. These tests prove genericity by
+construction rather than by string-matching the repository.
+
 | # | Test | State |
 |---|---|---|
-| 24 | CI grep proves no country, destination or route name appears in any SVG or layout file | ⬜ |
-| 24b | The stress route (§7) renders correctly through the production renderer, no per-route code | ⬜ |
-| 24c | A route created through the UI renders with zero developer involvement | ⬜ |
+| 24 | **Structural equivalence** — two routes with identical graph structure but different destination, title and ids produce identical geometry; only labels differ | ⬜ |
+| 24b | **Generative coverage** — randomly generated valid route graphs (3–20 steps, mixed branch kinds, parallelism, archived/new steps) all render to valid geometry | ⬜ |
+| 24c | **Dependency boundary** — ESLint import rule: the renderer may not import from seed, content or destination modules | ⬜ |
+| 24d | **No identity branching** — scoped check over `src/renderer/**` only: no comparison against route id, slug, destination or title. Not a repo-wide country grep | ⬜ |
+| 24e | A route created through the UI renders with zero developer involvement | ⬜ |
+| 24f | The stress route (§7) renders correctly through the production renderer, no per-route code | ⬜ |
 | 25 | Ribbon and road derive from one layout pass — step count and order match for every fixture | ⬜ |
 | 25b | Adding a step to a route changes both ribbon and road with no separate work | ⬜ |
 
@@ -210,8 +217,13 @@ alone — each needs the checklist walked deliberately.
 | Gate 2 — Real launch content | Germany/Australia/USA/Malaysia sourced routes, zero mockup-derived values | ⬜ |
 | Gate 3 — Complete community loop | Full E2E: search → ribbon → road → step → field → follow → progress → contribute → revision → change → shadow → progress intact | ⬜ |
 
-Gate 3 should exist as a **single Playwright test** that walks the whole loop. If it is split
-into fragments that each pass separately, the gate is not being tested — the loop is.
+Gate 3 requires **one Playwright golden-path test** that walks the whole loop end to end — the
+loop is the thing being verified, and fragments that each pass separately do not prove it.
+
+**That golden path is additive, never a substitute.** Each mechanism it touches — revision
+creation, privacy scoping, change relevance, shadow diffing, progress preservation — must also
+have its own focused unit and integration tests, listed in §3 and §4 above. A single broad E2E
+test tells you *that* something broke; the focused tests tell you *what*. Ship both.
 
 Gate 2 additionally requires human judgement: a Bangladeshi reader confirming a route explains
 something they were genuinely trying to understand. Record who reviewed and when.

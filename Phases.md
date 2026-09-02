@@ -64,7 +64,10 @@ vocabulary and a proven deploy path.
 - i18n scaffolding (locale routing + dictionary), English strings, Bengali brand tokens; no
   hardcoded user-facing strings
 - Vitest + Playwright harnesses; npm scripts per CLAUDE.md §4
-- CI: lint + typecheck + unit on every commit; Vercel preview deploys
+- CI: lint + typecheck + unit on every commit; **Vercel** preview deploys (Node runtime,
+  standard Prisma client — not the edge driver)
+- ESLint import-boundary rule scaffolded now, so Phase 4's renderer boundary is enforceable
+  the moment the renderer exists rather than retrofitted
 
 **Exit criteria**
 - `lint`, `typecheck`, `test`, `build` all pass from a clean checkout
@@ -179,8 +182,10 @@ knowledge can change — before any API, seed script or UI can write.
 
 **Exit criteria**
 - The Phase 1 stress route renders correctly through the production renderer
-- **No file in the codebase contains a country, destination or route name in SVG or layout
-  code** — enforced by a grep test in CI
+- **Genericity proved by construction** (Test.md tests 24–24d): structural equivalence across
+  destinations, generative coverage over random valid graphs, a lint-enforced import boundary
+  keeping seed/content/destination modules out of the renderer, and a narrowly scoped
+  no-identity-branching check over `src/renderer/**`
 - A route created through the Phase 8 UI renders with zero developer involvement
 - Ribbon and road step counts and order match for every fixture
 
@@ -258,6 +263,11 @@ improvable by a different user; every action produces a revision; new routes pub
 **Scope:** report categories distinct from challenge, quarantine of high-risk content, admin
 review/restore/archive/remove, contact-safety handling, anti-gaming (burst detection), agency
 neutrality (VR-11).
+
+**Reports are structured and textual (decided 2026-09-02).** A report references the field,
+link, contact or content being reported, plus a category and free-text detail. **No file or
+screenshot upload in V1** — no upload endpoint, no blob storage, no attachment table. The
+mockup shows one; it is deferred (CLAUDE.md §8.6).
 
 **Exit criteria:** invariant tests 12–14 pass; a quarantined link is not normally clickable but
 remains in history; no raw count alone triggers any state change.
@@ -368,7 +378,10 @@ code**.
 - [ ] Usable from 3 to 20 primary steps
 - [ ] Legible on desktop, tablet and mobile; no page-wide horizontal overflow
 - [ ] Ribbon and road derive from one structure and one layout pass; step count and order match
-- [ ] **CI grep proves no country, destination or route name appears in any SVG or layout file**
+- [ ] **Structural equivalence holds** — same graph shape, different destination, identical geometry
+- [ ] **Generative coverage passes** — randomly generated valid graphs all render validly
+- [ ] **Renderer imports nothing from seed, content or destination modules** (lint-enforced)
+- [ ] **No identity branching** in `src/renderer/**` (scoped check, not a repo-wide grep)
 - [ ] The development-only stress route (Test.md §7) renders correctly at all three widths
 - [ ] A route created through the UI by a non-developer renders with zero code changes
 
@@ -401,10 +414,25 @@ If this loop works, the product concept is implemented — not merely screened.
 
 ## Open plan items
 
+**Phase 0 has no remaining blocking decisions.**
+
+Still open, but none of it blocks starting:
+
 - **FR coverage audit not yet run.** The phase FR assignments above are authored, not
   machine-verified — the audit agent did not complete (session limit). Before Phase 2 closes,
-  verify every FR-01…FR-80 appears in exactly one phase and none are orphaned.
-- **Report-screenshot upload (VR-11)** — decide deliberately whether abuse reports may carry an
-  attachment. It must stay out of the journey flow regardless (invariant 6).
-- **Hosting** — Vercel is planned; Cloudflare tooling was installed. If Workers becomes the
-  target, that changes CLAUDE.md §4 and forces Prisma's edge driver. Settle before Phase 0.
+  verify every FR-01…FR-80 appears in exactly one phase and none are orphaned. Does not block
+  Phase 0, which delivers no FRs beyond FR-79/FR-80.
+- **Presentation details deferred by the baseline itself** (§46.2): final brand name, exact
+  maturity label wording and colours, staleness thresholds for established routes, quarantine
+  and report numeric thresholds, reputation labels and weights. Needed during their own phases,
+  not now — see CLAUDE.md §11.
+
+### Decisions resolved 2026-09-02 (were blocking)
+
+| Was open | Resolved |
+|---|---|
+| Hosting target | **Vercel** + Neon, Node runtime, standard Prisma client. Cloudflare Workers explicitly out of the initial architecture. |
+| Report attachments (VR-11) | **Deferred from V1.** Structured, textual reports only; no upload or storage path. |
+| Renderer enforcement | Grep replaced with structural-equivalence, generative, import-boundary and scoped identity-branching tests. |
+| Gate 3 scope | Golden-path E2E **plus** focused unit/integration tests, not instead of them. |
+| Requirements copies | DOCX frozen archival authority; `REQUIREMENTS.md` generated dev-readable representation; MHT optional browser copy. |

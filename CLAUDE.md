@@ -45,9 +45,9 @@ requirements (FR-01…FR-80), 35 business rules (BR-01…BR-35), and 46 decision
 
 | File | Role | Use it when |
 |---|---|---|
-| `REQUIREMENTS.md` | **Preferred working copy.** Plain Markdown, generated verbatim from the DOCX. | **Always — this is what you read during normal sessions.** |
-| `..._Baseline.docx` | Archival/final artifact. The authority if formats ever disagree. | Regenerating the Markdown; formal sign-off; sharing with non-technical stakeholders. |
-| `..._Baseline.mht` | Web-readable copy (Word "Single File Web Page"). | Reading in a browser. Not for agent sessions — see below. |
+| `..._Baseline.docx` | **The frozen archival requirements artifact.** The single authority. | Formal change process; sign-off; sharing with non-technical stakeholders. |
+| `REQUIREMENTS.md` | **Preferred development-readable representation.** Plain Markdown, generated verbatim from the DOCX. | **Always — this is what you read during normal sessions.** |
+| `..._Baseline.mht` | Optional browser-readable copy (Word "Single File Web Page"). | Reading in a browser. Not for agent sessions. |
 
 **Read `REQUIREMENTS.md`. Do not parse the DOCX or MHT during normal work.** All three were
 verified equivalent on 2026-09-02: all 47 sections, all 80 FR statements verbatim, all 35 BR,
@@ -55,9 +55,15 @@ all 46 D, zero discrepancies. The Markdown is ~4.7× cheaper to read than the DO
 and ~10.6× cheaper than the MHT, which despite being intended as the lightweight copy is
 actually the heaviest (1.06 MB of Word-generated HTML).
 
-`REQUIREMENTS.md` is **generated — never hand-edit it.** If the baseline is ever formally
-revised, update the DOCX and regenerate. A change to requirements is a change to the frozen
-baseline and must be recorded in `Status.md`.
+**`REQUIREMENTS.md` is a representation, not a source.** It is generated, and it carries no
+independent authority:
+
+- **Never hand-edit it**, and never edit it to change a requirement. Editing the Markdown does
+  not change the requirements — it only makes the copy wrong.
+- A requirements change follows the **formal change process** against the DOCX: amend the
+  frozen baseline, regenerate `REQUIREMENTS.md`, and record the change in `Status.md`.
+- If the Markdown and the DOCX ever disagree, **the DOCX is correct** and the Markdown must be
+  regenerated.
 
 Rules for working against it:
 
@@ -99,7 +105,7 @@ session before touching code.
 | Styling | Tailwind CSS |
 | Ribbon / road / shadow-route visuals | **Data-driven SVG renderer** built from a hand-authored library of reusable SVG primitives + CSS (no chart library). Primitives are hand-drawn; **routes never are** — see invariant 24. |
 | Testing | Vitest (unit) + Playwright (E2E) |
-| Hosting target | Vercel + Neon — free tiers, per §28.1 cost philosophy |
+| Hosting | **Vercel** (decided 2026-09-02) + Neon — free tiers, per §28.1 cost philosophy. Node runtime, standard Prisma client. **Cloudflare Workers is explicitly not in the initial architecture**; do not introduce it or its edge-driver requirements without an operational reason and a recorded decision. |
 | Interface language | **English UI, Bengali brand identity.** i18n scaffolding from day one so Bangla can be added without rework. |
 
 Scaffolding does not exist yet — Phase 0 creates it. Once it does, the standard commands are:
@@ -285,6 +291,27 @@ violates one as a bug, regardless of how convenient it is.
     disruption indicator. Think LEGO bricks, not illustrations. If a fix requires touching SVG
     to make one specific route look right, the renderer is wrong — fix the renderer.
 
+    **What is prohibited is destination- or route-specific *rendering logic and artwork*** —
+    not the appearance of a destination name in the product. Country names legitimately appear
+    in route data, seed content, i18n strings, alt text, fixtures and tests; none of that
+    violates this invariant. The line is: the renderer must never branch on *which* route it
+    is drawing.
+
+    How this is enforced — see `Test.md` §3 (tests 24–24e):
+
+    - **Structural equivalence.** Two routes with identical graph structure but different
+      destinations, titles and ids must produce identical geometry — only labels differ. This
+      is the primary proof: if any destination-specific logic exists, this test fails.
+    - **Generative coverage.** Randomly generated valid route graphs (varying step count 3–20,
+      branch kinds, parallelism, archived/new steps) all render to valid geometry. A renderer
+      with special cases fails on inputs nobody special-cased.
+    - **Dependency boundary.** The renderer module may not import from seed, content or
+      destination modules — enforced by an ESLint import-boundary rule, not by convention.
+    - **No identity branching.** A narrowly scoped check over the renderer directory only,
+      asserting its code contains no comparison against route id, slug, destination or title.
+      Scoped to `src/renderer/**`; deliberately *not* a repo-wide country-name grep, which
+      would false-positive on legitimate data, labels and fixtures.
+
 25. **Ribbon and road are one representation at two densities** (D-33, FR-04, FR-05). Both
     derive from the same route structure through the same layout pass; the ribbon is the road
     compressed. They are never two independently maintained designs. A step added to a route
@@ -461,7 +488,7 @@ Present in the mockups, **not** first-release behaviour. Do not implement from t
 | VR-03, VR-12 | "Verified information", "Community Verified 98%" | Same reason. Reword to source/freshness language. |
 | VR-10 | "Subscribe to Alerts" / "Get instant alerts" | Proactive external notifications are deferred (§35). In-app change visibility is the first-release mechanism. |
 | VR-11 | "Safety Leaderboard" | §25 warns against turning contribution into a competitive points game. |
-| VR-11 | Screenshot upload on the report form | Journey tracking must have no upload path (invariant 6). An abuse-report attachment is a separate question — **decide deliberately before building**, and keep it out of the journey flow either way. |
+| VR-11 | Screenshot / file upload on the report form | **Deferred from V1 (decided 2026-09-02).** Reports are structured and textual, referencing the field, link, contact or content being reported. **Do not create a general upload or file-storage path for reports** — no upload endpoint, no blob storage, no attachment table. Journey tracking remains upload-free regardless (invariant 6). |
 | VR-13 | 4.8/5 star route maturity | Maturity is computed from combined signals, not user ratings; popularity is not correctness (§21.1, BR-05). |
 | All | Sample universities, IELTS/APS/visa requirements, fees, processing times, durations, follower counts, freshness and confidence percentages, usernames, destination statistics, external links | Illustrative only. Never seed data, never factual requirements, never pre-approved trusted sources. |
 

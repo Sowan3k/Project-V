@@ -7,6 +7,52 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Session 3 — 2026-09-02
+
+**Goal:** Record five approved refinements to the plan. **No implementation.**
+
+### Decisions taken
+
+| # | Decision | Recorded in |
+|---|---|---|
+| 1 | DOCX is the frozen archival authority; `REQUIREMENTS.md` is a generated dev-readable *representation* with no independent authority; MHT is an optional browser copy. Requirements changes follow the formal process against the DOCX. | CLAUDE.md §2 |
+| 2 | Invariant 24 unchanged in principle. **Enforcement replaced** — the repo-wide country-name grep is dropped as unreliable; genericity is now proved structurally. | CLAUDE.md §6, Test.md §3, Phases.md P4 + Gate 1 |
+| 3 | Gate 3 keeps one golden-path Playwright test **plus** focused unit/integration tests per mechanism — additive, never a substitute. | Test.md §8 |
+| 4 | Abuse-report screenshot/file upload **deferred from V1**. Structured, textual reports referencing the reported entity. No general upload/storage path. | CLAUDE.md §8.6, Phases.md P9 |
+| 5 | **Vercel** is the initial hosting target with Neon. Cloudflare Workers explicitly out of the initial architecture; Cloudflare plugin not installed. | CLAUDE.md §4, Phases.md P0 |
+
+### Why the grep test was wrong
+
+The original Gate 1 check — "no country or destination name appears in any SVG or layout file"
+— would have false-positived on legitimate content: destination names in route data, seed
+content, i18n strings, `alt` text, test fixtures and accessibility labels. It also would not
+have caught the actual failure mode, since route-specific logic can branch on an id or slug
+without ever writing "Germany".
+
+Replaced with four checks that prove genericity by construction:
+
+- **Structural equivalence** — identical graph shape with a different destination must produce
+  identical geometry. This is the direct proof; any destination-specific logic fails it.
+- **Generative coverage** — random valid graphs (3–20 steps, mixed branch kinds) all render.
+- **Dependency boundary** — lint-enforced: the renderer cannot import seed/content/destination
+  modules.
+- **Scoped identity check** — `src/renderer/**` only, no branching on route id, slug,
+  destination or title.
+
+The prohibition is on destination-specific *rendering logic and artwork*, not on destination
+names existing in the product. That distinction is now explicit in invariant 24.
+
+### Blockers
+
+**None.** The Cloudflare plugin install is withdrawn, not blocked — decision 5 removed the need
+for it.
+
+### Next step
+
+**Phase 0 is unblocked and ready to start on approval.** No remaining blocking decisions.
+
+---
+
 ## Session 2 — 2026-09-02
 
 **Goal:** Organise the visual references, verify the Markdown/MHT requirements copies, and fold
@@ -60,9 +106,8 @@ route** spec (§7), and **pre-launch gate verification** (§8).
 
 ### Blockers
 
-**Cloudflare plugin install** still needs the user (unchanged from Session 1):
-`/plugin marketplace add cloudflare/skills` → `/plugin install cloudflare@cloudflare` →
-`/reload-plugins`.
+**Cloudflare plugin install** — *superseded by Session 3, decision 5.* Cloudflare is no longer
+part of the initial architecture; the plugin is deliberately not installed.
 
 **Partial workflow failure.** The phase-plan workflow's judge and FR-coverage-audit agents did
 not run — session limit reached. The three source proposals completed and were synthesised
@@ -74,6 +119,8 @@ an open item in Phases.md; audit before Phase 2 closes.
 Await approval of the organised visual references and the revised plan. Then **Phase 0**.
 Two things to settle first: hosting target (Vercel vs Cloudflare Workers — affects the Prisma
 driver), and whether abuse reports may carry a screenshot attachment (VR-11).
+
+> *Both settled in Session 3: Vercel, and no report uploads in V1.*
 
 ---
 
@@ -149,6 +196,9 @@ install. **Needs the user to run:**
 Hosting target is currently Vercel. Cloudflare tooling was requested — if the intent is to host
 on **Workers** rather than Vercel, that changes CLAUDE.md §4 and forces Prisma's edge-compatible
 driver setup. Cheaper to settle before Phase 0 scaffolding than after.
+
+> *Resolved in Session 3: Vercel + Neon, Node runtime, standard Prisma client. Cloudflare
+> Workers is explicitly out of the initial architecture.*
 
 ### Next step
 
