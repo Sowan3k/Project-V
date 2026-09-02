@@ -54,7 +54,9 @@ Manual and automated checks actually performed, newest first.
 | 2026-09-02 | **Development fixture loads and models a real journey** | `npm run fixture:germany` against the test branch | ✅ 13 steps, 17 fields, **1136 days modelled vs 1284 summed** — overlap respected on real data |
 | 2026-09-02 | Fixture refuses any database not marked disposable | `assertDisposable` against the `platform_meta` marker | ✅ Production cannot receive a development fixture |
 | 2026-09-02 | Revision history built from a **verified** historical change | Blocked account €861 → €934 (01.10.2022) → €992 (~01.09.2024), German mission sources | ✅ Two revisions with sources, effective dates and reasons; prior value preserved |
-| 2026-09-02 | ⚠️ Neon computes intermittently unreachable | Probed all four endpoints repeatedly | ❗ See OF-6 — infrastructure, not application code |
+| 2026-09-02 | ⚠️ Neon computes appeared intermittently unreachable | Probed all four endpoints repeatedly | ❗ **Misdiagnosed as compute exhaustion.** Actual cause: scale-to-zero cold start exceeding Prisma’s 10s default connect timeout — see §12 |
+| 2026-09-02 | Cold-start behaviour measured | Retried probe against `production` pooled | ✅ Attempt 1 failed at 10023ms, attempt 2 at 10007ms, attempt 3 **OK in 4910ms** — two default timeouts, then a woken compute |
+| 2026-09-02 | Two spent migration-rehearsal branches deleted | `neon diff` before deletion; migrations confirmed committed and applied to `production` | ✅ `phase-2` had no schema difference from production, `phase-0` was simply behind it. Correct housekeeping, but **not** the fix for OF-6 |
 | 2026-09-02 | **Anonymous journey end to end** | Playwright: landing → search → ribbon → road → step → field, at 360px and 1280px | ✅ 22/22 including history and a 404 case |
 | 2026-09-02 | **The read path works with JavaScript disabled** | Same journey in a `javaScriptEnabled: false` context | ✅ Search, road and step expansion all server-rendered |
 | 2026-09-02 | **No read path redirects to a sign-in** | Every anonymous URL requested directly, checking status and final URL | ✅ All under 400, none redirected to any auth path |
@@ -301,6 +303,7 @@ Populated as phases land. One row per feature area.
 |---|---|---|---|
 | OF-4 | **`CLAUDE.md` and the Neon endpoint id are still in public git history** — 8 and 2 commits respectively on `origin/main`. Untracking and redaction stopped future publication, not past publication. | Test.md §10 publication rules | ⏸️ **Deferred by the owner (2026-09-02): to be removed manually, not by this project's tooling.** Not a credential exposure — neither is a secret, and the password behind that endpoint is rotated. Note that a rewrite cannot guarantee erasure anyway: GitHub retains unreachable objects, and old SHAs stay referenced by Vercel deployments and Actions runs. |
 | OF-5 | **The Neon API key `3303456` is account-scoped and embedded in 7 local config files.** Neon's own warning: it reaches everything the account can, in every organization. | Least privilege | ⏸️ **Deliberately open. Owner's decision 2026-09-02: close it only when a phase actually needs automated Neon branch or project management.** Not a leak — never committed, confirmed by the full-history blob scan. See §11. |
+| OF-6 | **Neon computes scale to zero; a cold branch takes ~25–30s to wake while Prisma's default connect timeout is 10s.** A script that tries once reports an unreachable database for one that is merely asleep. **Initially misdiagnosed as free-tier compute exhaustion** — see §12. | Development, integration testing, and the first visitor after an idle period | 🟡 Open — application code is unaffected (deployed `/api/health` returns 200 in 292ms once warm). The user-facing half is Phase 12 scope. |
 
 > When a test fails, add it here with the failing output and the FR/invariant it guards.
 > Remove the row only when it passes — never by deleting the test.
@@ -560,3 +563,54 @@ load-bearing for any workflow in CLAUDE.md §4.
 The procedure above also needs an interactive terminal — step 1 rewrites `~/.claude.json`
 while an agent is running inside Claude Code, and the sign-in flow cannot complete in a
 non-interactive session.
+
+---
+
+## 12. Cold-start latency (OF-6)
+
+**Diagnosed 2026-09-02. The first diagnosis was wrong, and is corrected here rather than quietly
+replaced — because acting on it caused an irreversible deletion.**
+
+### What was believed
+
+That Neon computes were failing because five branches on a free tier had exhausted compute
+hours, and that retiring the two spent migration-rehearsal branches would fix it.
+
+### What is actually true
+
+Neon computes **scale to zero** when idle. Waking one takes roughly 25–30 seconds. Prisma's
+default connect timeout is 10 seconds, so the first one or two attempts fail outright rather
+than waiting.
+
+| Observation | Meaning |
+|---|---|
+| `neon operations list` shows `start_compute` **finished**, no failures, no quota errors | Not exhaustion |
+| Retried probe: attempt 1 failed at 10023ms, attempt 2 at 10007ms, attempt 3 **OK in 4910ms** | Exactly two default timeouts, then a woken compute |
+| The Germany fixture succeeded on its third retry | Same pattern |
+| Deleting two branches did **not** help — everything then read as down | Branch count was never the cause |
+| Deployed `/api/health` returns 200 in 292ms once warm | Application code is fine |
+
+### What was done anyway, and why it was still right
+
+The two rehearsal branches were deleted. That was correct on its own terms — both were spent,
+all three migrations are committed and applied to `production`, `phase-2` had no schema
+difference from production and `phase-0` was simply behind it — but it was **not** the fix and
+must not be recorded as one.
+
+Three branches remain: `production`, `test`, and `vercel-dev` (created and managed by the
+Neon–Vercel integration; deliberately left alone).
+
+### The part that matters for real users
+
+**The first visitor after an idle period may hit a cold database.** `/api/health` degrades
+honestly, but a page load on the read path would fail rather than wait. Nobody has seen this
+because the site has no visitors and no routes — so it will first appear at exactly the wrong
+moment.
+
+Not fixed here: it is Phase 12 scope (performance, empty and error states). Recorded so it is a
+decision rather than a surprise. Options, unranked:
+
+- Retry with backoff on the read path, in the shape of the helper in `scripts/fixtures`.
+- Raise `connect_timeout` in the connection string — fragile, since `neon deploy` regenerates
+  `.env.local`.
+- Accept it and render a "waking up" state rather than an error.
