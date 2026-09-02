@@ -45,3 +45,6 @@ desktop.ini
 next-env.d.ts
 .vercel
 .neon
+
+# Word owner/lock files
+~$*

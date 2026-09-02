@@ -4,7 +4,7 @@ Running record of every test written or run, its result, and what remains unveri
 **Update this after every test run.** If a test was skipped, say so — an unrecorded gap
 reads as coverage that does not exist.
 
-Read alongside [CLAUDE.md](CLAUDE.md) §6 (the 23 invariants) and [Phases.md](Phases.md).
+Read alongside [CLAUDE.md](CLAUDE.md) §6 (the 25 invariants) and [Phases.md](Phases.md).
 
 ---
 
@@ -107,6 +107,16 @@ acceptable is shipping the phase without them.**
 | 22 | The route model represents a branch that diverges and reconnects | ⬜ |
 | 23 | 30-day dormancy applies to unused new routes only; established routes go quiet/stale | ⬜ |
 
+### Rendering
+
+| # | Test | State |
+|---|---|---|
+| 24 | CI grep proves no country, destination or route name appears in any SVG or layout file | ⬜ |
+| 24b | The stress route (§7) renders correctly through the production renderer, no per-route code | ⬜ |
+| 24c | A route created through the UI renders with zero developer involvement | ⬜ |
+| 25 | Ribbon and road derive from one layout pass — step count and order match for every fixture | ⬜ |
+| 25b | Adding a step to a route changes both ribbon and road with no separate work | ⬜ |
+
 ---
 
 ## 4. Feature test coverage
@@ -153,7 +163,62 @@ None recorded.
 
 ---
 
-## 7. How to update this file
+## 7. Visualisation stress route (development only)
+
+A fixture route that exists **only** to prove the renderer is route-agnostic. It is never
+seeded, never published, and must be excluded from production data. Built in Phase 1 as JSON
+fixtures, promoted to a permanent test asset, and re-run at every renderer change.
+
+The point is that the architecture must not only work for the tidy 8–9 step Germany examples in
+the mockups.
+
+**Required contents**
+
+| Feature | Requirement | State |
+|---|---|---|
+| Length | ~15 primary steps | ⬜ |
+| Optional branch | One step reachable but skippable | ⬜ |
+| Alternative branch | Two mutually exclusive paths (e.g. IELTS vs PTE) | ⬜ |
+| Parallel activities | At least two steps running concurrently | ⬜ |
+| Rejoining branch | A divergence that reconnects downstream | ⬜ |
+| Archived step | Present in history, absent from current view | ⬜ |
+| Newly added step | Marked as added, visible in shadow diff | ⬜ |
+| Previous version | A prior route version for shadow comparison | ⬜ |
+| Temporary disruption | Scoped by date and location, attached to one step | ⬜ |
+| Wrapping | Long enough to wrap across rows | ⬜ |
+
+**Responsive acceptance**
+
+| Width | Target | State |
+|---|---|---|
+| 360px | Mobile — legible, no page-wide horizontal overflow | ⬜ |
+| 768px | Tablet — legible | ⬜ |
+| 1280px | Desktop — legible | ⬜ |
+
+**Range acceptance:** also verify a 3-step route and a 20-step route render usably. ⬜
+
+---
+
+## 8. Pre-launch gate verification
+
+The three gates in [Phases.md](Phases.md). None can be signed off from a passing unit test
+alone — each needs the checklist walked deliberately.
+
+| Gate | Covers | State |
+|---|---|---|
+| Gate 1 — Visualisation scalability | §7 above + invariant tests 24, 25 | ⬜ |
+| Gate 2 — Real launch content | Germany/Australia/USA/Malaysia sourced routes, zero mockup-derived values | ⬜ |
+| Gate 3 — Complete community loop | Full E2E: search → ribbon → road → step → field → follow → progress → contribute → revision → change → shadow → progress intact | ⬜ |
+
+Gate 3 should exist as a **single Playwright test** that walks the whole loop. If it is split
+into fragments that each pass separately, the gate is not being tested — the loop is.
+
+Gate 2 additionally requires human judgement: a Bangladeshi reader confirming a route explains
+something they were genuinely trying to understand. Record who reviewed and when.
+
+---
+
+## 9. How to update this file
 
 After any test run, in the same session:
 

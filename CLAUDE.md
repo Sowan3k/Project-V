@@ -39,9 +39,25 @@ the community corrects and updates the public route.*
 
 ## 2. Source of truth and traceability
 
-`Vindeshi_Express_Final_PreDevelopment_Requirements_Baseline.docx` is the **frozen
-requirements baseline** (v2.0, 1 September 2026). It contains 80 functional requirements
-(FR-01…FR-80), 35 business rules (BR-01…BR-35), and 46 decision-register entries (D-01…D-46).
+The **frozen requirements baseline** (v2.0, 1 September 2026) contains 80 functional
+requirements (FR-01…FR-80), 35 business rules (BR-01…BR-35), and 46 decision-register entries
+(D-01…D-46). It exists in three formats — same content, different purposes:
+
+| File | Role | Use it when |
+|---|---|---|
+| `REQUIREMENTS.md` | **Preferred working copy.** Plain Markdown, generated verbatim from the DOCX. | **Always — this is what you read during normal sessions.** |
+| `..._Baseline.docx` | Archival/final artifact. The authority if formats ever disagree. | Regenerating the Markdown; formal sign-off; sharing with non-technical stakeholders. |
+| `..._Baseline.mht` | Web-readable copy (Word "Single File Web Page"). | Reading in a browser. Not for agent sessions — see below. |
+
+**Read `REQUIREMENTS.md`. Do not parse the DOCX or MHT during normal work.** All three were
+verified equivalent on 2026-09-02: all 47 sections, all 80 FR statements verbatim, all 35 BR,
+all 46 D, zero discrepancies. The Markdown is ~4.7× cheaper to read than the DOCX's XML payload
+and ~10.6× cheaper than the MHT, which despite being intended as the lightweight copy is
+actually the heaviest (1.06 MB of Word-generated HTML).
+
+`REQUIREMENTS.md` is **generated — never hand-edit it.** If the baseline is ever formally
+revised, update the DOCX and regenerate. A change to requirements is a change to the frozen
+baseline and must be recorded in `Status.md`.
 
 Rules for working against it:
 
@@ -64,6 +80,8 @@ Rules for working against it:
 | `Phases.md` | Ordered development phases, each with scope, exit criteria and FR coverage. | When a phase completes or scope shifts. |
 | `Status.md` | Append-only session log: what was done, decisions made, blockers, next step. | **At the end of every session.** |
 | `Test.md` | Test ledger: every test written/run, its result, and what remains untested. | **After every test run.** |
+| `REQUIREMENTS.md` | Generated Markdown copy of the frozen baseline. | Never by hand — regenerate from the DOCX. |
+| `Visual References/` | UI/UX mockups defining design intent. Indexed in §8. | When a mockup is added or replaced. |
 
 `Status.md` and `Test.md` are the memory between sessions — read them at the start of a
 session before touching code.
@@ -79,7 +97,7 @@ session before touching code.
 | ORM | Prisma |
 | Auth | Auth.js (NextAuth) — Google OAuth as primary sign-in |
 | Styling | Tailwind CSS |
-| Ribbon / road / shadow-route visuals | Hand-authored inline SVG + CSS (no heavy chart library) |
+| Ribbon / road / shadow-route visuals | **Data-driven SVG renderer** built from a hand-authored library of reusable SVG primitives + CSS (no chart library). Primitives are hand-drawn; **routes never are** — see invariant 24. |
 | Testing | Vitest (unit) + Playwright (E2E) |
 | Hosting target | Vercel + Neon — free tiers, per §28.1 cost philosophy |
 | Interface language | **English UI, Bengali brand identity.** i18n scaffolding from day one so Bangla can be added without rework. |
@@ -253,6 +271,26 @@ violates one as a bug, regardless of how convenient it is.
     established route with no recent activity becomes quiet or stale and shows last-confirmed
     information — it is never auto-invalidated.
 
+### Rendering
+
+24. **Route visuals are data-driven and route-agnostic.** No country, destination, route, step
+    count, branch structure or route version may require bespoke SVG artwork or route-specific
+    frontend code. The renderer takes route data and produces the visual; a route created by a
+    community contributor at 2am must draw correctly with no developer involved. Seeded and
+    community-created routes use the identical rendering path (FR-13, FR-57, FR-72, D-37).
+
+    Hand-authoring is permitted **only** for the reusable primitive library — road segment,
+    curved segment, junction, step marker, optional branch, parallel branch, merge point, start
+    marker, destination/fly marker, archived segment, new/changed segment, shadow segment,
+    disruption indicator. Think LEGO bricks, not illustrations. If a fix requires touching SVG
+    to make one specific route look right, the renderer is wrong — fix the renderer.
+
+25. **Ribbon and road are one representation at two densities** (D-33, FR-04, FR-05). Both
+    derive from the same route structure through the same layout pass; the ribbon is the road
+    compressed. They are never two independently maintained designs. A step added to a route
+    must appear in both without separate work. If a route's road shows eight stages, its ribbon
+    shows those same eight stages compressed — never a different count or order.
+
 ---
 
 ## 7. UI and UX principles
@@ -278,7 +316,182 @@ violates one as a bug, regardless of how convenient it is.
 
 ---
 
-## 8. Code conventions
+## 8. Visual references
+
+`Visual References/*.png` are the UI/UX mockups produced during product design. They define
+**design intent**: visual direction, page hierarchy, interaction metaphors, layout, information
+placement, responsive behaviour, and how trust, change, routes, steps, fields and journeys
+should look.
+
+### 8.1 Where they sit in the hierarchy
+
+1. **`REQUIREMENTS.md`** (the frozen baseline) — what the product must *do*. Functional truth.
+2. **`CLAUDE.md`** (this file) — how we build it. Invariants, terminology, conventions.
+3. **`Visual References/`** — how it should *look and feel*. Design intent only.
+
+**If a mockup conflicts with the baseline or this file, the mockup loses.** Every mockup
+contains illustrative sample data — universities, dates, IELTS scores, visa rules, processing
+times, follower counts, confidence percentages, usernames, contributor counts. **None of it is
+factual, and none of it is seed data.** Read mockups for layout and interaction, never for content.
+
+### 8.2 Index
+
+| Ref | File | Screen | Purpose |
+|---|---|---|---|
+| VR-01 | `01-landing-minimal-home.png` | Landing | Minimal public entry point |
+| VR-02 | *missing* | Route discovery | Not supplied — see 8.4 |
+| VR-03 | `03-route-dashboard-ribbon-to-road.png` | Ribbon → Road | Core route expansion interaction |
+| VR-04 | `04-route-detail-full-road-view.png` | Full road | Primary route visualisation, wrapping road |
+| VR-05 | `05-step-detail-fields-view.png` | Step → Fields | Field table with source/freshness/confidence |
+| VR-06 | `06-my-journey-private-tracker.png` | My Journey | Private progress tracking |
+| VR-07 | `07-route-changes-shadow-comparison.png` | Route changes | Shadow-route comparison |
+| VR-08 | `08-community-update-field-flow.png` | Update field | Contribution flow creating a revision |
+| VR-09 | `09-create-new-route-build-road.png` | Create route | Contributor builds a new road |
+| VR-10 | `10-updates-and-temporary-disruptions.png` | Updates | Permanent change vs temporary disruption |
+| VR-11 | `11-report-safety-and-quarantine.png` | Report & Safety | Abuse reporting and quarantine |
+| VR-12 | `12-responsive-route-search-and-browse.png` | Responsive search | Mobile route discovery |
+| VR-13 | `13-responsive-road-and-step-experience.png` | Responsive road | Mobile route → step → field |
+| VR-14 | `14-experimental-disputed-route-state.png` | Low-trust route | Experimental/disputed presentation |
+
+### 8.3 Per-reference notes
+
+**VR-01 — Minimal landing.** Anonymous first-time visitor. Bengali headline with English
+subhead, `Find My Route` primary CTA, `How It Works` secondary, trust badges (Free / Community
+Maintained / No Document Upload), Bangladesh→Germany curved-road illustration, popular
+destinations. *This is the authoritative homepage direction — keep it minimal.* Complexity
+appears only after the user acts.
+
+**VR-03 — Ribbon → road dashboard.** The single most important reference. Search controls,
+several horizontal coloured ribbons, one selected and expanded into a road beneath it, with
+step list, step detail and a My Journey panel. Demonstrates invariant 25: a ribbon is **not a
+card** — it is the compressed route, and opening it unfolds the same object.
+
+**VR-04 — Full road view.** The road is visually dominant, numbered stages, expected duration,
+expected fly window, followers, maturity. **Note the road wraps across three rows with curved
+connectors** — the renderer must support wrapping (see invariant 24), not a single straight
+line. Do not degrade this into a generic task checklist.
+
+**VR-05 — Step → fields.** Shows the `Route → Step → Field` hierarchy. Field table columns:
+Information, Source, Last Updated, Confidence, Your Status, Action. `Add New Field to this
+Step`. Fields are the smallest community-maintained unit and change independently of the route.
+
+**VR-06 — My Journey.** Signed-in follower. Private badge, overall progress, expected fly
+window, per-step status with target/completion dates and private notes, upcoming deadlines,
+recent route changes. `Public route + private progress = My Journey`. No evidence upload, no
+verification, not visible to others.
+
+**VR-07 — Shadow comparison.** "Your route when you started" beside "Current route (now)", with
+added / removed / duration-changed markers, change summary counts, effective dates, and a "How
+changes affect you" panel confirming completed steps remain valid. Must answer: what changed,
+where, when, how much, does it affect me.
+
+**VR-08 — Update field flow.** Contributor. Current value beside proposed value, with route /
+step / field context, reason, source, staged review. An update creates a **new revision**;
+prior values persist and others may later confirm, challenge or update again.
+
+**VR-09 — Create new route.** Route Basics → Build Road → Add Fields → Review → Publish. Note
+it models "Documents Preparation" as *one* step, not seven — the correct grouping instinct.
+New routes publish as experimental; the creator does not own the route.
+
+**VR-10 — Updates & disruptions.** Tabs by scope, severity levels (Critical / Important /
+Relevant / Information), and the crucial distinction: "Germany adds new visa document" is a
+**permanent route change**; "IELTS Dhaka centre closed 18–30 Sep due to flooding" is a
+**temporary disruption** with date and location scope that expires without rewriting the route.
+
+**VR-11 — Report & Safety.** Report categories, detail form, recently quarantined items,
+quarantine explanation. **Report ≠ Challenge**: challenge means "this may be wrong", report
+means "this may be dangerous". Normal users never get arbitrary delete.
+
+**VR-12 — Responsive search.** Desktop discovery beside phone mockups: stacked filters, compact
+ribbons, bottom tab navigation. Mobile is a reflow, never a scaled-down desktop screenshot.
+
+**VR-13 — Responsive road/step.** Desktop route with one step expanded (actions, requirements,
+tips, resources) beside phones showing compact route, expandable steps and step detail. Mobile
+must not attempt to show all desktop panels at once.
+
+**VR-14 — Experimental/disputed route.** The trust reference. Bangladesh→Canada with 1
+contributor, 9 followers, **0 recent confirmations**, 3 fields needing review, 2 open
+challenges, 20% freshness, 28% confidence, "Use with Caution", and a legend explaining
+Established / Experimental / Under Review / Disputed. Anyone may create a route; that does not
+make it trustworthy, and "no reports" is not a trust signal.
+
+### 8.4 Missing reference
+
+**VR-02 (route discovery / search) was not supplied** — 13 files for 14 canonical names. Its
+described content is largely covered by the desktop half of VR-12 and the search controls in
+VR-03. Do not invent it. If a dedicated discovery mockup is produced later, add it as
+`02-route-discovery-search-and-ribbons.png` and update this index.
+
+### 8.5 Visual design principles
+
+1. **Progressive disclosure.** `Landing → Search → Ribbon → Road → Step → Field`. Never expose
+   the whole application on the homepage.
+2. **Ribbon-to-road continuity.** The ribbon is the compressed route; opening it should feel
+   like the same object expanding. See invariant 25.
+3. **The road is the primary metaphor.** Resist turning this into a generic checklist or
+   project-management dashboard.
+4. **Category colour, never colour alone.** Persistent semantic categories — documents /
+   preparation, language / tests, admission / university, funding / scholarship, immigration /
+   visa, travel / departure — always paired with text, status and icon.
+5. **Restrained visual direction.** White and light backgrounds, generous whitespace, navy/blue
+   brand, pastel category accents, rounded panels, subtle borders, very light shadows, clean
+   icons, strong hierarchy. Avoid heavy gradients and shadows, clutter, decorative excess and
+   generic SaaS-dashboard styling.
+6. **Bengali identity, English interface.** Bengali brand and headline treatment; English UI.
+   Do not translate the whole application unless that decision changes.
+7. **Mobile is first-class.** Reflow intelligently; never scale the desktop layout down.
+8. **Trust must be visible.** Established, Developing, Experimental, Quiet/Stale, Disputed and
+   Quarantined must look materially different from one another.
+9. **Uncertainty must be visible.** Official source, community confirmed, community submission
+   and disputed information must never look equivalent.
+10. **Private journeys feel linked but private.** Visually connected to the public route while
+    unmistakably personal.
+11. **Change is explained, not just flagged.** The shadow experience answers what changed,
+    where, when, how much, and whether it affects this user.
+
+### 8.6 Known mockup exceptions
+
+Present in the mockups, **not** first-release behaviour. Do not implement from the image:
+
+| Seen in | Exception | Why |
+|---|---|---|
+| VR-06, VR-13 | "Share Progress" / "Share" | Progress is private (FR-26, BR-16, D-10). Out of scope absent a formal change request. |
+| VR-08 | "Update goes live when confirmed by the community"; "All updates are reviewed" | Contradicts the revision model. Updates create revisions and are visible; the community corrects afterwards (FR-16, FR-69, §43.1). **Do not build an approval gate.** |
+| VR-13, VR-14 | "Verified Route" badge | We are not an admission or immigration authority. Show sources, last reviewed, maturity, confirmations — never a verification claim (BR-20). |
+| VR-03, VR-12 | "Verified information", "Community Verified 98%" | Same reason. Reword to source/freshness language. |
+| VR-10 | "Subscribe to Alerts" / "Get instant alerts" | Proactive external notifications are deferred (§35). In-app change visibility is the first-release mechanism. |
+| VR-11 | "Safety Leaderboard" | §25 warns against turning contribution into a competitive points game. |
+| VR-11 | Screenshot upload on the report form | Journey tracking must have no upload path (invariant 6). An abuse-report attachment is a separate question — **decide deliberately before building**, and keep it out of the journey flow either way. |
+| VR-13 | 4.8/5 star route maturity | Maturity is computed from combined signals, not user ratings; popularity is not correctness (§21.1, BR-05). |
+| All | Sample universities, IELTS/APS/visa requirements, fees, processing times, durations, follower counts, freshness and confidence percentages, usernames, destination statistics, external links | Illustrative only. Never seed data, never factual requirements, never pre-approved trusted sources. |
+
+### 8.7 Intended screen flow
+
+```
+Anonymous visitor
+  Landing → Find My Route → Route Search → Ribbons
+    → Open Ribbon → Road → Step → Field
+
+Signed-in follower
+  Road → Follow Route → My Journey → Update Private Progress
+    → Live Route Changes → Shadow Comparison → Continue Journey
+
+Contributor
+  Route / Step / Field → ADD | UPDATE | CONFIRM | CHALLENGE
+    → Revision Created → Community Continues Correcting
+
+New-route contributor
+  Search → Route Missing → Create New Route → Build Road
+    → Add Steps → Add Fields → Publish (Experimental) → Community Improves
+
+Safety
+  Field / Link / Contact → Report → Potential Quarantine
+    → Review + Community Signals → Restore | Correct | Archive | Remove
+```
+
+---
+
+## 9. Code conventions
 
 - TypeScript strict mode. No `any` in domain code; model unions explicitly
   (`type SourceClass = 'official' | ...`).
@@ -298,7 +511,7 @@ violates one as a bug, regardless of how convenient it is.
 
 ---
 
-## 9. First-release scope (§34, §46.1)
+## 10. First-release scope (§34, §46.1)
 
 Ship this, and only this:
 
@@ -321,9 +534,38 @@ Deliberately deferred (§35, §46.2): email and other proactive alerts, addition
 countries, volunteer maintainer governance, advanced statistics, advertising, multilingual UI
 beyond English plus Bengali brand, research/archive browsing view.
 
+### 10.1 Approved scope change — voluntary support link (2026-09-02)
+
+**Status: approved, scheduled for the polish phase. Not core scope; nothing depends on it.**
+
+Users who wish to help with operating costs may do so via an external **Gumroad
+"pay what you want"** page. This is the only monetisation of any kind.
+
+What it is:
+
+- A link labelled **"Support Vindeshi Express"** — not "Donate" (avoid tax-deductible charitable
+  framing) and not a purchase prompt.
+- Placed unobtrusively: footer, About/Community area, or menu. It must never compete visually
+  with `Find My Route`, route navigation or community contribution.
+- The user **leaves the platform** and completes payment on Gumroad.
+
+Hard constraints — this is a link, and nothing more:
+
+- Vindeshi Express **never processes, stores or sees payment information**.
+- **No** Gumroad API integration, payment tables, donor profiles, supporter status, receipts or
+  payment verification. Adding any of these is a new change request.
+- Supporting the project must have **zero effect** on route ranking, maturity, confidence,
+  source classification, moderation outcomes, contributor reputation, feature access or any
+  other trust mechanism. There is no supporter flag to condition behaviour on, because no such
+  flag exists.
+- The platform remains free: no paid features, no premium routes, no paid rankings.
+
+This is consistent with, and bounded by, invariant 13 and BR-13/BR-14/FR-78 — trust cannot be
+purchased. A supporter and a non-supporter are indistinguishable to the system by construction.
+
 ---
 
-## 10. Open decisions — do not invent answers
+## 11. Open decisions — do not invent answers
 
 These are unresolved in the baseline (§36). If work depends on one, flag it and use a clearly
 labelled placeholder rather than silently choosing:
@@ -338,7 +580,7 @@ labelled placeholder rather than silently choosing:
 
 ---
 
-## 11. Definition of done
+## 12. Definition of done
 
 A unit of work is done when:
 
@@ -351,7 +593,7 @@ A unit of work is done when:
 
 ---
 
-## 12. Session workflow
+## 13. Session workflow
 
 **Start of session:** read `Status.md` → `Phases.md` (current phase) → `Test.md` (open gaps).
 
