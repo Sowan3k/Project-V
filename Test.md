@@ -220,7 +220,7 @@ Populated as phases land. One row per feature area.
 | # | What | Guards | Status |
 |---|---|---|---|
 | OF-4 | **`CLAUDE.md` and the Neon endpoint id are still in public git history** — 8 and 2 commits respectively on `origin/main`. Untracking and redaction stopped future publication, not past publication. | Test.md §10 publication rules | ⏸️ **Deferred by the owner (2026-09-02): to be removed manually, not by this project's tooling.** Not a credential exposure — neither is a secret, and the password behind that endpoint is rotated. Note that a rewrite cannot guarantee erasure anyway: GitHub retains unreachable objects, and old SHAs stay referenced by Vercel deployments and Actions runs. |
-| OF-5 | **The Neon API key `3303456` is account-scoped.** Neon's own warning: it reaches everything the account can, in every organization. Minted by `neon mcp -y` in session 1 and written into six agent config files. | Least privilege | 🟡 Open — **not a leak**; the key is local, never committed (verified by the history scan). Fix is `neon mcp --oauth` (mints no key at all) then `neon api-keys revoke 3303456`, which needs an interactive session for the sign-in flow. |
+| OF-5 | **The Neon API key `3303456` is account-scoped and embedded in 7 local config files.** Neon's own warning: it reaches everything the account can, in every organization. Minted by `neon mcp -y` in session 1. | Least privilege | ⏸️ **Pending, owner: project owner. Deferred 2026-09-02 — see §11 for the procedure.** Not a leak: never committed, confirmed by the full-history blob scan. |
 
 > When a test fails, add it here with the failing output and the FR/invariant it guards.
 > Remove the row only when it passes — never by deleting the test.
@@ -378,3 +378,66 @@ verified by attempting the old credential rather than assumed.
    became public. Either one alone is worth rotating; both together is not optional.
 5. `CLAUDE.md` is gitignored and must stay that way. If a rule in it needs to be visible to
    outside contributors, restate that rule in a tracked file rather than un-ignoring it.
+
+---
+
+## 11. Pending: Neon API key `3303456` (OF-5)
+
+**Status: open, deferred by the owner on 2026-09-02. Do not close this section until the
+verification in step 5 has actually been run.**
+
+### What is wrong
+
+The key is **account-scoped** — Neon's own warning is that it "reaches everything your
+account can, in every organization" — and it is long-lived. It was minted automatically by
+`neon mcp -y` during session 1.
+
+It has never been committed. That is verified, not assumed: every blob in the full git
+history was scanned for `napi_` and other token shapes with zero matches (§10). This is an
+over-privilege problem, not a leak.
+
+### Where it actually is
+
+Seven files, not the six recorded in session 1:
+
+```
+~/.claude.json
+~/.codex/config.toml
+~/.copilot/mcp-config.json
+~/.gemini/config/mcp_config.json
+~/.gemini/settings.json
+%APPDATA%/Code/User/mcp.json
+%APPDATA%/Code/User/sync/mcp/lastSyncmcp.json     <- VS Code Settings Sync
+```
+
+**The last one matters more than the rest.** It is a Settings Sync artifact, so if Settings
+Sync is enabled the key has probably been uploaded to Microsoft's cloud and pulled down onto
+every other machine signed into the same VS Code account. Those copies cannot be recalled.
+Revocation is what makes them worthless, which is why this should not be deferred
+indefinitely.
+
+### Procedure
+
+1. `neon mcp --oauth` — rewrites the MCP entries to a plain server URL and **mints no key
+   at all**; each agent signs in on demand. Select every agent when prompted.
+2. `neon api-keys revoke 3303456`
+3. `neon api-keys list` — `3303456` must be gone.
+4. `grep -rlE 'napi_[A-Za-z0-9]{10,}' ~ --include='*.json' --include='*.toml' | grep -v node_modules`
+   — expect no output. If `lastSyncmcp.json` persists, delete it; VS Code regenerates it.
+5. Restart the editors so they load the new config.
+
+Running step 2 first is also valid and kills the key sooner; the only cost is Neon MCP being
+broken until step 1 completes.
+
+### What this does and does not break
+
+- **The `neon` CLI keeps working.** It authenticates with separate OAuth credentials in
+  `~/.config/neon/credentials.json`, not this API key — verified. Every command in
+  CLAUDE.md §4 is unaffected.
+- **Neon MCP breaks** in every agent until step 1 is complete and the editors restart.
+  Nothing in this project depends on MCP; the CLI covers all documented workflows.
+
+### Why it is not done yet
+
+Step 1 rewrites `~/.claude.json` while an agent is running inside Claude Code, and its
+sign-in flow cannot complete in a non-interactive session. It needs an interactive terminal.

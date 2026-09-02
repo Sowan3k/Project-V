@@ -195,6 +195,17 @@ reaches the same commit without rewriting a single file. `git diff HEAD` then co
 the working tree matched the commit exactly before pushing. Worth knowing: keeping the
 baseline open in Word will block any git operation that has to rewrite it.
 
+### Carried forward — not done
+
+**OF-5, the account-scoped Neon API key, is pending.** Full procedure in `Test.md` §11.
+Deferred deliberately, not forgotten: it needs an interactive terminal, because the fix
+rewrites `~/.claude.json` while an agent is running inside Claude Code. Worth doing sooner
+rather than later — the key is also present in a VS Code Settings Sync artifact, so it may
+already have propagated to other machines on that account, and revocation is the only thing
+that makes those copies worthless.
+
+**OF-4, `CLAUDE.md` in public git history, is the owner's to remove manually.**
+
 ### Next step
 
 **Phase 0 is complete. All five exit criteria are met.**
