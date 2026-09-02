@@ -78,10 +78,15 @@ test.describe('the contribution loop', () => {
     await page.getByText(/^add a step$/i).click()
     await page.getByLabel(/what is this step called/i).fill('Collect and attest documents')
     await page.getByRole('button', { name: /add this step/i }).click()
-    await expect(page.getByText(/collect and attest documents/i).first()).toBeVisible()
 
-    // 5. It draws through the ordinary renderer, with no route-specific code anywhere.
+    // In the step list, by role. A plain text match also finds the SVG's own <title>, which
+    // is hidden — and which is itself the proof for the assertion below: the renderer drew
+    // the new step, with no route-specific code anywhere (invariant 24).
+    await expect(page.getByRole('link', { name: /collect and attest documents/i })).toBeVisible()
+
+    // 5. It draws through the ordinary renderer.
     await expect(page.locator('svg[role="img"]')).toBeVisible()
+    await expect(page.locator('svg title', { hasText: /collect and attest documents/i })).toHaveCount(1)
 
     // 6. Add information to the step (FR-15).
     await openFirstStep(page)
@@ -154,18 +159,29 @@ test.describe('the contribution loop', () => {
     ).toBeVisible()
 
     // CHALLENGE — leaves the value alone and says so publicly, with its reason.
-    await openFirstStep(page)
-    const valueBefore = await page.locator('main li p.text-sm').first().innerText()
+    //
+    // No second `openFirstStep` here: confirming re-rendered the same URL, so the step is
+    // already open and the link now reads "Close". Clicking it again would shut the step and
+    // then wait forever for a form that is no longer on screen.
+    const valueBefore = await officialGroup.locator('li p.text-sm').first().innerText()
 
-    await page.getByText(/^flag a problem$/i).first().click()
-    await page.getByLabel(/^reason$/i).first().selectOption('broken_link')
-    await page.getByLabel(/what is wrong/i).first().fill('That link goes nowhere now.')
-    await page.getByRole('button', { name: /^flag it$/i }).click()
+    await officialGroup.getByText(/^flag a problem$/i).first().click()
+    await officialGroup.getByLabel(/^reason$/i).first().selectOption('broken_link')
+    await officialGroup.getByLabel(/what is wrong/i).first().fill('That link goes nowhere now.')
+    await officialGroup.getByRole('button', { name: /^flag it$/i }).click()
 
     await expect(page.getByText(/that link goes nowhere now/i)).toBeVisible()
-    await expect(page.getByText(/^broken link$/i).first()).toBeVisible()
+    await expect(page.getByText(/broken link/i).first()).toBeVisible()
+
     // The value itself is untouched: a challenge says "this may be wrong", not "this is".
-    await expect(page.locator('main li p.text-sm').first()).toHaveText(valueBefore)
+    await expect(
+      page
+        .locator('section')
+        .filter({ has: page.getByRole('heading', { name: /from official and institutional/i }) })
+        .first()
+        .locator('li p.text-sm')
+        .first(),
+    ).toHaveText(valueBefore)
 
     await context.close()
   })
