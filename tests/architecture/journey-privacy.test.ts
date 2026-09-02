@@ -137,11 +137,17 @@ describe('invariant 6 / test 6 — there is no upload path in the journey flow',
   })
 
   /**
-   * The boundary refuses one too, rather than only lacking one.
+   * The boundary refuses one too, rather than only lacking one — and this is the half that
+   * actually carries the invariant.
    *
-   * `FormData` entries are `string | File`. The journey actions read them through a helper
-   * that throws on a file, so a hand-crafted multipart POST is answered with an error instead
-   * of a coerced `"[object Object]"`.
+   * **Next.js encodes every server-action form as `multipart/form-data`.** That enctype
+   * belongs to the framework and appears on forms accepting nothing but text, so a
+   * fabricated POST can carry a file part no matter what the page renders. An E2E assertion
+   * that no form is multipart was written, failed, and was removed for exactly this reason.
+   *
+   * `FormData` entries are therefore `string | File` in practice as well as in the types. The
+   * journey actions read every field through a helper that throws on a file, so such a
+   * request is answered with an error rather than a coerced `"[object Object]"`.
    */
   it('refuses a file at the journey action boundary', () => {
     const actions = read('src/app/[locale]/routes/[slug]/journey/actions.ts')

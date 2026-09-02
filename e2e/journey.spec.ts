@@ -88,9 +88,25 @@ test.describe('a private journey', () => {
     await expect(page.getByText(/private to you/i)).toBeVisible()
     await expect(page.getByRole('heading', { name: /your progress/i })).toBeVisible()
 
-    // FR-25, invariant 6: there is nowhere to attach a document, on the whole page.
+    /**
+     * FR-25, invariant 6: there is nowhere to attach a document, on the whole page.
+     *
+     * Only the file input is asserted, and the reason is worth writing down because the
+     * first version of this test got it wrong.
+     *
+     * **Next.js encodes every server-action form as `multipart/form-data`.** That enctype is
+     * the framework's, not ours, and it appears on forms that accept nothing but text. So the
+     * absence of an upload cannot be proved by the absence of a multipart enctype — and,
+     * more to the point, it means a hand-crafted POST *could* carry a file part whatever this
+     * page renders.
+     *
+     * Which is why the guarantee does not live in the markup at all. The journey actions read
+     * every field through a helper that throws on a `File` rather than coercing it, so a
+     * fabricated multipart request is refused rather than silently accepted. That is asserted
+     * in `tests/architecture/journey-privacy.test.ts`. This assertion covers the half a
+     * browser can see: a student is never *shown* somewhere to attach a document.
+     */
     expect(await page.locator('input[type="file"]').count()).toBe(0)
-    expect(await page.locator('form[enctype*="multipart"]').count()).toBe(0)
 
     // Record something private against the first step.
     const firstStep = page.locator('form').filter({ has: page.locator('select[name="status"]') }).first()
