@@ -144,7 +144,6 @@ export const en = {
     noSteps: 'This route has no steps yet.',
     noFields: 'No information has been added to this step yet.',
     history: 'Route history',
-    viewHistory: 'See what has changed',
     historyEmpty: 'No changes recorded yet.',
     historyLede:
       'Every change is kept. Earlier values are never overwritten, so you can see what a route said before.',

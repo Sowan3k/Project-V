@@ -78,15 +78,31 @@ test.describe('anonymous reading journey', () => {
     await context.close()
   })
 
-  test('history is readable without an account', async ({ page }) => {
+  /**
+   * History is a TAB, not a link away.
+   *
+   * This test used to click a "See what has changed" link. The navigation work replaced that
+   * link with a tab inside the persistent route context (CLAUDE.md §7.1) and the test was not
+   * updated — nobody noticed, because E2E ran only on a workstation and never in CI. Adding
+   * the CI job caught it on its first run. Recorded rather than quietly fixed: the bug was in
+   * the test, and the reason it survived was a gap in *where* tests run.
+   */
+  test('history is readable without an account, and keeps the route on screen', async ({
+    page,
+  }) => {
     await page.goto('/en/routes')
     await page.locator('main ul li a').first().click()
-    await page.getByRole('link', { name: /see what has changed/i }).click()
+    const routeTitle = (await page.getByRole('heading', { level: 1 }).innerText()).trim()
+
+    await page.getByRole('navigation', { name: /route views/i }).getByRole('link', { name: /^history$/i }).click()
 
     await expect(page).toHaveURL(/\/history$/)
     await expect(page.getByRole('heading', { name: /route history/i })).toBeVisible()
     // Earlier values are still readable — that is the whole point (§17.2).
     await expect(page.locator('main ol li').first()).toBeVisible()
+
+    // A tab changes the view, not the place: the route's own title stays on screen.
+    await expect(page.getByRole('heading', { level: 1, name: routeTitle })).toBeVisible()
   })
 
   test('no read path redirects to a sign-in', async ({ page }) => {
