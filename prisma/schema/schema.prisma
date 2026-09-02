@@ -1,0 +1,37 @@
+// Vindeshi Express — Prisma schema (multi-file; see ./enums.prisma).
+//
+// Phase 0 deliberately commits NO domain tables. The route graph and the revision ledger
+// are Phase 2's single irreversible migration (Phases.md §Phase 2); modelling them early
+// would guess at the shapes that phase exists to decide.
+//
+// What Phase 0 does commit is the shared enum vocabulary (CLAUDE.md §5, §9). Those types
+// are generated from src/domain/enums.ts into ./enums.prisma — never edit that file.
+//
+// Connection policy (CLAUDE.md §4):
+//   url       = DATABASE_URL           — pooled, used by application queries
+//   directUrl = DATABASE_URL_UNPOOLED  — direct, used by Prisma Migrate and Introspect
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+/// The only table Phase 0 creates. It exists so the migration discipline in Phases.md
+/// §Phase 0 ("a migration applies on a scratch branch, then on production, with no data
+/// loss") is rehearsed against a real object, and so the deployed shell can prove
+/// end-to-end database connectivity without inventing domain tables.
+///
+/// It holds no user data, no route knowledge and nothing revisable, so it is outside the
+/// revision-ledger invariants (CLAUDE.md §6, invariants 1-4) by construction.
+model PlatformMeta {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("platform_meta")
+}

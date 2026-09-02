@@ -24,11 +24,13 @@ Read alongside [CLAUDE.md](CLAUDE.md) §6 (the 25 invariants) and [Phases.md](Ph
 
 | Item | State | Notes |
 |---|---|---|
-| Vitest (unit/integration) | ⬜ | Installed in Phase 0 |
-| Playwright (E2E) | ⬜ | Installed in Phase 0 |
-| Test database strategy | ⬜ | Use `neon checkout` scratch branch — never run tests against `production` |
-| CI pipeline | ⬜ | Not set up |
-| Coverage reporting | ⬜ | Not set up |
+| Vitest (unit/architecture) | ✅ | Vitest 4.1.11, node environment. `tests/**`, `src/**/*.test.ts`. Playwright specs excluded. |
+| Playwright (E2E) | ✅ | Playwright 1.62.1, Chromium. Two projects: `mobile-360` and `desktop-1280`. |
+| E2E target selection | ✅ | Local production build by default; `E2E_BASE_URL` points the same specs at a deployed preview. |
+| Test database strategy | ✅ | Scratch branch via `neon branches create` — never run tests against `production`. No test yet connects to a database. |
+| CI pipeline | 🟡 | `.github/workflows/ci.yml`: lint → typecheck → test → build on push to `main` and every PR. **Not yet observed running on GitHub.** |
+| Vercel preview deploys | ⬜ | Not created — see Open failures. |
+| Coverage reporting | ⬜ | Not set up. Deliberate: coverage of a shell is a meaningless number. Revisit at Phase 3. |
 
 **Command reference** (once Phase 0 lands):
 
@@ -47,6 +49,23 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-02 | Full check chain passes from a clean checkout | `npm ci` → `lint` → `typecheck` → `test` → `build` in a fresh copy of tracked files, no `.env.local`, dummy `DATABASE_URL` | ✅ All five pass; 84 tests; build emits 4 routes |
+| 2026-09-02 | Enum-duplication guard actually fails the build | Wrote `src/tmp_probe/violation.ts` containing `'community_submission'` | ✅ Failed with the offending path named; probe deleted |
+| 2026-09-02 | Generated Prisma enum staleness guard fails the build | Appended a bogus `enum Tampered` to `prisma/schema/enums.prisma` | ✅ Failed with "is stale. Run `npm run prisma:enums`"; file restored |
+| 2026-09-02 | `no-explicit-any` guard fails the build | Wrote `src/tmp_probe/anyprobe.ts` using `any` | ✅ Failed and named the file and line; probe deleted |
+| 2026-09-02 | Renderer import boundary is armed before the renderer exists | `ESLint.lintText` against `src/renderer/probe.ts` for all three forbidden groups, plus two control cases | ✅ 10 assertions pass — blocks `@/seed`, `@/content`, `@/destinations` and their relative forms; allows `@/domain`; inert outside `src/renderer` |
+| 2026-09-02 | Initial migration is additive only | `grep -ci drop` over the generated `migration.sql` | ✅ 0 DROP statements; 7 `CREATE TYPE`, 1 `CREATE TABLE` |
+| 2026-09-02 | Migration applies on a scratch branch first | Branch `phase-0-migration-rehearsal`; snapshot → `prisma migrate deploy` → snapshot | ✅ Empty before; 7 enums + `platform_meta` + `_prisma_migrations` after |
+| 2026-09-02 | Re-applying the migration does not lose data | Wrote a `platform_meta` row on the scratch branch, re-ran `migrate deploy`, read it back | ✅ No-op; row and timestamp unchanged |
+| 2026-09-02 | Migration applies on `production` with no data loss | Snapshot before (0 tables, 0 enums, 0 rows) → `npm run db:deploy` → snapshot after | ✅ Additive only; nothing pre-existing to lose; `migrate status` clean |
+| 2026-09-02 | `production` and the scratch branch agree | `neon diff phase-0-migration-rehearsal` | ✅ "No schema differences" |
+| 2026-09-02 | Enum value counts in Postgres match `src/domain/enums.ts` | `scripts/db-objects.mjs` against `production` | ✅ 11 / 5 / 9 / 4 / 3 / 8 / 8 |
+| 2026-09-02 | Prisma reaches Neon at runtime on the Node runtime | `GET /api/health` against a local production build | ✅ 200 `{"status":"ok","database":"reachable","branch":"production"}` |
+| 2026-09-02 | Locale routing and 404 behaviour | `/` → 307 → `/en`; `/en` → 200; `/en/does-not-exist` → 404 | ✅ |
+| 2026-09-02 | Playwright smoke suite, local production build | `npm run test:e2e` at 360px and 1280px | ✅ 10/10 passed |
+| 2026-09-02 | Playwright smoke suite against a **deployed preview** | Not run — no Vercel project exists yet | ❌ See Open failures |
+| 2026-09-02 | Neon branch policy has not drifted | `neon config plan` | ✅ Branch `production` matches `neon.ts` |
+| 2026-09-02 | Secrets stay out of git after scaffolding | Tracked-file listing of a clean checkout | ✅ `.env.local` and `.neon` absent; only `.env.example` present |
 | 2026-09-02 | Neon database reachable | `@neondatabase/serverless` live query — `select version(), current_database()` | ✅ PostgreSQL 18.6, db `neondb` |
 | 2026-09-02 | `neon.ts` policy matches remote branch | `neon config plan` | ✅ No drift on branch `production` |
 | 2026-09-02 | `DATABASE_URL` is the pooled endpoint | Parsed host from `.env.local` | ✅ `ep-misty-star-aekpcd3g-pooler` |
@@ -113,11 +132,18 @@ Invariant 24 prohibits destination- or route-specific *rendering logic*, not the
 destination names in data, labels, alt text or fixtures. These tests prove genericity by
 construction rather than by string-matching the repository.
 
+**Test 24c is armed early (Phase 0).** The ESLint entry `vindeshi/renderer-import-boundary`
+exists and `tests/architecture/renderer-import-boundary.test.ts` proves it rejects
+`@/seed`, `@/content` and `@/destinations` (and their relative forms) from
+`src/renderer/**`, allows route-agnostic domain imports, and stays inert elsewhere. It is
+🟡 rather than ✅ because `src/renderer/` has no files yet: the rule is proven to fire, but
+nothing real is standing behind it until Phase 4.
+
 | # | Test | State |
 |---|---|---|
 | 24 | **Structural equivalence** — two routes with identical graph structure but different destination, title and ids produce identical geometry; only labels differ | ⬜ |
 | 24b | **Generative coverage** — randomly generated valid route graphs (3–20 steps, mixed branch kinds, parallelism, archived/new steps) all render to valid geometry | ⬜ |
-| 24c | **Dependency boundary** — ESLint import rule: the renderer may not import from seed, content or destination modules | ⬜ |
+| 24c | **Dependency boundary** — ESLint import rule: the renderer may not import from seed, content or destination modules | 🟡 |
 | 24d | **No identity branching** — scoped check over `src/renderer/**` only: no comparison against route id, slug, destination or title. Not a repo-wide country grep | ⬜ |
 | 24e | A route created through the UI renders with zero developer involvement | ⬜ |
 | 24f | The stress route (§7) renders correctly through the production renderer, no per-route code | ⬜ |
@@ -127,6 +153,25 @@ construction rather than by string-matching the repository.
 ---
 
 ## 4. Feature test coverage
+
+### 4.0 Phase 0 foundation (landed 2026-09-02)
+
+84 Vitest tests across 6 files, plus 10 Playwright assertions in 2 browser projects.
+
+| Area | Tests | State | File |
+|---|---|---|---|
+| Domain vocabulary matches the baseline | 9 | ✅ | `tests/unit/enums.test.ts` |
+| i18n scaffolding, brand identity, forbidden wording | 6 | ✅ | `tests/unit/i18n.test.ts` |
+| Enum single source — no literal duplicated in `src/` | 53 | ✅ | `tests/architecture/enum-single-source.test.ts` |
+| Generated Prisma enums are not stale | 4 | ✅ | `tests/architecture/prisma-enums-generated.test.ts` |
+| Renderer import boundary is armed | 10 | 🟡 | `tests/architecture/renderer-import-boundary.test.ts` |
+| Zero `any` in `src/`, rule configured as an error | 2 | ✅ | `tests/architecture/no-any-in-src.test.ts` |
+| Shell renders, locale redirect, no verification claim, no 360px overflow, health probe leaks nothing | 10 | 🟡 | `e2e/smoke.spec.ts` — local build only, see OF-1 |
+
+Each of the four architecture guards was **also confirmed to fail** when deliberately
+violated (§2). A guard nobody has watched fail is a guard that may do nothing.
+
+### 4.1 Product feature coverage
 
 Populated as phases land. One row per feature area.
 
@@ -153,7 +198,10 @@ Populated as phases land. One row per feature area.
 
 ## 5. Open failures
 
-None recorded.
+| # | What | Guards | Status |
+|---|---|---|---|
+| OF-1 | **Playwright smoke test has not run against a deployed preview.** It passes 10/10 against a local production build, but no Vercel project exists for this repository, so the Phase 0 exit criterion "Playwright smoke test loads the deployed preview" is unmet. | Phase 0 exit criteria; the deploy path itself | ❌ Open — needs a Vercel project linked to `Sowan3k/Project-V` and `DATABASE_URL` / `DATABASE_URL_UNPOOLED` set in its environment. `E2E_BASE_URL=<url> npm run test:e2e` then closes it. |
+| OF-2 | **CI has not been observed running on GitHub.** `.github/workflows/ci.yml` is committed and its exact command chain was verified locally in a clean checkout, but no run has executed on GitHub Actions. | "lint + typecheck + unit on every commit" | ❌ Open — closes on the first push to `main`. |
 
 > When a test fails, add it here with the failing output and the FR/invariant it guards.
 > Remove the row only when it passes — never by deleting the test.
@@ -164,7 +212,11 @@ None recorded.
 
 | Gap | Reason | Revisit |
 |---|---|---|
-| Everything above marked ⬜ | No application code exists yet — repo is pre-Phase 0 | As each phase lands |
+| Everything above marked ⬜ | No domain code exists yet — Phase 0 delivered the spine, not features | As each phase lands |
+| Invariant tests 1–23 | The behaviour they guard does not exist yet. Phase 0 deliberately commits no domain tables — the route graph and revision ledger are Phase 2's single irreversible migration | Phases 2–11 |
+| No test connects to a database | Nothing to query: `platform_meta` holds no domain data. Database wiring is evidenced by `/api/health` and by the migration verification in §2 instead | Phase 2, when there is a schema worth testing |
+| Coverage percentage | Coverage of a shell measures nothing. Adding the number now would invite optimising it | Phase 3, with the revision engine |
+| `src/renderer/**` has no files | The renderer is Phase 4. Its lint boundary is armed and proven to fire (test 24c) so it cannot be retrofitted later | Phase 4 |
 | Verification of users' real-world claims | 🚫 Out of scope by design (FR-25, D-09) — the platform never verifies personal progress | Never |
 | External link destination safety scanning | 🚫 Not a first-release feature; containment is via reporting + quarantine (§42.5) | Post-launch |
 

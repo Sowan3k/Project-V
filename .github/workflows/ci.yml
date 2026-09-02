@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Prisma needs a syntactically valid URL to generate a client and to let `next build`
+  # import it. CI never connects: the health route is force-dynamic, so nothing queries
+  # the database at build time, and tests never touch production (Test.md §1).
+  DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?sslmode=disable
+  DATABASE_URL_UNPOOLED: postgresql://ci:ci@localhost:5432/ci?sslmode=disable
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  verify:
+    name: lint · typecheck · test · build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit and architecture tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build

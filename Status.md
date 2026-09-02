@@ -7,6 +7,132 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Session 4 — 2026-09-02
+
+**Goal:** Build Phase 0 — the foundation spine. First implementation session.
+
+### Done
+
+**Application scaffolding.** Next.js 15.5.25 (App Router) on React 19.2.8, TypeScript
+strict (plus `noUncheckedIndexedAccess`, `verbatimModuleSyntax`, `noUnusedLocals`),
+Tailwind CSS 4 with a CSS-first theme, ESLint 9 flat config, Prisma 6.19.3, Vitest 4,
+Playwright 1.62. Minimal shell only — header, footer, an "under construction" page, a
+health probe. The VR-01 landing page, search and ribbons stay in Phase 5.
+
+**Shared enums module — the piece everything downstream consumes.** `src/domain/enums.ts`
+is the single hand-written home of all seven domain enumerations: field categories (11),
+source classes (5), route lifecycle states (9), change severity (4), link trust classes
+(3), challenge reasons (8), report reasons (8). Every value is traced to the baseline.
+`prisma/schema/enums.prisma` is **generated** from it by `npm run prisma:enums`, and the
+i18n label maps consume it through exhaustive `satisfies Record<...>` types, so adding a
+value fails `typecheck` until every locale supplies a label.
+
+**Prisma wired to Neon.** `url = DATABASE_URL` (pooled) for queries, `directUrl =
+DATABASE_URL_UNPOOLED` for migrations, standard Node client — no edge driver, per the
+Session 3 hosting decision. The schema is a folder, not a file, so the generated enum block
+stays visibly separate from hand-written schema.
+
+**Migration rehearsed, then applied.** Created branch `phase-0-migration-rehearsal`,
+snapshotted it, applied the migration, wrote a row, re-applied (no-op), confirmed the row
+survived — then applied the same migration to `production`. `neon diff` reports no schema
+difference between the two. Production went from 0 tables / 0 enums to 7 enum types,
+`platform_meta` and `_prisma_migrations`. The migration contains zero `DROP` statements.
+
+**i18n scaffolding.** `src/app/[locale]/` with the root layout inside the locale segment,
+so `<html lang>` is always the locale being rendered. Middleware redirects unprefixed
+paths. `en` is the only active locale; Bangla is one entry in `LOCALES` plus one dictionary
+file away, with no restructuring. Every user-facing string comes from the dictionary.
+
+**Four architecture guards, each watched failing.** Writing a guard is not the same as
+knowing it works, so each was deliberately violated and confirmed to fail the build before
+the probe was removed (evidence in `Test.md` §2):
+
+| Guard | Holds |
+|---|---|
+| Enum literal appears in exactly one file | CLAUDE.md §9 / Phase 0 exit criterion |
+| Generated `enums.prisma` is not stale | Database and TypeScript vocabularies cannot diverge |
+| No explicit `any` in `src/`, rule configured as an error | Phase 0 exit criterion |
+| Renderer may not import seed / content / destination modules | Invariant 24, Test.md 24c |
+
+**CI.** `.github/workflows/ci.yml` runs lint → typecheck → test → build on push to `main`
+and on every PR, with dummy database URLs — the health route is `force-dynamic`, so nothing
+queries a database at build time. The same chain was verified locally from a clean checkout.
+
+**Results:** `lint` clean, `typecheck` clean, 84 Vitest tests pass, `build` succeeds, 10
+Playwright assertions pass at 360px and 1280px, `/api/health` returns 200 against Neon.
+
+### Decisions taken
+
+| # | Decision | Why |
+|---|---|---|
+| 1 | **Phase 0 commits one table (`platform_meta`) plus the seven enum types — no domain tables.** | The route graph and revision ledger are Phase 2's single irreversible migration. Guessing at them now is exactly the mistake `Phases.md` is ordered to avoid. `platform_meta` gives the rehearsal a real object and lets `/api/health` prove Prisma reaches Neon; it holds no user data, no route knowledge and nothing revisable, so it sits outside invariants 1–4 by construction. |
+| 2 | **Prisma 6.19.3, not 7.x or the 8.0 RC.** | 6.19 is the best-documented combination of the standard Node client, `directUrl`, and GA multi-file schema. Prisma 7 moves to driver adapters — moving parts we do not need and would be debugging during Phase 2's most important migration. Consistent with the existing decision to pin Next 15 rather than 16. |
+| 3 | **Migrations are generated with `prisma migrate diff` and applied with `migrate deploy`.** | `prisma migrate dev` needs a shadow database and prompts interactively; it hung for ten minutes against Neon in a non-interactive shell. `migrate deploy` is what CI and production use anyway, so the agent path and the production path are now one path. Recorded in CLAUDE.md §4. |
+| 4 | **Next's ESLint rules come from `@next/eslint-plugin-next` directly, not `eslint-config-next`.** | The shared config sets `eslint-config-next/parser` project-wide, which disables every type-aware rule — including `no-explicit-any`, a Phase 0 exit criterion. Found the hard way: the first lint run crashed. |
+| 5 | **The enum-duplication test matches quoted string literals, not object keys.** | It targets the real failure mode — a hardcoded `=== 'official'` drifting away from the enum. The i18n label maps key by enum value, but they are typed `satisfies Record<FieldCategory, string>`, so TypeScript already refuses to compile a drifted dictionary. `quote-props: as-needed` keeps those keys unquoted so a literal cannot hide behind quotes. The reasoning is written into the test file. |
+| 6 | **`.gitattributes` pins the repository to LF.** | The generated-enum test compares file bytes. A Windows clone with CRLF conversion would have failed it on a clean checkout with nothing actually wrong. The test also normalises line endings, so the guard cannot be defeated by an editor. |
+| 7 | **No category colour palette defined.** | The exact maturity labels and colour palette are open decisions (CLAUDE.md §11). Phase 0 defines only neutral and brand tokens — inventing the six semantic category colours now would be answering an open decision by accident. |
+| 8 | **No coverage reporting yet.** | Coverage of an empty shell is a meaningless number that invites optimising it. Revisit at Phase 3 with the revision engine. Recorded as a deliberate gap in `Test.md` §6, not left silent. |
+
+### Blockers
+
+**Vercel preview deploys — needs your decision.** This is the one Phase 0 exit criterion
+still open: *"Playwright smoke test loads the deployed preview."* The smoke suite passes
+10/10 against a local production build and is already parameterised
+(`E2E_BASE_URL=<url> npm run test:e2e`), so closing this is one command once a deployment
+exists. What is missing is the deployment itself, and creating it is not mine to decide:
+
+- Your Vercel account (`noor-mohammad-sowans-projects`, hobby plan) has no project for this
+  repository.
+- Linking `Sowan3k/Project-V` publishes the shell at a public URL.
+- A working `/api/health` requires the Neon `DATABASE_URL` and `DATABASE_URL_UNPOOLED` to be
+  stored in Vercel — real database credentials leaving this machine for a third party.
+
+Tracked as `Test.md` OF-1.
+
+**CI has not been observed running on GitHub** (`Test.md` OF-2). The workflow is committed
+and its exact command chain was verified locally in a clean checkout, but no GitHub Actions
+run has executed. Closes on the first push.
+
+### Issues found
+
+**Two transitive npm advisories, both in build tooling, neither actionable without
+reversing a recorded decision.**
+
+- `postcss` (4 advisories, high) via `next`. Fixed only in `next@16.3.4`; every Next 15
+  release is affected. CLAUDE.md §4 pins Next 15. The advisories concern processing
+  untrusted CSS and attacker-controlled `sourceMappingURL`; we compile our own stylesheets
+  at build time, so the exposure is a build-machine one, not a runtime one.
+- `deepmerge-ts` (1 advisory, high) via the `prisma` CLI. `npm audit fix --force` would
+  downgrade to `prisma@6.12.0`. Dev-time CLI only; it never runs in the deployed application.
+
+Both are recorded rather than silently worked around. Re-evaluate when Next 16 is adopted.
+
+**`CLAUDE.md` described `neon checkout <name>` as creating a throwaway branch.** It does
+not — it pins an *existing* branch, and its `--env-pull` default rewrites local env files.
+Branch creation is `neon branches create --name X`. §4 is corrected, and now carries the
+rehearsal recipe that leaves `.env.local` and `.neon` untouched.
+
+**`prisma migrate deploy` silently found no migrations** until `migrations.path` was set
+explicitly in `prisma.config.ts` — it printed the right directory while looking elsewhere.
+Worth remembering before Phase 2.
+
+**Left in place for you to review:** Neon branch `phase-0-migration-rehearsal`
+(`br-dark-forest-aejlwdbw`). It is the rehearsal evidence and costs nothing to keep. Delete
+it with `neon branches delete phase-0-migration-rehearsal` when you no longer want it — I
+did not, because deleting is irreversible and nothing required it.
+
+### Next step
+
+**Phase 0 is complete except for the Vercel deployment.** Nothing in Phase 1 depends on it:
+Phase 1 is two throwaway kill spikes driven by hand-written JSON fixtures, with no database
+and no deployment. So the deploy decision can be settled in parallel rather than blocking.
+
+Awaiting approval to begin **Phase 1 — kill spikes** (Spike A: ribbon-to-road renderer;
+Spike B: revision graph).
+
+---
+
 ## Session 3 — 2026-09-02
 
 **Goal:** Record five approved refinements to the plan. **No implementation.**

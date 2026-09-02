@@ -1,0 +1,48 @@
+@import 'tailwindcss';
+
+/*
+ * Phase 0 defines only the neutral and brand tokens the shell needs.
+ *
+ * The six semantic category colours (documents/preparation, language/tests,
+ * admission/university, funding/scholarship, immigration/visa, travel/departure) and the
+ * route-maturity palette are NOT defined here on purpose: the exact palette and maturity
+ * label wording are still open decisions (CLAUDE.md §11). Inventing them now would be
+ * answering an open decision by accident.
+ *
+ * Visual direction (CLAUDE.md §8.5): white and light backgrounds, generous whitespace,
+ * navy/blue brand, rounded panels, subtle borders, very light shadows.
+ */
+@theme {
+  --color-ink-900: oklch(0.24 0.03 258);
+  --color-ink-700: oklch(0.42 0.02 258);
+  --color-ink-500: oklch(0.58 0.015 258);
+
+  --color-brand-900: oklch(0.31 0.08 258);
+  --color-brand-700: oklch(0.44 0.11 256);
+  --color-brand-500: oklch(0.58 0.13 254);
+
+  --color-surface: oklch(1 0 0);
+  --color-surface-muted: oklch(0.985 0.003 258);
+  --color-hairline: oklch(0.91 0.006 258);
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--color-surface-muted);
+  color: var(--color-ink-900);
+}
+
+/* Meaning must never depend on colour, hover or fine visual detail (CLAUDE.md §7, §10.4). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

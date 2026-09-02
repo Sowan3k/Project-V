@@ -1,0 +1,78 @@
+// ---------------------------------------------------------------------------
+// GENERATED FILE - DO NOT EDIT.
+//
+// Source of truth: src/domain/enums.ts
+// Regenerate with: npm run prisma:enums
+//
+// Editing this file by hand breaks the single-source-of-truth rule in CLAUDE.md §9
+// and will fail tests/architecture/prisma-enums-generated.test.ts.
+// ---------------------------------------------------------------------------
+
+enum FieldCategory {
+  requirement
+  procedure
+  document
+  contact
+  address
+  link
+  cost
+  deadline
+  duration
+  community_experience
+  warning
+}
+
+enum SourceClass {
+  official
+  institutional_public
+  community_confirmed
+  community_submission
+  disputed_under_review
+}
+
+enum RouteLifecycleState {
+  experimental
+  developing
+  established
+  quiet
+  stale
+  disputed
+  dormant
+  archived
+  removed
+}
+
+enum ChangeSeverity {
+  informational
+  relevant
+  important
+  critical
+}
+
+enum LinkTrustClass {
+  trusted
+  community_submitted
+  quarantined
+}
+
+enum ChallengeReason {
+  obsolete
+  incorrect
+  broken_link
+  wrong_contact_or_address
+  duplicate_information
+  unsafe_or_scam
+  personal_information_or_harassment
+  other
+}
+
+enum ReportReason {
+  phishing_or_scam
+  adult_content
+  malware_or_download
+  impersonation
+  harassment_or_personal_information
+  malicious_contact
+  spam
+  other_serious_concern
+}

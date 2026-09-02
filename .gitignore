@@ -48,3 +48,9 @@ next-env.d.ts
 
 # Word owner/lock files
 ~$*
+
+# next.js typegen
+/.next/types/
+
+# playwright browsers cache marker
+.playwright-cache/

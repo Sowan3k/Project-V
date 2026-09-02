@@ -31,7 +31,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 
 | # | Phase | Ends with | State |
 |---|---|---|---|
-| 0 | Foundation spine | Deployed empty shell, green CI | ⬜ |
+| 0 | Foundation spine | Deployed empty shell, green CI | 🟡 |
 | 1 | Kill spikes: renderer + revision graph | Two go/no-go answers, throwaway code | ⬜ |
 | 2 | Route graph + revision ledger schema | The irreversible migration | ⬜ |
 | 3 | Revision write engine | The only door into shared knowledge | ⬜ |
@@ -70,13 +70,38 @@ vocabulary and a proven deploy path.
   the moment the renderer exists rather than retrofitted
 
 **Exit criteria**
-- `lint`, `typecheck`, `test`, `build` all pass from a clean checkout
-- Playwright smoke test loads the deployed preview
-- A migration applies on a scratch branch, then on `production`, with no data loss
-- A test fails the build if any enum literal appears in more than one source file
-- Zero `any` in `src/`; lint rule enforces it
+- ✅ `lint`, `typecheck`, `test`, `build` all pass from a clean checkout
+- ❌ Playwright smoke test loads the deployed preview — **the one criterion still open**
+- ✅ A migration applies on a scratch branch, then on `production`, with no data loss
+- ✅ A test fails the build if any enum literal appears in more than one source file
+- ✅ Zero `any` in `src/`; lint rule enforces it
 
 **FRs:** FR-79, FR-80
+
+### Phase 0 as built (2026-09-02)
+
+Delivered: Next.js 15.5.25 App Router on React 19 with TypeScript strict, Tailwind 4,
+Prisma 6.19.3 against Neon, the shared enums module and its two generation guards,
+locale-routed i18n, Vitest + Playwright, GitHub Actions CI, and the renderer import
+boundary armed ahead of Phase 4. 84 unit/architecture tests and 10 E2E assertions pass.
+
+Decisions taken while building, all recorded in `Status.md` (session 4):
+
+- **Phase 0 commits one table, `platform_meta`, and the seven shared enum types.** No
+  domain tables: the route graph and revision ledger are Phase 2's irreversible migration
+  and must not be pre-empted by a guess. `platform_meta` gives the migration rehearsal a
+  real object and lets `/api/health` prove Prisma reaches Neon.
+- **`prisma migrate dev` is not usable in an agent session** — it needs a shadow database
+  and prompts interactively, and hung for ten minutes against Neon. The migration was
+  produced with `prisma migrate diff` and applied with `migrate deploy`, which is also
+  what CI and production use. Recorded in CLAUDE.md §4.
+- **Next's ESLint rules are wired from `@next/eslint-plugin-next` directly**, not through
+  `eslint-config-next`, because that shared config replaces the parser project-wide and
+  silently disables every type-aware rule — including `no-explicit-any`, which is a
+  Phase 0 exit criterion.
+
+**Still open:** no Vercel project exists for this repository, so the smoke test has run
+only against a local production build. See `Test.md` §5, OF-1.
 
 ---
 

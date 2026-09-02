@@ -1,0 +1,23 @@
+# Normalise line endings in the repository and in every working tree.
+#
+# This is not cosmetic. tests/architecture/prisma-enums-generated.test.ts compares the
+# checked-in prisma/schema/enums.prisma against freshly generated output. If git handed
+# Windows a CRLF working copy, that comparison would fail on a clean clone even though
+# nothing was wrong. LF everywhere removes the whole class of problem.
+* text=auto eol=lf
+
+# Generated: shown collapsed in diffs, still reviewed on change.
+prisma/schema/enums.prisma linguist-generated=true
+
+# Binary — never convert, never diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.docx binary
+*.mht binary
+*.woff binary
+*.woff2 binary
