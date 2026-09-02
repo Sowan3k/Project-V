@@ -25,6 +25,18 @@ export function databaseUrl(): string {
   return required('DATABASE_URL')
 }
 
+/**
+ * Whether this environment has a database configured at all.
+ *
+ * Only DATABASE_URL is checked, because only DATABASE_URL is needed at runtime —
+ * `directUrl` is read by the Prisma CLI, never by the running application (CLAUDE.md §4).
+ * Returns a boolean and never the value, so a caller cannot leak the credential.
+ */
+export function isDatabaseConfigured(): boolean {
+  const value = process.env.DATABASE_URL
+  return value !== undefined && value.trim() !== ''
+}
+
 /** Direct connection — Prisma Migrate and Introspect only. */
 export function databaseUrlUnpooled(): string {
   return required('DATABASE_URL_UNPOOLED')
