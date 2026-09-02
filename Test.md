@@ -49,6 +49,7 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-02 | **Deployment healthy on the rotated credential** | Authenticated fetch of `/api/health` on `dpl_4uLewvGDfHYTjKearPDfb3vCz4J4` (commit `8c4a0d2`) | ✅ 200 `{"status":"ok","database":"reachable","latencyMs":269}`, and no `branch` field — Vercel re-synced and the deployed environment no longer announces it |
 | 2026-09-02 | **Database credential rotated on every branch** | `reset_postgres_role_password` on `production`, `vercel-dev` and `phase-0-migration-rehearsal` | ✅ Rotated. The previously exposed password was verified **still live on `vercel-dev` and `phase-0-migration-rehearsal`** before rotation — branches inherit the role password — and REJECTED on all three afterwards |
 | 2026-09-02 | Refreshed local credential works | `neon deploy` → `npm run db:objects` | ✅ `.env.local` regenerated; schema reads correctly |
 | 2026-09-02 | Rotation actually took effect in the deployment | Authenticated fetch of the deployed `/api/health` | ✅ Went 200 → 503 `unreachable`, confirming the build's snapshot holds the now-dead credential. Needs a Vercel env re-sync + rebuild |
@@ -216,7 +217,10 @@ Populated as phases land. One row per feature area.
 
 ## 5. Open failures
 
-None open.
+| # | What | Guards | Status |
+|---|---|---|---|
+| OF-4 | **`CLAUDE.md` and the Neon endpoint id are still in public git history.** Untracking and redaction stopped future publication; they remain readable in 8 and 2 commits respectively on `origin/main`. Verified 2026-09-02 after the fix was believed applied — it had not been. | Test.md §10 publication rules | 🟡 Open — needs `git filter-branch` plus `push --force-with-lease`. **Not a credential exposure:** neither is a secret, and the password behind that endpoint has been rotated. A rewrite also cannot guarantee erasure (GitHub retains unreachable objects; old SHAs are referenced by Vercel deployments and Actions runs). |
+| OF-5 | **The Neon API key `3303456` is account-scoped.** Neon's own warning: it reaches everything the account can, in every organization. Minted by `neon mcp -y` in session 1 and written into six agent config files. | Least privilege | 🟡 Open — **not a leak**; the key is local, never committed (verified by the history scan). Fix is `neon mcp --oauth` (mints no key at all) then `neon api-keys revoke 3303456`, which needs an interactive session for the sign-in flow. |
 
 > When a test fails, add it here with the failing output and the FR/invariant it guards.
 > Remove the row only when it passes — never by deleting the test.
