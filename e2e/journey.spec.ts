@@ -26,8 +26,14 @@ import { prisma } from '../src/server/db/client'
 
 const seeded = !process.env.E2E_BASE_URL
 
-/** The cookie Auth.js reads for a database session over plain http. */
+/**
+ * The cookie Auth.js reads for a database session over plain http.
+ *
+ * Read out of `@auth/core` rather than guessed: the prefix becomes `__Secure-` only when the
+ * configured URL is https, which a local CI run is not.
+ */
 const SESSION_COOKIE = 'authjs.session-token'
+const BASE_URL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3100'
 
 async function signedInContext(browser: Browser): Promise<{ context: BrowserContext; userId: string }> {
   const user = await prisma.user.create({
@@ -43,15 +49,10 @@ async function signedInContext(browser: Browser): Promise<{ context: BrowserCont
   })
 
   const context = await browser.newContext()
+  // By URL rather than by domain/path: fewer ways to get subtly wrong, and it follows
+  // whatever base URL the run is using.
   await context.addCookies([
-    {
-      name: SESSION_COOKIE,
-      value: sessionToken,
-      domain: '127.0.0.1',
-      path: '/',
-      httpOnly: true,
-      sameSite: 'Lax',
-    },
+    { name: SESSION_COOKIE, value: sessionToken, url: BASE_URL },
   ])
 
   return { context, userId: user.id }
@@ -68,9 +69,13 @@ test.describe('a private journey', () => {
     await expect(page.getByRole('heading', { name: /my journey/i })).toBeVisible()
     await expect(page.getByText(/sign in to follow this route/i)).toBeVisible()
 
-    const body = (await page.locator('body').innerText()).toLowerCase()
-    expect(body).not.toContain('private note')
-    expect(body).not.toContain('your progress')
+    // Assert the absence of the controls and data, not of words. `privateExplainer`
+    // legitimately reads "Your progress, dates and notes are visible only to you" — it is
+    // the sentence that *promises* privacy, and matching on its wording was a bad proxy for
+    // matching on a leak.
+    expect(await page.locator('textarea[name="privateNote"]').count()).toBe(0)
+    expect(await page.locator('select[name="status"]').count()).toBe(0)
+    expect(await page.getByText(/private to you/i).count()).toBe(0)
   })
 
   test('a follower records progress, privately, with no upload anywhere', async ({ browser }) => {

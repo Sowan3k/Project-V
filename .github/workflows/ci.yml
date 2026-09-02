@@ -125,6 +125,10 @@ jobs:
       # design: it signs cookies for a container that lives for the length of one CI run.
       # The deployment's own secret is set in Vercel and never appears in this repository.
       AUTH_SECRET: ci-only-secret-not-used-anywhere-else
+      # Auth.js derives `trustHost` from AUTH_URL. Without it the runner's host is untrusted,
+      # every session read returns null, and a signed-in test looks exactly like a bad cookie.
+      AUTH_URL: http://127.0.0.1:3100
+      AUTH_TRUST_HOST: 'true'
     steps:
       - uses: actions/checkout@v4
 
