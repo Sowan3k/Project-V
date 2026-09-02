@@ -23,6 +23,17 @@ import tseslint from 'typescript-eslint'
  */
 export const RENDERER_BOUNDARY_CONFIG_NAME = 'vindeshi/renderer-import-boundary'
 
+export const WRITE_BOUNDARY_CONFIG_NAME = 'vindeshi/revision-write-boundary'
+
+/**
+ * Only server code may hold a database client.
+ *
+ * This is the static layer of the Phase 3 write boundary: if application code cannot import
+ * the client, it cannot write shared knowledge behind the revision service's back. The
+ * runtime guard and the database triggers catch what static analysis cannot.
+ */
+export const DB_CLIENT_MODULES = ['@prisma/client', '@/server/db/client']
+
 /** Module groups the route renderer may never depend on (CLAUDE.md §6 invariant 24). */
 export const RENDERER_FORBIDDEN_IMPORT_GROUPS = ['seed', 'content', 'destinations']
 
@@ -94,6 +105,29 @@ export default tseslint.config(
       ...nextPlugin.configs.recommended.rules,
       ...nextPlugin.configs['core-web-vitals'].rules,
       ...reactHooks.configs.recommended.rules,
+    },
+  },
+
+  {
+    // Everything in src/ EXCEPT src/server/** — those are the files allowed a client.
+    name: WRITE_BOUNDARY_CONFIG_NAME,
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    ignores: ['src/server/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: DB_CLIENT_MODULES.map((name) => ({
+            name,
+            message:
+              'Only src/server/** may import a database client. Shared route knowledge is ' +
+              'written exclusively through the revision service in src/server/revisions, so ' +
+              'that every change appends a revision with its author and reason inside one ' +
+              'transaction (FR-20, BR-03, CLAUDE.md invariant 2). For reads, add a function ' +
+              'in src/server and call that.',
+          })),
+        },
+      ],
     },
   },
 

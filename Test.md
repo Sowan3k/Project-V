@@ -29,7 +29,7 @@ Read alongside [CLAUDE.md](CLAUDE.md) §6 (the 25 invariants) and [Phases.md](Ph
 | E2E target selection | ✅ | Local production build by default; `E2E_BASE_URL` points the same specs at a deployed preview. |
 | Integration tests (`test:db`) | ✅ | `vitest.db.config.mts` against `TEST_DATABASE_URL`. Neon `test` branch locally, a `postgres:18` service container in CI. Excluded from `npm run test` rather than left to self-skip — a suite reporting "skipped" reads like dormant coverage. |
 | Test database strategy | ✅ | Scratch branch via `neon branches create` — never run tests against `production`. No Vitest test connects to a database; the E2E health probe does, through the running app. Neon branches: `production`, `vercel-dev` (created by the integration, schema-identical), `phase-0-migration-rehearsal` (kept as evidence). |
-| CI pipeline | ✅ | `.github/workflows/ci.yml`, two jobs. `verify`: lint → typecheck → test → build. `database`: applies migrations to an empty Postgres, fails on schema/migration drift, runs the integration suite. |
+| CI pipeline | ✅ | `.github/workflows/ci.yml`, two jobs. The `database` job now also marks its throwaway Postgres as disposable and runs the integration suite. `verify`: lint → typecheck → test → build. `database`: applies migrations to an empty Postgres, fails on schema/migration drift, runs the integration suite. |
 | Vercel deployment | ✅ | Project `vindeshi-express` linked to `Sowan3k/Project-V`; production branch `main`. Neon–Vercel integration supplies `DATABASE_URL`; the deployed `/api/health` returns 200. Deployment Protection is on (repo is private) — `e2e/deployment-access.setup.ts` handles it. |
 | Coverage reporting | ⬜ | Not set up. Deliberate: coverage of a shell is a meaningless number. Revisit at Phase 3. |
 
@@ -50,6 +50,15 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-02 | **Revision rows are immutable — enforced by Postgres** | `UPDATE` and `DELETE` attempted on all four revision tables through an **unguarded** client | ✅ All refused by trigger with "revision rows are immutable"; prior values unchanged afterwards |
+| 2026-09-02 | **Shared knowledge cannot be hard-deleted** | `delete` attempted on routes/steps/edges/fields via guarded client, unguarded client and trigger | ✅ Refused at all three layers |
+| 2026-09-02 | **Application code cannot bypass the revision service** | ESLint boundary probes + guarded-client writes outside the service context + a scan of the real tree | ✅ Rejected; and no file outside `src/server/` imports a client today |
+| 2026-09-02 | **Private state is not forced through the revision engine** | Guard applied to a non-revisioned model; revision service surface inspected | ✅ Non-revisioned models remain writable in place; the service exposes no journey or progress function |
+| 2026-09-02 | **Revision + pointer move atomically** | Forced a mid-transaction foreign-key failure | ✅ Nothing persisted; no orphan revision, no dangling pointer; graph still validates |
+| 2026-09-02 | **Concurrent contributions are all preserved** | 2-way and 5-way `Promise.all` `reviseField` from one parent revision | ✅ All revisions kept, all sharing the parent, field reads `contested`; exactly one wins the pointer and none is lost |
+| 2026-09-02 | **Deadlock found and fixed** | The 5-way concurrency test | ❗→✅ Postgres reported `deadlock detected`; fixed by taking the parent row lock first. Would have lost contributions in production |
+| 2026-09-02 | **Transaction timeout found and fixed** | The same test, after the deadlock fix | ❗→✅ Prisma's default 5s aborted the fifth queued contributor; budget raised to 20s |
+| 2026-09-02 | Integration suite refuses to run against an unmarked database | `tests/db/setup.ts` global setup | ✅ Requires a `platform_meta` marker row that production does not have |
 | 2026-09-02 | **Phase 2 migration applied to `production`** | Rehearsed on `phase-2-migration-rehearsal`, then `npm run db:deploy`; `neon diff` afterwards | ✅ 9 tables and 4 enum types added, **zero DROP statements**; `platform_meta` and its row count unchanged; no schema difference from the rehearsal branch |
 | 2026-09-02 | **A branching, overlapping route round-trips through Postgres** | `npm run test:db` — persist 6 steps / 7 edges, read back, validate | ✅ Branch structure preserved with typed edge kinds (2 `alternative`, 3 `rejoin`); validates clean after the round trip |
 | 2026-09-02 | Timeline over the round-tripped fixture yields parallel lanes | `buildTimeline` on the persisted graph | ✅ >1 lane; language prep and document collection on different lanes; total span shorter than the sum of durations |
@@ -119,11 +128,11 @@ acceptable is shipping the phase without them.**
 
 | # | Test | State |
 |---|---|---|
-| 1 | No non-admin route reaches a hard delete for Route, Step or Field | 🟡 |
-| 2 | Updating a field creates a revision; the prior value is still readable afterwards | ⬜ |
-| 2b | Concurrent updates to one field produce two revisions, neither lost | 🟡 |
-| 3 | A user who did not create a route can still revise its fields | ⬜ |
-| 4 | Archived content disappears from current view but is returned by history queries | 🟡 |
+| 1 | No non-admin route reaches a hard delete for Route, Step or Field | ✅ |
+| 2 | Updating a field creates a revision; the prior value is still readable afterwards | ✅ |
+| 2b | Concurrent updates to one field produce two revisions, neither lost | ✅ |
+| 3 | A user who did not create a route can still revise its fields | ✅ |
+| 4 | Archived content disappears from current view but is returned by history queries | ✅ |
 
 ### Privacy
 
@@ -223,7 +232,15 @@ violated (§2). A guard nobody has watched fail is a guard that may do nothing.
 | FR traceability | 4 | ✅ | `tests/architecture/fr-coverage.test.ts` |
 | Round-trip, restrict-on-delete, concurrent revisions | 7 | ✅ | `tests/db/route-graph.db.test.ts` |
 
-### 4.2 Product feature coverage
+### 4.2 Phase 3 — revision write engine (landed 2026-09-02)
+
+| Area | Tests | State | File |
+|---|---|---|---|
+| ESLint write boundary + runtime guard decisions | 47 | ✅ | `tests/architecture/write-boundary.test.ts` |
+| Model classification, shared vs private | 24 | ✅ | `tests/architecture/model-classification.test.ts` |
+| Append-only history, immutability, bypass refusal, transactional safety, concurrency, archival, diff, no-ownership | 28 | ✅ | `tests/db/revision-service.db.test.ts` |
+
+### 4.3 Product feature coverage
 
 Populated as phases land. One row per feature area.
 

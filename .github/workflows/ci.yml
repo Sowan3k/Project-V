@@ -85,5 +85,10 @@ jobs:
         # would otherwise surface as a broken deploy.
         run: npx prisma migrate diff --from-schema-datasource prisma/schema --to-schema-datamodel prisma/schema --exit-code
 
+      - name: Mark the throwaway database as a test database
+        # The integration suite refuses to run against a database that has not declared
+        # itself disposable (tests/db/setup.ts). Production will never carry this row.
+        run: npx prisma db execute --url "$DATABASE_URL" --file ci/mark-test-database.sql
+
       - name: Integration tests
-        run: npm run test:db
+        run: npx vitest run --config vitest.db.config.mts

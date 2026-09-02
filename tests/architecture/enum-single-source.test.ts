@@ -28,7 +28,10 @@ import { read, walk } from '../support/source-files'
  *   their keys as a rival "source" would be noise. The ESLint rule `quote-props: as-needed`
  *   keeps such keys unquoted, so a literal cannot hide behind quotes in a label map either.
  *
- *   It does not match prose in comments, because prose cannot drift into behaviour.
+ *   It does not match prose in comments, because prose cannot drift into behaviour. That is
+ *   done by stripping comments before scanning rather than by hoping: a doc comment writing
+ *   an enum value in markdown backticks is indistinguishable from a template literal, and
+ *   this guard was briefly failing on exactly that.
  */
 
 /** The one file permitted to contain a domain enum literal as a quoted string. */
@@ -40,6 +43,22 @@ const sourceFiles = walk('src', ['.ts', '.tsx'])
 
 function containsQuotedLiteral(contents: string, value: string): boolean {
   return QUOTES.some((quote) => contents.includes(quote + value + quote))
+}
+
+/**
+ * Removes comments so prose cannot trip the scan.
+ *
+ * Block comments go entirely. For line comments only whole-line ones are removed, never a
+ * trailing `//`, because truncating at a `//` inside a string literal — a URL, say — could
+ * hide a real hardcoded enum value further along the line. Missing a comment is harmless;
+ * missing a violation is not.
+ */
+function stripComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter((line) => !/^\s*\/\//.test(line))
+    .join('\n')
 }
 
 const allValues = Object.entries(DOMAIN_ENUMS).flatMap(([enumName, values]) =>
@@ -61,7 +80,7 @@ describe('domain enums have a single source', () => {
 
   it.each(allValues)('$enumName value "$value" is written in exactly one file', ({ value }) => {
     const offenders = sourceFiles.filter(
-      (file) => file !== SINGLE_SOURCE && containsQuotedLiteral(read(file), value),
+      (file) => file !== SINGLE_SOURCE && containsQuotedLiteral(stripComments(read(file)), value),
     )
 
     expect(
@@ -76,7 +95,7 @@ describe('domain enums have a single source', () => {
     expect(sample).toBeDefined()
     const value = sample?.value ?? ''
 
-    expect(containsQuotedLiteral(read(SINGLE_SOURCE), value)).toBe(true)
+    expect(containsQuotedLiteral(stripComments(read(SINGLE_SOURCE)), value)).toBe(true)
     expect(containsQuotedLiteral(`const x = "${value}"`, value)).toBe(true)
     expect(containsQuotedLiteral(`const x = ${value}`, value)).toBe(false)
     expect(containsQuotedLiteral(`const x = "prefix_${value}_suffix"`, value)).toBe(false)

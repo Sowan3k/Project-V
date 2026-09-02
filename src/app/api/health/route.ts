@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
-import { isDatabaseConfigured, neonBranch } from '@/lib/env'
-import { prisma } from '@/lib/prisma'
+import { neonBranch } from '@/lib/env'
+import { checkDatabase, type DatabaseHealth } from '@/server/db/health'
 
 /**
  * Liveness and database-reachability probe.
@@ -35,25 +35,13 @@ export const dynamic = 'force-dynamic'
 /** Long enough to blunt a flood, short enough that a real outage surfaces quickly. */
 const PROBE_CACHE_MS = 10_000
 
-type Probe = { readonly body: Record<string, unknown>; readonly status: number }
+type Probe = { readonly body: DatabaseHealth; readonly status: number }
 
 let cached: { at: number; probe: Probe } | null = null
 
 async function probe(): Promise<Probe> {
-  if (!isDatabaseConfigured()) {
-    return { body: { status: 'degraded', database: 'unconfigured' }, status: 503 }
-  }
-
-  const startedAt = Date.now()
-  try {
-    await prisma.$queryRaw`select 1`
-    return {
-      body: { status: 'ok', database: 'reachable', latencyMs: Date.now() - startedAt },
-      status: 200,
-    }
-  } catch {
-    return { body: { status: 'degraded', database: 'unreachable' }, status: 503 }
-  }
+  const health = await checkDatabase()
+  return { body: health, status: health.status === 'ok' ? 200 : 503 }
 }
 
 export async function GET(): Promise<NextResponse> {

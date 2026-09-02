@@ -34,7 +34,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 0 | Foundation spine | Deployed empty shell, green CI | ✅ |
 | 1 | Kill spikes: renderer + revision graph | Two go/no-go answers, throwaway code | ✅ |
 | 2 | Route graph + revision ledger schema | The irreversible migration | ✅ |
-| 3 | Revision write engine | The only door into shared knowledge | ⬜ |
+| 3 | Revision write engine | The only door into shared knowledge | ✅ |
 | 4 | Route renderer (production) | Ribbon + road from data, any structure | ⬜ |
 | 5 | Anonymous read path | Search → ribbon → road → step → field | ⬜ |
 | 6 | Trust, provenance and freshness surface | Uncertainty is visible | ⬜ |
@@ -211,9 +211,21 @@ knowledge can change — before any API, seed script or UI can write.
 - A test that fails if any code outside the service layer writes these tables
 
 **Exit criteria**
-- Invariant tests 1–4 in `Test.md` pass
-- Two concurrent field revisions both persist and are ordered
-- No route reachable by a non-admin performs a destructive delete
+- ✅ Invariant tests 1–4 in `Test.md` pass
+- ✅ Two concurrent field revisions both persist and are ordered
+- ✅ No route reachable by a non-admin performs a destructive delete
+
+### Phase 3 result (2026-09-02)
+
+Enforcement is three independent layers — ESLint import boundary, a Prisma client extension
+checking an async-local write context, and Postgres triggers. Any one alone would be a
+convention; together they are a property. 35 integration tests and 71 architecture/unit tests.
+
+**Two real concurrency defects were found by the tests and fixed**, neither of which static
+review would have caught: writes to one field **deadlocked** (the revision insert took a
+share lock on the parent row that the pointer update then needed exclusively), and once
+serialised, Prisma's default 5s transaction timeout **aborted the fifth queued contributor**.
+Both would have silently lost contributions in production.
 
 **FRs:** FR-12, FR-16, FR-19, FR-20, FR-21, FR-45, FR-69, FR-44
 

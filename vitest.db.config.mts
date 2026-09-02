@@ -13,6 +13,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/db/**/*.db.test.ts'],
+    // Refuses to run unless the target database has declared itself disposable.
+    globalSetup: ['tests/db/setup.ts'],
     // One file at a time: these share a database and would otherwise race.
     fileParallelism: false,
     testTimeout: 30_000,

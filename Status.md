@@ -7,6 +7,120 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Session 7 — 2026-09-02
+
+**Goal:** Phase 3 — make non-destructive, attributed, append-only writing the *only* physical
+way shared knowledge can change, before any API, seed script or UI can write.
+
+### Done
+
+**One service owns every mutation.** `src/server/revisions/service.ts` — `createRoute`,
+`addStep`, `addEdge`, `addField`, `reviseRoute`, `reviseStep`, `reviseEdge`, `reviseField`,
+`confirmField`, `archiveField`, `archiveStep`, `archiveEdge`, `restoreField`. Each writes its
+revision row and moves the current-state pointer inside one transaction. There is no delete
+counterpart to anything.
+
+**Enforcement is three independent layers.** Any one alone would be a convention; together
+they are a property, and each catches what the others cannot:
+
+| Layer | Mechanism | Catches |
+|---|---|---|
+| Static | ESLint: only `src/server/**` may import a database client | The mistake while it is being written |
+| Runtime | Prisma client extension checking an async-local write context | Code that obtained a client another way — a seed script, a dynamic import, a future package |
+| Database | Triggers refusing UPDATE/DELETE on revision tables and DELETE on shared knowledge | Everything else, including `psql` and a future migration |
+
+The context is async-local rather than a parameter on purpose: a parameter can be passed by
+anyone, which would make the guard decorative. The only way to be inside the context is to
+have gone through the service.
+
+**The client moved to `src/server/db/client.ts`.** It used to live in `src/lib/`, which meant
+the boundary rule needed an exception for the one file that constructs a client. Moving it
+inside the boundary removed the exception, and a rule with no exceptions is a much easier
+rule to keep.
+
+**Shared and private are classified, exhaustively.** `src/domain/models.ts` labels every model
+revisioned-shared, private user state, or supporting, and a test asserts the registry covers
+every model in the schema. A new model fails the build until somebody classifies it — so when
+Phase 7 adds `Journey`, the decision gets made deliberately rather than inherited from
+whichever file was copied. `Journey` and `JourneyStepProgress` are named in advance on the
+private side, and the runtime guard deliberately does not restrict them: a journey note must
+be editable in place by its owner and must never enter a public revision history (invariant 5).
+
+**Diff moved into production code.** `src/domain/graph/diff.ts` names structural change —
+added, archived, reordered, relabelled steps, and added, archived or retyped edges, counting
+branch-forming connections separately. Proved in Phase 1's spike; this is the real one,
+working on the same graph shape the validators and renderer use.
+
+### The two defects the tests found
+
+Both are concurrency bugs that no amount of reading the code would have surfaced, and both
+would have silently lost a contribution in production — the exact failure this phase exists
+to prevent.
+
+**1. Deadlock.** Two contributors revising the same field at the same moment deadlocked.
+Inserting a revision takes a share lock on the parent row for the foreign-key check; moving
+the current pointer then needs an exclusive lock on that same row. Each transaction held what
+the other wanted, Postgres killed one, and that contribution was gone.
+
+*Fixed* by taking the parent row lock first, so both transactions queue on the same resource
+in the same order. The lock is per row, so edits to different fields still run in parallel.
+
+**2. Transaction timeout.** Once serialised, the five-way stress test failed differently:
+Prisma's default 5-second interactive-transaction budget expired for the contributor at the
+back of the queue, and Prisma aborted it.
+
+*Fixed* by raising the budget to 20s with a 10s pool wait. Deliberately generous rather than
+tuned — contention on a single field is rare, and quietly dropping someone's correction when
+it happens is not an acceptable trade.
+
+The five-way test exists because the two-way test passed after the deadlock fix and would
+have hidden the timeout.
+
+### Decisions taken
+
+| # | Decision | Why |
+|---|---|---|
+| 1 | **Three enforcement layers, not one.** | Each fails differently. ESLint cannot see a dynamic import; the runtime guard cannot see `psql`; a trigger cannot explain itself to a developer at the moment they write the mistake. |
+| 2 | **Async-local write context, not a parameter.** | A parameter is passable by anyone; being inside an async-local context requires having gone through the service. |
+| 3 | **Hard delete of shared knowledge is refused even inside the service.** | There is no legitimate caller today. Phase 9's administrative removal for abuse or legal reasons will be a separate audited surface, not a flag on this one. |
+| 4 | **The Prisma client lives inside the server boundary.** | An exception-free rule. The alternative was allowing one file to break the rule that protects everything else. |
+| 5 | **Model classification is exhaustive and fails the build on a new model.** | The failure mode is a private journey note reaching a public history. That must not depend on somebody remembering. |
+| 6 | **Confirming does not create a revision.** | Confirming is not editing. Revisions where nothing changed would pollute the history that the shadow route reads (§39.4). |
+| 7 | **Integration tests refuse to run against an unmarked database.** | "Never test against production" was a convention in `Test.md`. The suite creates and archives real rows; the marker row makes the rule mechanical. Production has never carried it. |
+| 8 | **The unguarded client is used in tests on purpose.** | Testing immutability through the guarded client would only prove the guard works. Using a raw client proves the *database* refuses. |
+
+### Issues found
+
+**My own enum guard was wrong, and I found it by tripping it.** It claimed to ignore prose in
+comments but did not: a doc comment writing an enum value in markdown backticks is
+indistinguishable from a template literal. Fixed by stripping comments before scanning —
+block comments entirely, and only whole-line `//` comments, because truncating at a trailing
+`//` could hide a real literal after a URL. Missing a comment is harmless; missing a
+violation is not.
+
+### Blockers
+
+**None.**
+
+### Carried forward — not done
+
+**OF-5, the account-scoped Neon API key, is still pending.** Procedure in `Test.md` §11.
+Needs an interactive terminal. Unchanged by this session.
+
+**OF-4, `CLAUDE.md` in public git history**, remains the owner's to remove manually.
+
+### Next step
+
+**Phase 4 — the production route renderer**, built on Spike A's proven approach: the
+hand-authored primitive library, one layout pass shared by ribbon and road, and genuine
+proof of route-agnosticism through the structural-equivalence, generative, import-boundary
+and no-identity-branching tests (Test.md 24–24f). The Phase 1 fixtures and the four
+assertions promoted into `Test.md` §7 carry across.
+
+Not started. Awaiting approval.
+
+---
+
 ## Session 6 — 2026-09-02
 
 **Goal:** Phase 2 — commit, in one migration, the two shapes no later phase can retrofit:
