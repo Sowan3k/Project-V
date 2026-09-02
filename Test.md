@@ -49,6 +49,7 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-02 | The runtime client needs only `DATABASE_URL`, not `DATABASE_URL_UNPOOLED` | Ran a live query with `DATABASE_URL_UNPOOLED` deleted from the environment | ✅ Succeeded — `directUrl` is read by the Prisma CLI, never by the running app. Keeps the direct credential out of Vercel |
 | 2026-09-02 | **Playwright smoke suite against the deployed Vercel build** | `E2E_BASE_URL` + `E2E_BYPASS_URL` → `npm run test:e2e` | ✅ 11/11 passed at 360px and 1280px against `vindeshi-express-noor-mohammad-sowans-projects.vercel.app` |
 | 2026-09-02 | Vercel build succeeds with no database configured | Vercel build log for `dpl_BQ94Rr8b6RLHPqiarift3EmkdknY` | ✅ Built in 45s; 4 routes; confirms `next build` never touches the database |
 | 2026-09-02 | Deployed page renders the shell and the Bengali brand | `curl` through the share cookie | ✅ `<title>Vindeshi Express — Community-maintained routes for studying abroad</title>`, brand renders |
@@ -208,7 +209,7 @@ Populated as phases land. One row per feature area.
 | # | What | Guards | Status |
 |---|---|---|---|
 | OF-2 | **CI has not been observed running on GitHub.** `.github/workflows/ci.yml` is committed and pushed, and its exact command chain was verified locally against a real clone, but no GitHub Actions run has been inspected — the repository is private and this environment has no GitHub token. | "lint + typecheck + unit on every commit" | 🟡 Open — check the Actions tab on the next push. |
-| OF-3 | **The deployed `/api/health` returns 503.** The page renders, but Vercel has no `DATABASE_URL` / `DATABASE_URL_UNPOOLED`, so the probe correctly reports `degraded`. Local runs against Neon return 200. | Runtime database reachability in the deployed environment | 🟡 Open — add both variables in the Vercel project (or connect the Vercel–Neon integration). Not a code defect. |
+| OF-3 | **The deployed `/api/health` returns 503.** The page renders, but the Vercel project has no `DATABASE_URL`, so the probe correctly reports `degraded`. Local runs against Neon return 200. | Runtime database reachability in the deployed environment | 🟡 Open — set **`DATABASE_URL` only** (the pooled URL) in the Vercel project, or connect the Vercel–Neon integration. Verified 2026-09-02 that a runtime query succeeds with `DATABASE_URL_UNPOOLED` absent, so the direct credential must **not** be added to Vercel. Not a code defect. |
 
 > When a test fails, add it here with the failing output and the FR/invariant it guards.
 > Remove the row only when it passes — never by deleting the test.
