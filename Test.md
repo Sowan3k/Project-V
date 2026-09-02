@@ -28,7 +28,7 @@ Read alongside [CLAUDE.md](CLAUDE.md) §6 (the 25 invariants) and [Phases.md](Ph
 | Playwright (E2E) | ✅ | Playwright 1.62.1, Chromium. Two projects: `mobile-360` and `desktop-1280`. |
 | E2E target selection | ✅ | Local production build by default; `E2E_BASE_URL` points the same specs at a deployed preview. |
 | Test database strategy | ✅ | Scratch branch via `neon branches create` — never run tests against `production`. No Vitest test connects to a database; the E2E health probe does, through the running app. Neon branches: `production`, `vercel-dev` (created by the integration, schema-identical), `phase-0-migration-rehearsal` (kept as evidence). |
-| CI pipeline | 🟡 | `.github/workflows/ci.yml`: lint → typecheck → test → build on push to `main` and every PR. Command chain verified locally from a real clone; **the GitHub Actions run itself has not been observed** (private repo, no token in this environment). |
+| CI pipeline | ✅ | `.github/workflows/ci.yml`: lint → typecheck → test → build on push to `main` and every PR. **5/5 runs green on GitHub Actions**, all four steps passing in ~80s. |
 | Vercel deployment | ✅ | Project `vindeshi-express` linked to `Sowan3k/Project-V`; production branch `main`. Neon–Vercel integration supplies `DATABASE_URL`; the deployed `/api/health` returns 200. Deployment Protection is on (repo is private) — `e2e/deployment-access.setup.ts` handles it. |
 | Coverage reporting | ⬜ | Not set up. Deliberate: coverage of a shell is a meaningless number. Revisit at Phase 3. |
 
@@ -49,6 +49,9 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-02 | **CI is green on GitHub Actions** | GitHub REST API, runs 1–5 on `main` | ✅ 5/5 `success`; latest run's steps Install / Lint / Typecheck / Unit and architecture tests / Build all pass in 80s — closes OF-2 |
+| 2026-09-02 | **No credential has ever been committed** | Enumerated all 111 blobs in the full history and scanned each for connection strings, `npg_` passwords, Neon hostnames, API keys, `sk-`/`ghp_`/`AKIA` tokens | ✅ Zero matches. `.env.local` and `.neon` were never tracked; `.env.example` holds placeholders only |
+| 2026-09-02 | No personal email address is in the repository history | Same blob scan, matching common mail providers | ✅ Zero matches; commits carry the GitHub `noreply` address |
 | 2026-09-02 | **Deployed `/api/health` reaches Neon** | Authenticated fetch of `.../api/health` on `dpl_AvcFpWzgxKnK2wFyD5ZQnZThKGJG` | ✅ 200 `{"status":"ok","database":"reachable","latencyMs":300}` — closes OF-3 |
 | 2026-09-02 | Playwright smoke suite against the deployment, with the stricter probe assertion | `E2E_BASE_URL` + `E2E_BYPASS_URL` → `npm run test:e2e` | ✅ 11/11; same suite also 11/11 against a local build |
 | 2026-09-02 | The `vercel-dev` branch created by the Neon–Vercel integration carries the committed schema | `neon diff vercel-dev` + `scripts/db-objects.mjs` | ✅ No schema differences from `production`; 7 enum types, `platform_meta`, 1 migration applied |
@@ -79,7 +82,7 @@ Manual and automated checks actually performed, newest first.
 | 2026-09-02 | Secrets stay out of git after scaffolding | Tracked-file listing of a clean checkout | ✅ `.env.local` and `.neon` absent; only `.env.example` present |
 | 2026-09-02 | Neon database reachable | `@neondatabase/serverless` live query — `select version(), current_database()` | ✅ PostgreSQL 18.6, db `neondb` |
 | 2026-09-02 | `neon.ts` policy matches remote branch | `neon config plan` | ✅ No drift on branch `production` |
-| 2026-09-02 | `DATABASE_URL` is the pooled endpoint | Parsed host from `.env.local` | ✅ `ep-misty-star-aekpcd3g-pooler` |
+| 2026-09-02 | `DATABASE_URL` is the pooled endpoint | Parsed host from `.env.local` | ✅ Host ends in `-pooler` (endpoint id not recorded — see §10) |
 | 2026-09-02 | Secrets excluded from git | `git check-ignore -v .env.local .neon` | ✅ Both ignored; nothing sensitive staged |
 | 2026-09-02 | Baseline extract complete | Counted FR/BR/D rows in extracted text | ✅ 80 FR, 35 BR, 46 D |
 
@@ -210,9 +213,7 @@ Populated as phases land. One row per feature area.
 
 ## 5. Open failures
 
-| # | What | Guards | Status |
-|---|---|---|---|
-| OF-2 | **CI has not been observed running on GitHub.** `.github/workflows/ci.yml` is committed and pushed, and its exact command chain was verified locally against a real clone, but no GitHub Actions run has been inspected — the repository is private and this environment has no GitHub token. | "lint + typecheck + unit on every commit" | 🟡 Open — check the Actions tab on the next push. |
+None open.
 
 > When a test fails, add it here with the failing output and the FR/invariant it guards.
 > Remove the row only when it passes — never by deleting the test.
@@ -301,3 +302,45 @@ After any test run, in the same session:
 2. Add a row to the Verification log for anything checked manually.
 3. Record any new failure in Open failures with its output.
 4. If you chose not to test something, put it in Known gaps with a reason — do not leave it silent.
+
+---
+
+## 10. Public repository hygiene
+
+**The repository is public as of 2026-09-02.** Anyone can read every file and every commit,
+including commits that have since been changed.
+
+### What was verified when it went public
+
+Every one of the 111 blobs in the full history was enumerated and scanned for connection
+strings, `npg_` passwords, Neon hostnames, API keys and `sk-` / `ghp_` / `AKIA` tokens.
+**Zero matches.** `.env.local` and `.neon` were never tracked at any point; `.env.example`
+has only ever held placeholders. No personal email address appears either — commits carry
+the GitHub `noreply` address.
+
+### What is public, and what that does and does not mean
+
+| In the repository | Is it a credential? | Notes |
+|---|---|---|
+| Neon project id `young-river-98582189` | No | Identifies the project. Useless without authentication, and `.neon` supplies it locally anyway. |
+| Neon branch ids (`br-…`) | No | Branch identifiers only. |
+| Neon compute endpoint id | **It is the database hostname** | Redacted going forward. Still present in history — see below. |
+
+None of these lets anyone connect. What the endpoint id does is name the host, which
+removes a layer of defence in depth: it gives a target for credential stuffing against
+`neondb_owner`, and there is currently no Neon IP allow list.
+
+**Redacting a file does not remove it from history.** The endpoint id is still readable in
+earlier commits of this file. The thing that actually closes that exposure is rotating the
+database password, not editing the current tree.
+
+### Rules from here
+
+1. **Never write a connection string, endpoint hostname, password, API key, token or
+   personal address into a tracked file** — not in docs, not in a test fixture, not in a
+   verification log. Record the *shape* of a finding ("host ends in `-pooler`"), not the
+   value.
+2. Secrets live only in `.env.local` and `.neon`, both gitignored.
+3. Re-run the history scan before any future visibility change, and after any incident.
+4. Treat the rotation trigger as: a credential left the password manager, **or** its host
+   became public. Either one alone is worth rotating; both together is not optional.

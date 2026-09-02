@@ -116,9 +116,30 @@ Two notes from that episode worth keeping:
   for Vercel's Development environment. It branched after the migration, so `neon diff`
   reports no schema difference from `production` — verified, not assumed.
 
-**One thing left for you** (`Test.md` OF-2): no GitHub Actions run has been inspected. The
-workflow is pushed and its exact command chain was verified against a real clone, but the
-repository is private and this environment has no GitHub token. Check the Actions tab.
+### Repository made public (during the session)
+
+You switched the repository to public, which closed one item and opened a smaller one.
+
+**CI is confirmed green — OF-2 closed.** The public API made the runs readable: **5/5
+successful**, and the latest run's steps — Install, Lint, Typecheck, Unit and architecture
+tests, Build — all pass in 80 seconds. `Test.md` §5 now records no open failures.
+
+**History scanned before trusting it.** All 111 blobs in the full history were enumerated
+and checked for connection strings, `npg_` passwords, Neon hostnames, API keys and
+`sk-`/`ghp_`/`AKIA` tokens: **zero matches**. `.env.local` and `.neon` were never tracked;
+`.env.example` has only ever held placeholders; no personal email appears.
+
+**Three Neon identifiers are public, none of them credentials:** the project id, two branch
+ids, and — the one that matters — a compute endpoint id in a `Test.md` verification row.
+That endpoint id *is* the database hostname. It cannot be connected to without the
+password, but publishing it removes a layer of defence in depth, and there is no Neon IP
+allow list. The row is redacted going forward and the rule is written into CLAUDE.md §4 and
+`Test.md` §10 — but redaction does not remove it from history, so the exposure is closed by
+rotating the password, not by editing the tree.
+
+**Rotation is now worth doing rather than optional.** Two things happened this session that
+are each survivable alone: the connection string was pasted into a chat transcript, and the
+database hostname became public. Together they are the two halves of the same credential.
 
 **Worth confirming once in the Vercel dashboard:** that the Production environment's
 `DATABASE_URL` points at the Neon `production` branch rather than `vercel-dev`. Both
