@@ -35,6 +35,16 @@ async function signedIn(browser: Browser): Promise<{ context: BrowserContext; ha
   return { context, handle }
 }
 
+/**
+ * Form controls are located by their `name`, not by `getByLabel`.
+ *
+ * Playwright derives a control's accessible name from the whole wrapping `<label>`, which
+ * includes the control's own content: a prefilled `<textarea>` contributes its value, and a
+ * `<select>` contributes every option's text. So `getByLabel(/^information$/)` stops matching
+ * the moment the field has a value in it — which is exactly when an UPDATE form is being
+ * tested. `[name="valueText"]` says what is meant and keeps saying it.
+ */
+
 /** Opens the first step of a route so its fields and their actions are on screen. */
 async function openFirstStep(page: Page): Promise<void> {
   await page.getByRole('link', { name: /open this step/i }).first().click()
@@ -59,8 +69,8 @@ test.describe('the contribution loop', () => {
     await expect(page).toHaveURL(/\/en\/routes\/new$/)
 
     const title = `Bangladesh to Malaysia by direct application ${randomUUID().slice(0, 6)}`
-    await page.getByLabel(/what is this route called/i).fill(title)
-    await page.getByLabel(/^to \(/i).fill('MY')
+    await page.locator('input[name="title"]').fill(title)
+    await page.locator('input[name="destinationCountry"]').fill('MY')
     await page.getByRole('button', { name: /create this route/i }).click()
 
     // 2. It exists immediately. No draft, no queue, no "submitted for review".
@@ -76,7 +86,7 @@ test.describe('the contribution loop', () => {
 
     // 4. Build the road. VR-09's "Build Road" stage, in place on the route itself.
     await page.getByText(/^add a step$/i).click()
-    await page.getByLabel(/what is this step called/i).fill('Collect and attest documents')
+    await page.locator('input[name="label"]').fill('Collect and attest documents')
     await page.getByRole('button', { name: /add this step/i }).click()
 
     // In the step list, by role. A plain text match also finds the SVG's own <title>, which
@@ -91,9 +101,16 @@ test.describe('the contribution loop', () => {
     // 6. Add information to the step (FR-15).
     await openFirstStep(page)
     await page.getByText(/add information to this step/i).click()
-    await page.getByLabel(/^information$/i).fill('Transcripts must be attested by the ministry')
+    const addForm = page.locator('form').filter({ has: page.getByRole('button', { name: /add this information/i }) })
+    await addForm.locator('textarea[name="valueText"]').fill('Transcripts must be attested by the ministry')
     await page.getByRole('button', { name: /add this information/i }).click()
-    await expect(page.getByText(/attested by the ministry/i)).toBeVisible()
+
+    // By role, not by text: the update form's textarea is prefilled with the same words, and
+    // an unscoped text match finds both. That it does is the point — the form is prefilled
+    // with the current value so a correction starts from it.
+    await expect(
+      page.getByRole('paragraph').filter({ hasText: /attested by the ministry/i }).first(),
+    ).toBeVisible()
 
     await author.context.close()
 
@@ -105,13 +122,18 @@ test.describe('the contribution loop', () => {
 
     // 7. UPDATE. No ownership gate stops them (FR-44, BR-01, D-18).
     await otherPage.getByText(/^correct this$/i).first().click()
-    await otherPage
-      .getByLabel(/^information$/i)
+    const updateForm = otherPage
+      .locator('form')
+      .filter({ has: otherPage.getByRole('button', { name: /save correction/i }) })
       .first()
+    await updateForm
+      .locator('textarea[name="valueText"]')
       .fill('Transcripts must be attested by the Ministry of Education, then the foreign ministry')
-    await otherPage.getByRole('button', { name: /save correction/i }).click()
+    await updateForm.getByRole('button', { name: /save correction/i }).click()
 
-    await expect(otherPage.getByText(/then the foreign ministry/i)).toBeVisible()
+    await expect(
+      otherPage.getByRole('paragraph').filter({ hasText: /then the foreign ministry/i }).first(),
+    ).toBeVisible()
     // The correction is live at once — nothing waited for anybody.
     const afterUpdate = (await otherPage.locator('body').innerText()).toLowerCase()
     expect(afterUpdate).not.toMatch(/pending|awaiting approval|will be reviewed/)
@@ -166,9 +188,13 @@ test.describe('the contribution loop', () => {
     const valueBefore = await officialGroup.locator('li p.text-sm').first().innerText()
 
     await officialGroup.getByText(/^flag a problem$/i).first().click()
-    await officialGroup.getByLabel(/^reason$/i).first().selectOption('broken_link')
-    await officialGroup.getByLabel(/what is wrong/i).first().fill('That link goes nowhere now.')
-    await officialGroup.getByRole('button', { name: /^flag it$/i }).click()
+    const challengeForm = officialGroup
+      .locator('form')
+      .filter({ has: officialGroup.getByRole('button', { name: /^flag it$/i }) })
+      .first()
+    await challengeForm.locator('select[name="reason"]').selectOption('broken_link')
+    await challengeForm.locator('textarea[name="note"]').fill('That link goes nowhere now.')
+    await challengeForm.getByRole('button', { name: /^flag it$/i }).click()
 
     await expect(page.getByText(/that link goes nowhere now/i)).toBeVisible()
     await expect(page.getByText(/broken link/i).first()).toBeVisible()
@@ -210,6 +236,7 @@ test.describe('the contribution loop', () => {
     await openFirstStep(page)
     await page.getByText(/^correct this$/i).first().click()
     await page.getByText(/add information to this step/i).click()
+
 
     // FR-25, §24.1, invariants 6 and 7. The boundary refuses a file too; that half is
     // asserted in tests/architecture/journey-privacy.test.ts, because Next encodes every
