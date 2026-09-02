@@ -13,6 +13,9 @@ import { expect, test } from '@playwright/test'
  */
 const seeded = !process.env.E2E_BASE_URL
 
+/** The route `e2e/seed-route.setup.ts` creates. Named so specs do not race each other. */
+const SEEDED_ROUTE = 'Test route for the reading journey'
+
 test.describe('anonymous reading journey', () => {
   test.skip(!seeded, 'needs a seeded route; the deployed target is deliberately not seeded')
 
@@ -27,7 +30,15 @@ test.describe('anonymous reading journey', () => {
     await expect(page.getByRole('heading', { name: /find a route/i })).toBeVisible()
 
     // 3. Ribbons — each result is the route compressed, drawn by the renderer
-    const firstRoute = page.locator('main ul li a').first()
+    /**
+     * The SEEDED route by name, not "the first result".
+     *
+     * Phase 8's contribution specs create real routes, and search is newest-first, so the
+     * first result is whatever another spec happened to make a second earlier. Naming the
+     * route this spec seeded is both deterministic and a more honest test — it walks to a
+     * known destination rather than to whatever turned up.
+     */
+    const firstRoute = page.locator('main ul li a').filter({ hasText: SEEDED_ROUTE }).first()
     await expect(firstRoute).toBeVisible()
     await expect(firstRoute.locator('svg[role="img"]')).toBeVisible()
 
@@ -63,7 +74,7 @@ test.describe('anonymous reading journey', () => {
     const page = await context.newPage()
 
     await page.goto('/en/routes')
-    const firstRoute = page.locator('main ul li a').first()
+    const firstRoute = page.locator('main ul li a').filter({ hasText: SEEDED_ROUTE }).first()
     await expect(firstRoute).toBeVisible()
     await firstRoute.click()
 
@@ -91,7 +102,7 @@ test.describe('anonymous reading journey', () => {
     page,
   }) => {
     await page.goto('/en/routes')
-    await page.locator('main ul li a').first().click()
+    await page.locator('main ul li a').filter({ hasText: SEEDED_ROUTE }).first().click()
     // Wait for the navigation to settle before reading the heading. Without this, `innerText`
     // resolves against whichever h1 is on screen at that instant — which was the search
     // page's "Find a route", not the route's own title.
@@ -112,7 +123,7 @@ test.describe('anonymous reading journey', () => {
   test('no read path redirects to a sign-in', async ({ page }) => {
     // FR-01 and D-03: search, ribbons, roads, steps, fields and history are all open.
     await page.goto('/en/routes')
-    await page.locator('main ul li a').first().click()
+    await page.locator('main ul li a').filter({ hasText: SEEDED_ROUTE }).first().click()
     // Wait for the navigation to settle before reading the URL — capturing it too early
     // gave '/en/routes', and the loop below then requested '/en/routes/history'.
     await expect(page).toHaveURL(/\/en\/routes\/[^/]+$/)

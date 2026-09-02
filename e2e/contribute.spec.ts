@@ -77,7 +77,7 @@ test.describe('the contribution loop', () => {
     // 4. Build the road. VR-09's "Build Road" stage, in place on the route itself.
     await page.getByText(/^add a step$/i).click()
     await page.getByLabel(/what is this step called/i).fill('Collect and attest documents')
-    await page.getByRole('button', { name: /^add a step$/i }).click()
+    await page.getByRole('button', { name: /add this step/i }).click()
     await expect(page.getByText(/collect and attest documents/i).first()).toBeVisible()
 
     // 5. It draws through the ordinary renderer, with no route-specific code anywhere.
@@ -87,7 +87,7 @@ test.describe('the contribution loop', () => {
     await openFirstStep(page)
     await page.getByText(/add information to this step/i).click()
     await page.getByLabel(/^information$/i).fill('Transcripts must be attested by the ministry')
-    await page.getByRole('button', { name: /add information to this step/i }).click()
+    await page.getByRole('button', { name: /add this information/i }).click()
     await expect(page.getByText(/attested by the ministry/i)).toBeVisible()
 
     await author.context.close()
@@ -134,8 +134,24 @@ test.describe('the contribution loop', () => {
     expect(await page.getByRole('button', { name: /^report/i }).count()).toBe(0)
 
     // CONFIRM — one click, no form, because nothing changed.
-    await page.getByText(/^still accurate$/i).first().click()
-    await expect(page.getByText(/last confirmed/i).first()).toBeVisible()
+    //
+    // Scoped to the official group rather than the whole page: the route passport also has a
+    // "Last confirmed" row, inside a collapsed <details>, and an unscoped match picks that
+    // hidden one first. The field's own line is what this test is about.
+    const officialGroup = page
+      .locator('section')
+      .filter({ has: page.getByRole('heading', { name: /from official and institutional/i }) })
+      .first()
+
+    await officialGroup.getByText(/^still accurate$/i).first().click()
+    await expect(
+      page
+        .locator('section')
+        .filter({ has: page.getByRole('heading', { name: /from official and institutional/i }) })
+        .first()
+        .getByText(/last confirmed/i)
+        .first(),
+    ).toBeVisible()
 
     // CHALLENGE — leaves the value alone and says so publicly, with its reason.
     await openFirstStep(page)

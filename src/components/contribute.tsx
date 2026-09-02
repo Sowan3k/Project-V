@@ -282,7 +282,7 @@ export function AddFieldForm({
         </label>
 
         <button type="submit" className={SUBMIT}>
-          {t.contribute.addField}
+          {t.contribute.addFieldSubmit}
         </button>
       </form>
     </details>
@@ -337,7 +337,7 @@ export function AddStepForm({
         </label>
 
         <button type="submit" className={SUBMIT}>
-          {t.contribute.addStep}
+          {t.contribute.addStepSubmit}
         </button>
       </form>
     </details>
