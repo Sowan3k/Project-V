@@ -8,6 +8,36 @@
 // and will fail tests/architecture/prisma-enums-generated.test.ts.
 // ---------------------------------------------------------------------------
 
+enum StudyLevel {
+  bachelors
+  masters
+  phd
+  other
+}
+
+enum RouteMechanism {
+  direct_admission
+  government_scholarship
+  university_scholarship
+  other_mechanism
+}
+
+enum StepEdgeKind {
+  sequential
+  optional_branch
+  alternative
+  rejoin
+}
+
+enum StepCategory {
+  documents_preparation
+  language_testing
+  admission_university
+  funding_scholarship
+  immigration_visa
+  travel_departure
+}
+
 enum FieldCategory {
   requirement
   procedure

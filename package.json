@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:db": "dotenv -e .env.test.local -- vitest run --config vitest.db.config.mts",
     "test:e2e": "playwright test",
     "seed": "dotenv -e .env.local -- tsx prisma/seed.ts",
     "spike:test": "vitest run --config vitest.spike.config.mts",

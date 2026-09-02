@@ -33,7 +33,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 |---|---|---|---|
 | 0 | Foundation spine | Deployed empty shell, green CI | ✅ |
 | 1 | Kill spikes: renderer + revision graph | Two go/no-go answers, throwaway code | ✅ |
-| 2 | Route graph + revision ledger schema | The irreversible migration | ⬜ |
+| 2 | Route graph + revision ledger schema | The irreversible migration | ✅ |
 | 3 | Revision write engine | The only door into shared knowledge | ⬜ |
 | 4 | Route renderer (production) | Ribbon + road from data, any structure | ⬜ |
 | 5 | Anonymous read path | Search → ribbon → road → step → field | ⬜ |
@@ -185,11 +185,11 @@ assertion until a screenshot was inspected.
 - Graph validators: acyclicity, reachability, rejoin targets exist, no orphans
 
 **Exit criteria**
-- A fixture with a real alternative branch and a real overlap persists, round-trips, validates
-- Cycle / orphan / dangling-rejoin fixtures are rejected
-- Timeline ordering over the overlapping fixture yields parallel lanes, not a flattened line
-- A structural test asserts every revisable model has a matching revision model, edges included
-- Schema review confirms no ordered step array anywhere
+- ✅ A fixture with a real alternative branch and a real overlap persists, round-trips, validates
+- ✅ Cycle / orphan / dangling-rejoin fixtures are rejected
+- ✅ Timeline ordering over the overlapping fixture yields parallel lanes, not a flattened line
+- ✅ A structural test asserts every revisable model has a matching revision model, edges included
+- ✅ Schema review confirms no ordered step array anywhere — and it is a test, not a review
 
 **FRs:** FR-03, FR-07, FR-51, FR-56, FR-57, FR-72
 
@@ -276,7 +276,7 @@ passport summary, official-vs-community separation (VR-14).
 **Exit criteria:** invariant tests 9–17 pass; a `community_submission` field is visually
 distinct from an `official` one; no badge derives from absence of reports.
 
-**FRs:** FR-10, FR-11, FR-33, FR-34, FR-49, FR-52, FR-53, FR-62, FR-64, FR-65, FR-66, FR-67, FR-70, FR-74
+**FRs:** FR-10, FR-11, FR-33, FR-34, FR-49, FR-52, FR-53, FR-54, FR-62, FR-64, FR-65, FR-66, FR-67, FR-70, FR-74
 
 ---
 
@@ -392,7 +392,7 @@ reliable sources permit — and after, never instead.
 Master's admission vs a funded/DAAD-type route vs a research PhD route. Never to look populated.
 
 **Every seeded route must be written from the perspective of an applicant starting in
-Bangladesh**, not a generic "study in X" article. Where relevant, cover: academic requirements;
+Bangladesh** (FR-48), not a generic "study in X" article. Where relevant, cover: academic requirements;
 documents and where a Bangladeshi applicant obtains them; authentication/legalisation; degree
 recognition; English and entrance tests and local availability; university application;
 scholarship process; financial requirements; visa documents; **embassy jurisdiction for
@@ -471,10 +471,18 @@ If this loop works, the product concept is implemented — not merely screened.
 
 Still open, but none of it blocks starting:
 
-- **FR coverage audit not yet run.** The phase FR assignments above are authored, not
-  machine-verified — the audit agent did not complete (session limit). Before Phase 2 closes,
-  verify every FR-01…FR-80 appears in exactly one phase and none are orphaned. Does not block
-  Phase 0, which delivers no FRs beyond FR-79/FR-80.
+- ~~FR coverage audit not yet run.~~ **Run 2026-09-02, during Phase 2.** All 80 FRs are now
+  assigned; two orphans were found and fixed (FR-48 → content track, FR-54 → Phase 6). The
+  audit is now `tests/architecture/fr-coverage.test.ts` and runs on every commit, so it
+  cannot decay again.
+
+  **The original rule — "exactly one phase" — was wrong, and has been corrected.** Nine FRs
+  legitimately span two phases because a mechanism and its surfacing are different work:
+  FR-57 is the branching *schema* in Phase 2 and the branching *renderer* in Phase 4; FR-12
+  is the write gate in Phase 3 and sign-in in Phase 7; FR-79/FR-80 are delivered in Phase 0
+  and re-verified at the Phase 13 gate. Forcing those into one phase each would have made the
+  plan less accurate, not more. The rule is now: **every FR appears in at least one delivering
+  phase**, and Phase 1 citations are proofs rather than assignments.
 - **Presentation details deferred by the baseline itself** (§46.2): final brand name, exact
   maturity label wording and colours, staleness thresholds for established routes, quarantine
   and report numeric thresholds, reputation labels and weights. Needed during their own phases,

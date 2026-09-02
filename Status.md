@@ -7,6 +7,129 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Session 6 — 2026-09-02
+
+**Goal:** Phase 2 — commit, in one migration, the two shapes no later phase can retrofit:
+the route graph and the revision ledger.
+
+### Done
+
+**The migration is applied to `production`.** 9 tables, 4 new enum types, **zero `DROP`
+statements**. Rehearsed on `phase-2-migration-rehearsal` first; `neon diff` afterwards
+reports no schema difference between that branch and `production`. Phase 0's `platform_meta`
+and its row count are untouched.
+
+| Table | Holds |
+|---|---|
+| `users` | Pseudonymous contributor identity — minimal, so revision attribution is a real foreign key |
+| `routes` | Permanent route identity: origin, destination, level, intake, mechanism, lifecycle, merge target |
+| `route_revisions` | Revisable route content — title, summary |
+| `steps` | Graph **nodes** |
+| `step_revisions` | Label, category, and the timing that expresses overlap |
+| `step_edges` | Graph **edges** — where ordering lives |
+| `step_edge_revisions` | Edge kind, so a branch change is diffable |
+| `fields` | Smallest community-maintained unit, with freshness and link trust |
+| `field_revisions` | Typed values, source class, effective dates |
+
+**Ordering lives in edges and nothing else.** There is no `orderIndex`, `position`,
+`sequence` or `sortOrder` anywhere, and `tests/architecture/schema-shape.test.ts` fails the
+build if one appears. Order is derived on every read by `rankSteps()`, so it cannot drift out
+of step with the graph and there is no column for a later refactor to start trusting.
+
+**Every revisable model has a revision model — edges included.** That is the one most likely
+to be skipped, and Phase 1 showed exactly what skipping it would cost: without versioned
+edges, a route can change shape and the shadow route can only say "some fields changed".
+
+**Deletion is refused by Postgres, not by convention.** Every revision relation carries
+`onDelete: Restrict`, and the integration test proves it: `prisma.step.delete` and
+`prisma.route.delete` on rows with history both fail at the database. Invariants 1, 2 and 4
+are now physical properties rather than promises.
+
+**Concurrent edits survive at the database level.** `previousRevisionId` is deliberately
+**not** unique. Two revisions sharing a parent is exactly a concurrent edit; a unique
+constraint there would have made Postgres reject the second contributor's work. Proved with
+two revisions written against one parent — all three retained, two sharing a parent.
+
+**Graph validators and timeline ordering** (`src/domain/graph/`) reject cycles, self-loops,
+orphans, unknown steps, duplicate active edges, unreachable steps and dangling rejoins,
+reporting **all** violations at once rather than the first. They operate on the *active*
+graph, because archived is not deleted and history may legitimately contain shapes the
+current view no longer shows.
+
+**A branching, overlapping route round-trips through Postgres.** Six steps, seven edges, two
+`alternative` and three `rejoin` connections. It persists, reads back, validates clean, ranks
+the two alternatives equal with the rejoin after them, and produces **parallel lanes** — the
+total span is shorter than the sum of the durations, because language preparation and
+document collection genuinely overlap. Flattening them would have inflated the fly window.
+
+**CI now has a database job.** A `postgres:18` service container, migrations applied to an
+empty database from scratch, a **drift check** that fails if the schema was edited without a
+matching migration, then the integration suite. CI still never touches Neon.
+
+### The FR coverage audit, owed since session 2
+
+**Run, and it found two orphans.** FR-48 (Bangladesh origin specificity) and FR-54
+(official/community separation) were in the baseline but claimed by no phase — the work was
+scoped in both cases, the requirement simply was not cited. FR-48 now sits with the content
+track, FR-54 with Phase 6.
+
+**The audit rule itself was wrong.** "Every FR appears in exactly one phase" fails on nine
+requirements that legitimately span two, because a mechanism and the surface that exposes it
+are different work: FR-57 is the branching *schema* in Phase 2 and the branching *renderer*
+in Phase 4; FR-12 is the write gate in Phase 3 and sign-in in Phase 7. Forcing those into one
+phase each would have made the plan less accurate. The rule is now **at least one delivering
+phase**, with Phase 1 citations treated as proofs rather than assignments.
+
+It is `tests/architecture/fr-coverage.test.ts` now rather than an intention. It went two
+sessions un-run as a manual task and then found real gaps; that is what a manual audit does.
+
+### Decisions taken
+
+| # | Decision | Why |
+|---|---|---|
+| 1 | **`currentRevisionId` is an explicit pointer, not "newest by timestamp".** | Under concurrent edits timestamps are ambiguous and a pointer is not. It also makes Phase 3's contract explicit: append a revision and move the pointer, in one transaction. |
+| 2 | **`previousRevisionId` is not unique.** | Two revisions sharing a parent *is* the concurrency case. Making it unique would enforce last-write-wins at the database level and silently destroy a contributor's work — the opposite of invariant 2. |
+| 3 | **Edge endpoints are immutable; only `kind` is revisable.** | Repointing an edge is archiving one connection and adding another. Mutable endpoints would make a structural diff lie about what changed. |
+| 4 | **No unique constraint on `(fromStepId, toStepId)`.** | Archiving a connection and later re-adding it is legitimate, and a plain unique index forbids it. Duplicate *active* edges are rejected by the validator instead, where the rule can be scoped correctly. |
+| 5 | **Typed value columns on `field_revisions`** — amount, currency, date, duration — alongside the always-present text. | The expected fly window and step timing must be computed (FR-56, §20). Retrofitting typed columns later would mean reparsing every historical value, which is precisely what this phase exists to prevent. |
+| 6 | **A minimal `users` table now, not in Phase 7.** | Revision attribution should be a foreign key, not an unchecked string. Phase 7 adds the Auth.js columns and journeys on top; that is additive. |
+| 7 | **Freshness lives on `fields`, not on revisions.** | `lastConfirmedAt` describes the field's standing, not any one value. Confirming is not editing, so it must not create a revision. |
+| 8 | **A typed value map added to the enums module** (`StepEdgeKind.rejoin`). | The single-source guard caught a hardcoded `'rejoin'` in the validator — correctly. But a rule with no ergonomic alternative puts pressure on the test rather than the code. Now the correct form is typed and refactorable. |
+| 9 | **Database tests excluded from `npm run test`, not left to self-skip.** | The main suite briefly reported "182 passed, 7 skipped". Skipped reads like dormant coverage; out-of-scope should read as out of scope. |
+
+### Issues found
+
+**The enum single-source guard fired on my own code**, on `src/domain/graph/validate.ts`,
+for a hardcoded `'rejoin'`. That is the guard doing its job — but it exposed a design gap:
+there was no non-hardcoded way to compare against an enum value. Fixed by adding typed value
+maps to `src/domain/enums.ts`, so the correct form is now easier than the wrong one.
+
+**The Phase 1 fixture set is not yet reimplemented against production code.** The renderer
+tests remain 🟡 in `Test.md`: the approach is proven, but against throwaway spike code.
+Phase 4 must carry the fixtures and the four assertions across.
+
+### Blockers
+
+**None.**
+
+### Carried forward — not done
+
+**OF-5, the account-scoped Neon API key, is still pending.** Procedure in `Test.md` §11.
+Needs an interactive terminal. Unchanged by this session.
+
+**OF-4, `CLAUDE.md` in public git history**, remains the owner's to remove manually.
+
+### Next step
+
+**Phase 3 — the revision write engine.** Make non-destructive, attributed, append-only
+writing the *only* physical way shared knowledge can change, before any API, seed script or
+UI can write. One service layer owning every mutation, each writing its revision row in the
+same transaction, plus a test that fails if anything outside that layer writes these tables.
+
+Phase 2 gave that engine somewhere safe to write. Phase 3 makes it the only door.
+
+---
+
 ## Session 5 — 2026-09-02
 
 **Goal:** Phase 1 — the two kill spikes. Answer the questions that would invalidate the

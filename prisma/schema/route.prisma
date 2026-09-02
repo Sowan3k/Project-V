@@ -1,0 +1,306 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Route graph and revision ledger — Phase 2.
+//
+// The two shapes no later phase can retrofit (Phases.md):
+//
+//   1. Routes are GRAPHS. Ordering lives in StepEdge rows with a typed kind. There is no
+//      orderIndex, no position column and no ordered array anywhere in this file, and a
+//      test asserts that (CLAUDE.md invariant 22, FR-57, D-37). A linear Step[] would make
+//      shadow diffing, merging and the renderer impossible later.
+//
+//   2. Every revisable thing has a revision table — route, step, EDGE and field. Edges are
+//      versioned because a route whose branch structure changes must be diffable, and a
+//      diff that can only see field values cannot describe a branch (proved in Phase 1,
+//      Spike B).
+//
+// Conventions used throughout, each load-bearing:
+//
+//   * `currentRevisionId` is an explicit pointer, not "newest by timestamp". Under
+//      concurrent edits, timestamps are ambiguous and a pointer is not. Phase 3's write
+//      service appends a revision and moves this pointer in one transaction.
+//
+//   * `previousRevisionId` is NOT unique, deliberately. Two revisions sharing a parent is
+//      exactly a concurrent edit — both are preserved and the conflict is detectable rather
+//      than resolved by overwriting (invariant 2, invariant 15, BR-21, FR-70).
+//
+//   * `onDelete: Restrict` on every revision relation. Deleting a route, step, edge or
+//      field with history is physically refused by the database, not merely discouraged by
+//      convention (invariants 1, 2 and 4).
+//
+//   * `archivedAt` marks removal from current views. Nothing is ever deleted (FR-21, FR-45).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Pseudonymous contributor identity (§24.3).
+///
+/// Minimal on purpose. Phase 7 owns authentication and adds the Auth.js columns and
+/// tables alongside private journeys; this exists now only so revision attribution can be
+/// a real foreign key instead of an unchecked string.
+model User {
+  id        String   @id @default(cuid())
+  /// Public handle. Never a real name and never an email (§24.1, §24.3).
+  handle    String   @unique
+  createdAt DateTime @default(now())
+
+  createdRoutes  Route[]            @relation("RouteCreator")
+  routeRevisions RouteRevision[]
+  stepRevisions  StepRevision[]
+  edgeRevisions  StepEdgeRevision[]
+  fieldRevisions FieldRevision[]
+
+  @@map("users")
+}
+
+/// A route's permanent identity (§18.3, FR-56).
+///
+/// Deliberately separate from its revisable content: followers, revisions, history and
+/// merges stay attached to this row while the title, steps and fields underneath change
+/// freely. Creating a route does not confer ownership (FR-44, BR-01, D-18) — there is no
+/// owner column, only a creator for attribution.
+model Route {
+  id                 String          @id @default(cuid())
+  slug               String          @unique
+  /// ISO 3166-1 alpha-2. Bangladesh-first by content, not by schema (§27).
+  originCountry      String          @db.Char(2)
+  destinationCountry String          @db.Char(2)
+  studyLevel         StudyLevel
+  /// Free-text period label such as "2027 autumn". Null means not intake-specific.
+  intake             String?
+  /// What makes this route materially different from another for the same pair (§40.1).
+  mechanism          RouteMechanism?
+
+  /// New routes start experimental and must not look as mature as established ones
+  /// (FR-11, FR-74, §18.1).
+  lifecycleState RouteLifecycleState @default(experimental)
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  createdBy   User?    @relation("RouteCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  /// Merge preserves both identities: the absorbed route keeps its row, its history and
+  /// its followers, and points here (FR-40, FR-58, BR-25, D-38).
+  mergedIntoId String?
+  mergedInto   Route?  @relation("RouteMerge", fields: [mergedIntoId], references: [id], onDelete: Restrict)
+  mergedFrom   Route[] @relation("RouteMerge")
+
+  archivedAt DateTime?
+
+  currentRevisionId String?        @unique
+  currentRevision   RouteRevision? @relation("RouteCurrentRevision", fields: [currentRevisionId], references: [id], onDelete: SetNull)
+
+  revisions RouteRevision[] @relation("RouteRevisions")
+  steps     Step[]
+  edges     StepEdge[]
+
+  @@index([originCountry, destinationCountry, studyLevel])
+  @@index([lifecycleState])
+  @@map("routes")
+}
+
+/// A preserved state of a route's revisable attributes.
+model RouteRevision {
+  id      String @id @default(cuid())
+  routeId String
+  route   Route  @relation("RouteRevisions", fields: [routeId], references: [id], onDelete: Restrict)
+
+  title   String
+  summary String?
+
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  reason   String?
+
+  /// Not unique: two revisions sharing a parent is a concurrent edit, and both survive.
+  previousRevisionId String?
+  previous           RouteRevision?  @relation("RouteRevisionChain", fields: [previousRevisionId], references: [id], onDelete: Restrict)
+  successors         RouteRevision[] @relation("RouteRevisionChain")
+
+  createdAt DateTime @default(now())
+  currentOf Route?   @relation("RouteCurrentRevision")
+
+  @@index([routeId, createdAt])
+  @@index([previousRevisionId])
+  @@map("route_revisions")
+}
+
+/// A stage of the journey. A node in the graph — never an element of an ordered list.
+model Step {
+  id         String    @id @default(cuid())
+  routeId    String
+  route      Route     @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  createdAt  DateTime  @default(now())
+  archivedAt DateTime?
+
+  currentRevisionId String?       @unique
+  currentRevision   StepRevision? @relation("StepCurrentRevision", fields: [currentRevisionId], references: [id], onDelete: SetNull)
+
+  revisions     StepRevision[] @relation("StepRevisions")
+  fields        Field[]
+  outgoingEdges StepEdge[]     @relation("StepEdgeFrom")
+  incomingEdges StepEdge[]     @relation("StepEdgeTo")
+
+  @@index([routeId])
+  @@map("steps")
+}
+
+model StepRevision {
+  id     String @id @default(cuid())
+  stepId String
+  step   Step   @relation("StepRevisions", fields: [stepId], references: [id], onDelete: Restrict)
+
+  label    String
+  category StepCategory
+
+  /// Timing, which is how OVERLAP is expressed — together with non-constraining edges, and
+  /// never with a position column (§20.2, §20.3). Two steps whose windows intersect are
+  /// concurrent; the timeline draws them as parallel lanes rather than summing durations
+  /// into a straight line.
+  earliestStartOffsetDays Int?
+  typicalDurationDays     Int?
+  /// Planning aids, never promises (invariant 16, BR-18, D-30).
+  hardDeadline            DateTime?
+
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  reason   String?
+
+  previousRevisionId String?
+  previous           StepRevision?  @relation("StepRevisionChain", fields: [previousRevisionId], references: [id], onDelete: Restrict)
+  successors         StepRevision[] @relation("StepRevisionChain")
+
+  createdAt DateTime @default(now())
+  currentOf Step?    @relation("StepCurrentRevision")
+
+  @@index([stepId, createdAt])
+  @@index([previousRevisionId])
+  @@map("step_revisions")
+}
+
+/// A typed connection between two steps. THIS is where ordering lives.
+///
+/// Endpoints are immutable: repointing an edge is archiving one and adding another, which
+/// keeps a structural diff honest. Only the kind is revisable.
+///
+/// There is deliberately no unique constraint on (fromStepId, toStepId): archiving an edge
+/// and later re-adding the same connection is legitimate, and a plain unique index would
+/// forbid it. Duplicate *active* edges are rejected by the graph validator instead.
+model StepEdge {
+  id         String    @id @default(cuid())
+  routeId    String
+  route      Route     @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  fromStepId String
+  fromStep   Step      @relation("StepEdgeFrom", fields: [fromStepId], references: [id], onDelete: Restrict)
+  toStepId   String
+  toStep     Step      @relation("StepEdgeTo", fields: [toStepId], references: [id], onDelete: Restrict)
+  createdAt  DateTime  @default(now())
+  archivedAt DateTime?
+
+  currentRevisionId String?           @unique
+  currentRevision   StepEdgeRevision? @relation("EdgeCurrentRevision", fields: [currentRevisionId], references: [id], onDelete: SetNull)
+
+  revisions StepEdgeRevision[] @relation("EdgeRevisions")
+
+  @@index([routeId])
+  @@index([fromStepId])
+  @@index([toStepId])
+  @@map("step_edges")
+}
+
+model StepEdgeRevision {
+  id         String   @id @default(cuid())
+  stepEdgeId String
+  stepEdge   StepEdge @relation("EdgeRevisions", fields: [stepEdgeId], references: [id], onDelete: Restrict)
+
+  kind StepEdgeKind
+
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  reason   String?
+
+  previousRevisionId String?
+  previous           StepEdgeRevision?  @relation("EdgeRevisionChain", fields: [previousRevisionId], references: [id], onDelete: Restrict)
+  successors         StepEdgeRevision[] @relation("EdgeRevisionChain")
+
+  createdAt DateTime  @default(now())
+  currentOf StepEdge? @relation("EdgeCurrentRevision")
+
+  @@index([stepEdgeId, createdAt])
+  @@index([previousRevisionId])
+  @@map("step_edge_revisions")
+}
+
+/// One information element inside a step — the smallest community-maintained unit (FR-51).
+model Field {
+  id         String        @id @default(cuid())
+  stepId     String
+  step       Step          @relation(fields: [stepId], references: [id], onDelete: Restrict)
+  category   FieldCategory
+  createdAt  DateTime      @default(now())
+  archivedAt DateTime?
+
+  /// Freshness describes the field's standing, not any one value, so it lives here rather
+  /// than on a revision (§39.2). A confirmation refreshes it without creating a revision:
+  /// confirming is not editing.
+  lastConfirmedAt DateTime?
+  reviewDueAt     DateTime?
+
+  /// Only meaningful for link fields. Community submissions are visibly unverified and a
+  /// shortened or obscured host is never trusted (FR-34, FR-64, FR-65, invariants 9-10).
+  /// Quarantine is a safety action on the link, independent of its value, so it is not a
+  /// revision column.
+  linkTrustClass LinkTrustClass?
+
+  currentRevisionId String?        @unique
+  currentRevision   FieldRevision? @relation("FieldCurrentRevision", fields: [currentRevisionId], references: [id], onDelete: SetNull)
+
+  revisions FieldRevision[] @relation("FieldRevisions")
+
+  @@index([stepId])
+  @@index([category])
+  @@map("fields")
+}
+
+/// A preserved value of a field. The prior value is always still readable (invariant 2).
+model FieldRevision {
+  id      String @id @default(cuid())
+  fieldId String
+  field   Field  @relation("FieldRevisions", fields: [fieldId], references: [id], onDelete: Restrict)
+
+  /// Always present: every field renders as text whatever else it carries.
+  valueText String
+
+  /// Typed refinements. Present only where the category makes them meaningful, and they
+  /// exist so the expected fly window and step timing can be COMPUTED rather than stored as
+  /// prose (FR-56, §20). Retrofitting these later would mean reparsing every historical
+  /// value, which is exactly what this phase exists to avoid.
+  valueAmount       Decimal?  @db.Decimal(14, 2)
+  valueCurrency     String?   @db.Char(3)
+  valueDate         DateTime?
+  valueDurationDays Int?
+
+  /// Official and community claims are different claim types and never share a field
+  /// (FR-54, BR-07, BR-22, D-22, invariant 11).
+  sourceClass SourceClass
+  sourceUrl   String?
+  /// Free-text attribution for a source that is not a URL, e.g. a named office.
+  sourceNote  String?
+
+  /// Effective date beats edit date when deciding whether a change affects a follower
+  /// (FR-59, BR-26, D-39, invariant 21).
+  effectiveFrom DateTime?
+  expiresAt     DateTime?
+
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  reason   String?
+
+  previousRevisionId String?
+  previous           FieldRevision?  @relation("FieldRevisionChain", fields: [previousRevisionId], references: [id], onDelete: Restrict)
+  successors         FieldRevision[] @relation("FieldRevisionChain")
+
+  createdAt DateTime @default(now())
+  currentOf Field?   @relation("FieldCurrentRevision")
+
+  @@index([fieldId, createdAt])
+  @@index([previousRevisionId])
+  @@map("field_revisions")
+}

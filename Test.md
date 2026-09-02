@@ -27,8 +27,9 @@ Read alongside [CLAUDE.md](CLAUDE.md) §6 (the 25 invariants) and [Phases.md](Ph
 | Vitest (unit/architecture) | ✅ | Vitest 4.1.11, node environment. `tests/**`, `src/**/*.test.ts`. Playwright specs excluded. |
 | Playwright (E2E) | ✅ | Playwright 1.62.1, Chromium. Two projects: `mobile-360` and `desktop-1280`. |
 | E2E target selection | ✅ | Local production build by default; `E2E_BASE_URL` points the same specs at a deployed preview. |
+| Integration tests (`test:db`) | ✅ | `vitest.db.config.mts` against `TEST_DATABASE_URL`. Neon `test` branch locally, a `postgres:18` service container in CI. Excluded from `npm run test` rather than left to self-skip — a suite reporting "skipped" reads like dormant coverage. |
 | Test database strategy | ✅ | Scratch branch via `neon branches create` — never run tests against `production`. No Vitest test connects to a database; the E2E health probe does, through the running app. Neon branches: `production`, `vercel-dev` (created by the integration, schema-identical), `phase-0-migration-rehearsal` (kept as evidence). |
-| CI pipeline | ✅ | `.github/workflows/ci.yml`: lint → typecheck → test → build on push to `main` and every PR. **5/5 runs green on GitHub Actions**, all four steps passing in ~80s. |
+| CI pipeline | ✅ | `.github/workflows/ci.yml`, two jobs. `verify`: lint → typecheck → test → build. `database`: applies migrations to an empty Postgres, fails on schema/migration drift, runs the integration suite. |
 | Vercel deployment | ✅ | Project `vindeshi-express` linked to `Sowan3k/Project-V`; production branch `main`. Neon–Vercel integration supplies `DATABASE_URL`; the deployed `/api/health` returns 200. Deployment Protection is on (repo is private) — `e2e/deployment-access.setup.ts` handles it. |
 | Coverage reporting | ⬜ | Not set up. Deliberate: coverage of a shell is a meaningless number. Revisit at Phase 3. |
 
@@ -49,6 +50,12 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-02 | **Phase 2 migration applied to `production`** | Rehearsed on `phase-2-migration-rehearsal`, then `npm run db:deploy`; `neon diff` afterwards | ✅ 9 tables and 4 enum types added, **zero DROP statements**; `platform_meta` and its row count unchanged; no schema difference from the rehearsal branch |
+| 2026-09-02 | **A branching, overlapping route round-trips through Postgres** | `npm run test:db` — persist 6 steps / 7 edges, read back, validate | ✅ Branch structure preserved with typed edge kinds (2 `alternative`, 3 `rejoin`); validates clean after the round trip |
+| 2026-09-02 | Timeline over the round-tripped fixture yields parallel lanes | `buildTimeline` on the persisted graph | ✅ >1 lane; language prep and document collection on different lanes; total span shorter than the sum of durations |
+| 2026-09-02 | **Postgres physically refuses to destroy history** | `prisma.step.delete` and `prisma.route.delete` on rows with revisions | ✅ Both rejected by `onDelete: Restrict` — a database property, not an application check |
+| 2026-09-02 | Concurrent field revisions both persist at the database level | Two revisions written against one parent revision | ✅ 3 revisions retained, 2 sharing a parent — a unique constraint there would have rejected the second contributor |
+| 2026-09-02 | **FR coverage audit** (owed since session 2) | `tests/architecture/fr-coverage.test.ts` | ✅ All 80 FRs assigned. **Two orphans found and fixed**: FR-48 (Bangladesh origin specificity) → content track, FR-54 (official/community separation) → Phase 6. Now enforced on every commit |
 | 2026-09-02 | **Spike A go/no-go — renderer** | 79 assertions in `spikes/renderer/layout.spike.test.ts` + screenshots at 360/768/1280 | ✅ **GO.** All 10 fixtures render legibly at all three widths with no per-fixture code; no page-wide horizontal overflow at any width |
 | 2026-09-02 | Ribbon and road share one layout pass | Order and count compared for every fixture | ✅ Identical step count and order at both densities, for all 10 |
 | 2026-09-02 | Structural equivalence across destinations (test 24, early) | `wrapping15` vs `wrapping15Twin` | ✅ Identical width, height, row count, node geometry and every connector path |
@@ -112,11 +119,11 @@ acceptable is shipping the phase without them.**
 
 | # | Test | State |
 |---|---|---|
-| 1 | No non-admin route reaches a hard delete for Route, Step or Field | ⬜ |
+| 1 | No non-admin route reaches a hard delete for Route, Step or Field | 🟡 |
 | 2 | Updating a field creates a revision; the prior value is still readable afterwards | ⬜ |
 | 2b | Concurrent updates to one field produce two revisions, neither lost | 🟡 |
 | 3 | A user who did not create a route can still revise its fields | ⬜ |
-| 4 | Archived content disappears from current view but is returned by history queries | ⬜ |
+| 4 | Archived content disappears from current view but is returned by history queries | 🟡 |
 
 ### Privacy
 
@@ -125,7 +132,7 @@ acceptable is shipping the phase without them.**
 | 5 | User A cannot read User B's journey progress, notes or dates via any endpoint | ⬜ |
 | 5b | Public aggregates cannot be reduced to an individual's progress | ⬜ |
 | 6 | No file-upload path exists anywhere in the journey flow | ⬜ |
-| 7 | No schema field accepts passport, transcript, certificate, bank or address data | ⬜ |
+| 7 | No schema field accepts passport, transcript, certificate, bank or address data | ✅ |
 | 8 | Revising a route does not cascade-delete or reset JourneyStepProgress | ⬜ |
 
 ### Trust and truth
@@ -150,7 +157,7 @@ acceptable is shipping the phase without them.**
 | 19 | A temporary disruption expires without mutating the base route | ⬜ |
 | 20 | Merging two routes preserves both follower sets and both revision histories | ⬜ |
 | 21 | Change relevance is computed from effective date, not edit date | ⬜ |
-| 22 | The route model represents a branch that diverges and reconnects | 🟡 |
+| 22 | The route model represents a branch that diverges and reconnects | ✅ |
 | 23 | 30-day dormancy applies to unused new routes only; established routes go quiet/stale | ⬜ |
 
 ### Rendering
@@ -205,7 +212,18 @@ nothing real is standing behind it until Phase 4.
 Each of the four architecture guards was **also confirmed to fail** when deliberately
 violated (§2). A guard nobody has watched fail is a guard that may do nothing.
 
-### 4.1 Product feature coverage
+### 4.1 Phase 2 — route graph and revision ledger (landed 2026-09-02)
+
+| Area | Tests | State | File |
+|---|---|---|---|
+| Graph validation — cycle, self-loop, orphan, unknown step, dangling rejoin, duplicate active edge | 11 | ✅ | `tests/unit/graph.test.ts` |
+| Ordering derived from edges, never stored | 4 | ✅ | `tests/unit/graph.test.ts` |
+| Timeline lanes and overlap | 6 | ✅ | `tests/unit/graph.test.ts` |
+| Schema shape — revision model per revisable model, no position column, no personal-document fields | 55 | ✅ | `tests/architecture/schema-shape.test.ts` |
+| FR traceability | 4 | ✅ | `tests/architecture/fr-coverage.test.ts` |
+| Round-trip, restrict-on-delete, concurrent revisions | 7 | ✅ | `tests/db/route-graph.db.test.ts` |
+
+### 4.2 Product feature coverage
 
 Populated as phases land. One row per feature area.
 

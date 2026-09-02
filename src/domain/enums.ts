@@ -99,10 +99,86 @@ export const REPORT_REASONS = [
 export type ReportReason = (typeof REPORT_REASONS)[number]
 
 /**
+ * Study levels — FR-01, REQUIREMENTS.md §9.
+ * The baseline names three explicitly and allows "another supported higher-education
+ * level". `other` is that escape hatch; inventing `diploma`/`foundation` would be
+ * extrapolating beyond the frozen baseline.
+ */
+export const STUDY_LEVELS = ['bachelors', 'masters', 'phd', 'other'] as const
+export type StudyLevel = (typeof STUDY_LEVELS)[number]
+
+/**
+ * Route mechanism — the optional "funding / route mechanism" filter, REQUIREMENTS.md §9.
+ * What makes two routes for the same origin and destination materially different (§40.1).
+ */
+export const ROUTE_MECHANISMS = [
+  'direct_admission',
+  'government_scholarship',
+  'university_scholarship',
+  'other_mechanism',
+] as const
+export type RouteMechanism = (typeof ROUTE_MECHANISMS)[number]
+
+/**
+ * How one step leads to another — FR-57, D-37, REQUIREMENTS.md §40.3.
+ *
+ * This is the enum that makes CLAUDE.md invariant 22 enforceable: ordering lives in typed
+ * edges, so a route is a graph and never a list with an index.
+ */
+export const STEP_EDGE_KINDS = ['sequential', 'optional_branch', 'alternative', 'rejoin'] as const
+export type StepEdgeKind = (typeof STEP_EDGE_KINDS)[number]
+
+/**
+ * Semantic step categories — CLAUDE.md §7, §8.5, REQUIREMENTS.md §10.4.
+ *
+ * Deliberately distinct strings from FIELD_CATEGORIES: a step is a stage of the journey,
+ * a field is one piece of information inside it, and the two vocabularies must not blur.
+ * Colour is never the only carrier of this meaning — it always pairs with text and an icon.
+ */
+export const STEP_CATEGORIES = [
+  'documents_preparation',
+  'language_testing',
+  'admission_university',
+  'funding_scholarship',
+  'immigration_visa',
+  'travel_departure',
+] as const
+export type StepCategory = (typeof STEP_CATEGORIES)[number]
+
+/**
+ * Builds a value map from a literal array, so code can compare against an enum value
+ * without writing the literal.
+ *
+ * This is what makes the single-source rule livable rather than merely enforced. Without it
+ * the only way to write `kind === 'rejoin'` is to hardcode the literal, the architecture
+ * test fails, and the pressure is on the test rather than on the code. With it, the correct
+ * form is `kind === StepEdgeKind.rejoin` — typed, refactorable, and impossible to misspell.
+ */
+function valueMap<const T extends readonly string[]>(values: T): { readonly [K in T[number]]: K } {
+  return Object.fromEntries(values.map((v) => [v, v])) as { readonly [K in T[number]]: K }
+}
+
+export const StudyLevel = valueMap(STUDY_LEVELS)
+export const RouteMechanism = valueMap(ROUTE_MECHANISMS)
+export const StepEdgeKind = valueMap(STEP_EDGE_KINDS)
+export const StepCategory = valueMap(STEP_CATEGORIES)
+export const FieldCategory = valueMap(FIELD_CATEGORIES)
+export const SourceClass = valueMap(SOURCE_CLASSES)
+export const RouteLifecycleState = valueMap(ROUTE_LIFECYCLE_STATES)
+export const ChangeSeverity = valueMap(CHANGE_SEVERITIES)
+export const LinkTrustClass = valueMap(LINK_TRUST_CLASSES)
+export const ChallengeReason = valueMap(CHALLENGE_REASONS)
+export const ReportReason = valueMap(REPORT_REASONS)
+
+/**
  * The registry the Prisma generator and the architecture tests read.
  * Key = Prisma enum type name. Value = the ordered literal values.
  */
 export const DOMAIN_ENUMS = {
+  StudyLevel: STUDY_LEVELS,
+  RouteMechanism: ROUTE_MECHANISMS,
+  StepEdgeKind: STEP_EDGE_KINDS,
+  StepCategory: STEP_CATEGORIES,
   FieldCategory: FIELD_CATEGORIES,
   SourceClass: SOURCE_CLASSES,
   RouteLifecycleState: ROUTE_LIFECYCLE_STATES,
