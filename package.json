@@ -29,7 +29,8 @@
     "db:studio": "dotenv -e .env.local -- prisma studio",
     "postinstall": "prisma generate",
     "renderer:gallery": "tsx --tsconfig tsconfig.scripts.json scripts/renderer/gallery.tsx",
-    "renderer:shoot": "node scripts/renderer/shoot.mjs"
+    "renderer:shoot": "node scripts/renderer/shoot.mjs",
+    "fixture:germany": "dotenv -e .env.test.local -- tsx scripts/fixtures/germany-rwth-direct.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",

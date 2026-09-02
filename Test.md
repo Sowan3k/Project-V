@@ -50,6 +50,11 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-02 | **Germany route research pass 2** — one real programme | RWTH Aachen M.Sc. Data Science, official university and programme pages | ✅ Channel, deadlines, prerequisites, GRE, language and documents verified. Deadline for non-EU/EEA is **1 March**, not 15 July |
+| 2026-09-02 | **Development fixture loads and models a real journey** | `npm run fixture:germany` against the test branch | ✅ 13 steps, 17 fields, **1136 days modelled vs 1284 summed** — overlap respected on real data |
+| 2026-09-02 | Fixture refuses any database not marked disposable | `assertDisposable` against the `platform_meta` marker | ✅ Production cannot receive a development fixture |
+| 2026-09-02 | Revision history built from a **verified** historical change | Blocked account €861 → €934 (01.10.2022) → €992 (~01.09.2024), German mission sources | ✅ Two revisions with sources, effective dates and reasons; prior value preserved |
+| 2026-09-02 | ⚠️ Neon computes intermittently unreachable | Probed all four endpoints repeatedly | ❗ See OF-6 — infrastructure, not application code |
 | 2026-09-02 | **Anonymous journey end to end** | Playwright: landing → search → ribbon → road → step → field, at 360px and 1280px | ✅ 22/22 including history and a 404 case |
 | 2026-09-02 | **The read path works with JavaScript disabled** | Same journey in a `javaScriptEnabled: false` context | ✅ Search, road and step expansion all server-rendered |
 | 2026-09-02 | **No read path redirects to a sign-in** | Every anonymous URL requested directly, checking status and final URL | ✅ All under 400, none redirected to any auth path |

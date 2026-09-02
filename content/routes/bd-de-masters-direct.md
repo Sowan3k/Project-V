@@ -136,3 +136,71 @@ formalities.
 **Post-arrival formalities (Anmeldung, residence permit, insurance activation) may be out of V1
 scope** — CLAUDE.md §10 ends the first-release scope at departure and the expected fly window.
 Raised in `../MODELLING-NOTES.md` rather than decided here.
+
+---
+
+## Research pass 2 — 2026-09-02 — one real programme
+
+Programme chosen as the programme-specific test case:
+
+**M.Sc. Data Science, RWTH Aachen University** — a direct-application (non-uni-assist) pathway,
+which matches this route's `direct_admission` mechanism and lets the channel dimension be tested
+honestly.
+
+| # | Source | Used for |
+|---|---|---|
+| S6 | [RWTH — International Applicants, Master](https://www.rwth-aachen.de/cms/root/studium/vor-dem-studium/bewerbung-um-einen-studienplatz/master-bewerbung/~dqml/bewerbung-master-internationale/?lidx=1) | Channel, deadlines, documents |
+| S7 | [RWTH Informatik — M.Sc. Data Science, Application for Admission](https://sc.informatik.rwth-aachen.de/en/studium/master/master-data-science/application-for-admission/) | Programme prerequisites, GRE, language, deadline |
+
+### Verified programme-level facts
+
+All `official`, checked **2026-09-02**, no human review yet.
+
+| Fact | Value | Source | Applies to | Status |
+|---|---|---|---|---|
+| Application channel | RWTH's own portal, `online.rwth-aachen.de`. **uni-assist is not used.** No physical documents posted. | S6, S7 | RWTH (institution) | SOURCED |
+| Admission type | M.Sc. Data Science is **open admission**, not restricted (NC) | S7 | Programme | SOURCED |
+| **Winter deadline, non-EU/EEA, open admission** | **1 March** | S6, S7 | Institution × admission type × applicant status | SOURCED |
+| Winter deadline, non-EU/EEA, restricted (NC) | 15 July | S6 | Institution × admission type × applicant status | SOURCED |
+| Winter deadline, EU/EEA | 15 July for both types | S6 | Institution × applicant status | SOURCED |
+| Prerequisite: first degree | "Computer Science, Mathematics, Physics or a closely related area" | S7 | Programme | SOURCED |
+| Prerequisite credits (CS profile) | Programming 8 CP, Data Structures and Algorithms 7, Databases 6, Software Engineering 6, Computer Architecture 6, Operating Systems 6, Networks/Security 6, Theory of Computation 12, Logic 6, Discrete Structures 6, Calculus 8, Linear Algebra 6, Stochastics 6 | S7 | Programme | SOURCED |
+| Prerequisite credits (Maths profile) | Analysis I–III 24 CP, Linear Algebra I–II 15, Numerical Analysis 9, Stochastics 9 | S7 | Programme | SOURCED |
+| Prerequisite credits (Physics profile) | Experimental Physics 26 CP, Theoretical Physics 26, Higher Mathematics 24, Advanced Internship 6 | S7 | Programme | SOURCED |
+| **GRE General Test** | Required — quantitative >75th percentile, verbal >15th percentile, analytical writing ≥3.5. **Exempt: EU/EEA citizens, or holders of German secondary education.** Institution code 8504. | S6, S7 | Programme × applicant status | SOURCED |
+| English proof | An English certificate proving fluency. **"Medium of instruction (MOI) certificates are in general not accepted."** Submitted **at enrolment**, not at application. | S7 | Programme | SOURCED |
+| Documents | Degree diploma and transcript; module descriptions matching admission requirements, with cover sheet; GRE results; CV in list form; certified translation if not in German or English | S6, S7 | Institution × programme | SOURCED |
+
+### Findings that change the picture
+
+**1. The deadline for a Bangladeshi applicant is 1 March, not 15 July.**
+Non-EU/EEA applicants to an open-admission Master's apply by 1 March; EU/EEA applicants have until
+15 July. A Bangladeshi student reading a generic "apply by 15 July" would miss the intake by a full
+year. This is the second time research has produced a difference measured in years.
+
+**2. "MOI certificates are in general not accepted."**
+Many Bangladeshi Bachelor's degrees are taught in English, and a Medium of Instruction certificate
+is the usual way applicants evidence that. RWTH says it does not generally accept them. Note this
+is *narrower* than the Embassy's visa rule, which waives English proof only for degrees completed
+in Australia, the UK or the US — so an applicant can satisfy the visa requirement and still fail
+the programme requirement, or vice versa. They are different tests by different authorities.
+
+**3. GRE is required here — and this is where the mockups accidentally got close to something real.**
+Not APS, which does not exist for Bangladesh; GRE, which this programme requires from exactly the
+applicants this route serves. It is programme-specific, not a German requirement.
+
+**4. A seventh applicability level appeared that was not in the original list: applicant status.**
+Both the deadline and the GRE requirement turn on non-EU/EEA versus EU/EEA. On *this* route every
+reader is Bangladeshi, so the conditionality collapses — but only because the route's own identity
+already fixes the origin.
+
+### Uncertainty from pass 2
+
+- Neither RWTH page carries a visible last-updated date. Deadlines and prerequisites are exactly
+  the kind of fact that moves between intakes; both need re-checking before publication and a short
+  review interval afterwards. Status for every date-sensitive row above: **NEEDS-HUMAN**.
+- The stated deadlines were read for a current cycle. Whether they hold for **Winter Semester
+  2027/28** specifically is **not verified** and must not be assumed.
+- The English requirement is stated qualitatively ("able to speak and write fluently"), with the
+  numeric threshold on a separate RWTH language page not yet fetched. **No IELTS or TOEFL number
+  should be seeded for this programme until that page is read.**
