@@ -58,8 +58,10 @@ rule needs no exceptions — and an exception list is where a rule like this goe
 
 **3. The handle is generated, never derived.** A handle taken from a Google display name would
 publish the real identity §24.3 says a contributor need not expose — by default, without
-asking, which is the worst way to make that choice for someone. Its alphabet has no vowels, so
-no generated handle can spell a word by chance and land a slur on somebody who did not pick it.
+asking, which is the worst way to make that choice for someone. Its alphabet drops the vowels,
+which **reduces the likelihood** of a suffix reading as a recognisable word — cheap risk
+reduction on something that lands on a real person, not a mathematical guarantee. If an
+unlucky handle ever appears, the answer is to let that person change it.
 
 **4. Database sessions, not JWTs.** Signing out revokes immediately, and the E2E suite can
 write a session row directly — so **the application contains no test-only authentication path

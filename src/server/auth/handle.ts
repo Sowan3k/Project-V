@@ -17,9 +17,17 @@
 /**
  * Deliberately excludes vowels, and `0/1/l/o` besides.
  *
- * No vowels means no generated handle can spell a word — an alphabet that can produce a slur
- * or an insult by chance is one that eventually will, and every such handle is attached to a
- * real person who did not choose it.
+ * Dropping the vowels **reduces the likelihood** that a random suffix reads as a recognisable
+ * word. It does not eliminate it, and should not be described as if it does: consonant runs
+ * can still resemble initialisms, abbreviations or words in other languages, and the check is
+ * about English letters rather than meaning. Treat it as a cheap risk reduction, not a proof.
+ *
+ * It is worth doing because every generated handle is attached to a real person who did not
+ * choose it. If an offensive handle is ever reported, the answer is to let that person change
+ * it — not to claim the generator made it impossible.
+ *
+ * `0/1/l/o` are excluded for a different and more certain reason: they are misread and
+ * mistyped, and a handle is something people copy by hand.
  */
 const ALPHABET = '23456789bcdfghjkmnpqrstvwxz'
 

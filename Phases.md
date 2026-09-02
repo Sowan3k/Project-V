@@ -432,9 +432,10 @@ moves.
 **We keep the email and discard the rest.** Google offers a name and a photograph with every
 sign-in; the adapter drops both, and there are no columns for them to land in. The handle is
 *generated*, never derived — one taken from a display name would publish the real identity
-§24.3 says a contributor need not expose, by default, without asking. Its alphabet has no
-vowels, so no handle can spell a word by chance and land a slur on somebody who did not choose
-it.
+§24.3 says a contributor need not expose, by default, without asking. Its alphabet drops the
+vowels, which **reduces the likelihood** that a random suffix reads as a recognisable word —
+worth doing because every handle lands on a real person who did not choose it, but not a
+guarantee, and not described as one.
 
 **Database sessions rather than JWTs**, for two reasons that both mattered: signing out
 revokes immediately, and the E2E suite can write a session row directly — so **the application

@@ -27,11 +27,16 @@ describe('a handle reveals nothing about the person', () => {
   /**
    * No vowels in the alphabet, deliberately.
    *
-   * An alphabet that can spell a word by chance will eventually spell a slur, and every
-   * handle it produces is attached to a real person who did not choose it. Removing the
-   * vowels removes the whole class of problem rather than blocklisting its instances.
+   * This asserts the **alphabet**, not an outcome. Dropping the vowels reduces the likelihood
+   * that a random suffix reads as a recognisable word; it does not make it impossible, and
+   * this test should not be read as claiming otherwise — consonant runs can still resemble
+   * initialisms or words in other languages.
+   *
+   * It is worth doing because every generated handle lands on a real person who did not
+   * choose it. It is not a guarantee, and the honest remedy for an unlucky handle is to let
+   * that person change it.
    */
-  it('cannot spell a word by accident', () => {
+  it('draws from an alphabet without vowels, which makes a recognisable word less likely', () => {
     const suffixes = Array.from({ length: 500 }, () => generateHandle().split('-')[1] ?? '')
     for (const suffix of suffixes) expect(suffix).not.toMatch(/[aeiou]/)
   })
