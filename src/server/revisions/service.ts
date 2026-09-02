@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client'
 
 import type {
+  FieldApplicability as FieldApplicabilityT,
   FieldCategory as FieldCategoryT,
   RouteMechanism as RouteMechanismT,
   SourceClass as SourceClassT,
@@ -331,6 +332,14 @@ export interface FieldValue {
   readonly valueDate?: Date | null
   readonly valueDurationDays?: number | null
   readonly sourceClass: SourceClassT
+  /**
+   * How widely this claim applies (FR-81, D-47). A set, because a claim can vary along more
+   * than one dimension — programme AND intake is a real case, not a hypothetical.
+   *
+   * Optional, and omitting it means "not stated" rather than "applies everywhere". Forcing a
+   * contributor to classify a scope they are unsure of would produce confident wrong answers.
+   */
+  readonly applicability?: readonly FieldApplicabilityT[]
   readonly sourceUrl?: string | null
   readonly sourceNote?: string | null
   readonly effectiveFrom?: Date | null
@@ -349,6 +358,7 @@ const valueColumns = (v: FieldValue) => ({
   valueDate: v.valueDate ?? null,
   valueDurationDays: v.valueDurationDays ?? null,
   sourceClass: v.sourceClass,
+  applicability: [...(v.applicability ?? [])],
   sourceUrl: v.sourceUrl ?? null,
   sourceNote: v.sourceNote ?? null,
   effectiveFrom: v.effectiveFrom ?? null,

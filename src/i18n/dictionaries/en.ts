@@ -1,4 +1,5 @@
 import type {
+  FieldApplicability,
   FieldCategory,
   SourceClass,
   RouteLifecycleState,
@@ -126,6 +127,10 @@ export const en = {
     stepAdded: 'New',
     stepArchived: 'Archived',
     stepDisrupted: 'Temporary disruption affects this step',
+    tabOverview: 'Route',
+    tabHistory: 'History',
+    tabsLabel: 'Route views',
+    selectAStep: 'Select a step to see the information inside it.',
     backToSearch: 'Back to search',
     ribbonLabel: 'Route overview',
     roadLabel: 'The full road',
@@ -181,6 +186,26 @@ export const en = {
     community_experience: 'Community experience',
     warning: 'Warning or dependency',
   } satisfies Record<FieldCategory, string>,
+
+  /**
+   * Applicability labels — FR-81.
+   *
+   * Phrased as what changes if the reader changes something, because that is the question a
+   * student actually has. "Programme-specific" is accurate but abstract; "applies to this
+   * programme only" tells them the requirement does not follow them elsewhere.
+   */
+  applicability: {
+    route_wide: 'Applies to this whole route',
+    origin_specific: 'Applies to applicants from this country',
+    application_channel: 'Depends on the application channel',
+    institution: 'Applies to this university only',
+    programme: 'Applies to this programme only',
+    intake: 'Depends on the intake',
+  } satisfies Record<FieldApplicability, string>,
+
+  /** Silence is not a claim of universality, and must not read like one. */
+  applicabilityUnknown: 'Scope not stated',
+  applicabilityLabel: 'Applies to',
 
   sourceClass: {
     official: 'Official source',

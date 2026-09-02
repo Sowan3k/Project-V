@@ -335,7 +335,15 @@ passport summary, official-vs-community separation (VR-14).
 **Exit criteria:** invariant tests 9–17 pass; a `community_submission` field is visually
 distinct from an `official` one; no badge derives from absence of reports.
 
-**FRs:** FR-10, FR-11, FR-33, FR-34, FR-49, FR-52, FR-53, FR-54, FR-62, FR-64, FR-65, FR-66, FR-67, FR-70, FR-74
+**FRs:** FR-10, FR-11, FR-33, FR-34, FR-49, FR-52, FR-53, FR-54, FR-62, FR-64, FR-65, FR-66,
+FR-67, FR-70, FR-74, FR-81
+
+**Note on FR-81 (information applicability).** The data half landed ahead of this phase as
+Amendment 001 — an approved requirements change, since Germany research showed source class
+alone cannot tell a reader whether a claim is route-wide or applies to one programme. Phase 6
+owns rendering it *alongside* source and freshness without implying that programme-specific
+information applies universally. A minimal honest rendering already exists on the step-field
+list so the read path does not misrepresent its own data in the meantime.
 
 ---
 

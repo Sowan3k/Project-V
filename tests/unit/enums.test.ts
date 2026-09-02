@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   CHALLENGE_REASONS,
+  FIELD_APPLICABILITIES,
   ROUTE_MECHANISMS,
   STEP_CATEGORIES,
   STEP_EDGE_KINDS,
@@ -69,6 +70,27 @@ describe('domain vocabulary matches the requirements baseline', () => {
     expect(overlap).toEqual([])
   })
 
+  it('has 6 applicability dimensions (FR-81, D-47)', () => {
+    expect(FIELD_APPLICABILITIES).toEqual([
+      'route_wide',
+      'origin_specific',
+      'application_channel',
+      'institution',
+      'programme',
+      'intake',
+    ])
+  })
+
+  it('keeps applicability and source class as separate vocabularies (FR-81)', () => {
+    // Source class says who asserts a fact; applicability says whom it applies to. Every
+    // combination occurs, so neither can be derived from the other and they must not share
+    // any value that would let one be mistaken for the other.
+    const overlap = FIELD_APPLICABILITIES.filter((a) =>
+      (SOURCE_CLASSES as readonly string[]).includes(a),
+    )
+    expect(overlap).toEqual([])
+  })
+
   it('keeps challenge and report as separate vocabularies (CLAUDE.md §5)', () => {
     // A challenge means "this may be wrong". A report means "this may be dangerous".
     // Sharing a reason list would collapse that distinction.
@@ -79,6 +101,7 @@ describe('domain vocabulary matches the requirements baseline', () => {
   it('registers every exported enum in DOMAIN_ENUMS', () => {
     expect(Object.values(DOMAIN_ENUMS)).toEqual(
       expect.arrayContaining([
+        FIELD_APPLICABILITIES,
         STUDY_LEVELS,
         ROUTE_MECHANISMS,
         STEP_EDGE_KINDS,
@@ -92,6 +115,6 @@ describe('domain vocabulary matches the requirements baseline', () => {
         REPORT_REASONS,
       ]),
     )
-    expect(Object.keys(DOMAIN_ENUMS)).toHaveLength(11)
+    expect(Object.keys(DOMAIN_ENUMS)).toHaveLength(12)
   })
 })

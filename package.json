@@ -22,7 +22,7 @@
     "prisma:enums": "tsx scripts/generate-prisma-enums.ts",
     "prisma:generate": "prisma generate",
     "db:migrate": "dotenv -e .env.local -- prisma migrate dev",
-    "db:deploy": "dotenv -e .env.local -- prisma migrate deploy",
+    "db:deploy": "dotenv -e .env.local -- node scripts/db/wake.mjs --unpooled && dotenv -e .env.local -- prisma migrate deploy",
     "db:status": "dotenv -e .env.local -- prisma migrate status",
     "db:validate": "dotenv -e .env.local -- prisma validate",
     "db:objects": "dotenv -e .env.local -- node scripts/db-objects.mjs",
@@ -30,7 +30,8 @@
     "postinstall": "prisma generate",
     "renderer:gallery": "tsx --tsconfig tsconfig.scripts.json scripts/renderer/gallery.tsx",
     "renderer:shoot": "node scripts/renderer/shoot.mjs",
-    "fixture:germany": "dotenv -e .env.test.local -- tsx scripts/fixtures/germany-rwth-direct.ts"
+    "fixture:germany": "dotenv -e .env.test.local -- tsx scripts/fixtures/germany-rwth-direct.ts",
+    "db:wake": "dotenv -e .env.local -- node scripts/db/wake.mjs"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",

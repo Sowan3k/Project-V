@@ -66,6 +66,40 @@ export const LINK_TRUST_CLASSES = ['trusted', 'community_submitted', 'quarantine
 export type LinkTrustClass = (typeof LINK_TRUST_CLASSES)[number]
 
 /**
+ * How widely a claim applies — FR-81, D-47.
+ *
+ * Separate from `SourceClass` and deliberately so: source class says **who asserts** a fact,
+ * applicability says **whom it applies to**. Every combination occurs — an official fact can be
+ * route-wide (a blocked-account amount) or apply to a single programme (a GRE percentile), and
+ * both are equally official.
+ *
+ * Established by Bangladesh → Germany research: presented side by side with no applicability,
+ * "€11,904 blocked account" and "GRE required" read as if Germany demanded both. It demands one.
+ *
+ * A claim may carry more than one of these — a deadline can be both programme-specific and
+ * intake-specific — so this is stored as a set, not a single value.
+ *
+ * These are labels, not rules. Nothing here evaluates whether a fact applies to a given reader;
+ * it states the dimension along which the fact varies, so the reader can see what follows them
+ * if they change university, channel or intake.
+ */
+export const FIELD_APPLICABILITIES = [
+  /** True for everyone on this route, whatever they choose within it. */
+  'route_wide',
+  /** Depends on the applicant's origin country — typically mission or embassy rules. */
+  'origin_specific',
+  /** Depends on which application channel is used, e.g. uni-assist versus direct. */
+  'application_channel',
+  /** Depends on the university. */
+  'institution',
+  /** Depends on the individual programme. */
+  'programme',
+  /** Depends on the intake or semester. */
+  'intake',
+] as const
+export type FieldApplicability = (typeof FIELD_APPLICABILITIES)[number]
+
+/**
  * Challenge reasons — REQUIREMENTS.md §17.4.
  * A challenge says "this may be wrong". Distinct from a report (CLAUDE.md §5).
  */
@@ -167,6 +201,7 @@ export const SourceClass = valueMap(SOURCE_CLASSES)
 export const RouteLifecycleState = valueMap(ROUTE_LIFECYCLE_STATES)
 export const ChangeSeverity = valueMap(CHANGE_SEVERITIES)
 export const LinkTrustClass = valueMap(LINK_TRUST_CLASSES)
+export const FieldApplicability = valueMap(FIELD_APPLICABILITIES)
 export const ChallengeReason = valueMap(CHALLENGE_REASONS)
 export const ReportReason = valueMap(REPORT_REASONS)
 
@@ -184,6 +219,7 @@ export const DOMAIN_ENUMS = {
   RouteLifecycleState: ROUTE_LIFECYCLE_STATES,
   ChangeSeverity: CHANGE_SEVERITIES,
   LinkTrustClass: LINK_TRUST_CLASSES,
+  FieldApplicability: FIELD_APPLICABILITIES,
   ChallengeReason: CHALLENGE_REASONS,
   ReportReason: REPORT_REASONS,
 } as const satisfies Record<string, readonly string[]>

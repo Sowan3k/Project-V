@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 
 import {
+  FieldApplicability,
   FieldCategory,
   SourceClass,
   StepCategory,
@@ -27,10 +28,13 @@ import {
  * Source rules followed (content/README.md): official sources only, no blogs, no agencies, no
  * mockup values. Community confirmations are zero and there is no code here that could set one.
  *
- * Applicability is carried **in the field text** because the model has no column for it. That is
- * the subject of content/CHANGE-PROPOSAL-001-field-applicability.md, and this fixture is the
- * evidence for it: read the fields below and notice how much work the parenthetical scope notes
- * are doing, and how easily a contributor could omit one.
+ * Applicability is a typed set now (FR-81, Amendment 001), not prose. Compare against the
+ * previous version of this file: every field began with a shouted scope prefix — "RWTH M.Sc.
+ * Data Science ONLY:", "ALL study visas from Bangladesh:" — that a contributor could simply
+ * forget, with nothing to catch it. Those prefixes are gone; the scope is data.
+ *
+ * The application-deadline field carries three dimensions at once (institution, programme,
+ * intake), which is precisely why a single-value column would not have been enough.
  *
  * Run: npm run fixture:germany
  */
@@ -42,7 +46,7 @@ import {
  * an earlier load stays forever. Bump this when the fixture's content changes, exactly as a
  * migration is added rather than rewritten.
  */
-const SLUG = 'bd-de-masters-rwth-direct-v2'
+const SLUG = 'bd-de-masters-rwth-direct-v3'
 const actor = { id: null, system: true }
 const CHECKED = 'checked 2026-09-02'
 
@@ -106,6 +110,10 @@ async function main(): Promise<void> {
     '../../src/server/revisions/service'
   )
   const { getRouteBySlug } = await import('../../src/server/routes/read')
+
+  // Wake the compute through the client the service will actually use. assertDisposable
+  // opened its own connection; this one is separate and can find the branch asleep again.
+  await withRetry(() => getRouteBySlug('__warmup__'))
 
   if (await getRouteBySlug(SLUG)) {
     process.stdout.write(`fixture already present: ${SLUG}\n`)
@@ -197,6 +205,7 @@ async function main(): Promise<void> {
     category: (typeof FieldCategory)[keyof typeof FieldCategory],
     valueText: string,
     sourceClass: (typeof SourceClass)[keyof typeof SourceClass],
+    applicability: readonly (typeof FieldApplicability)[keyof typeof FieldApplicability][],
     sourceUrl: string | null,
     sourceNote: string,
   ): Promise<void> => {
@@ -206,6 +215,7 @@ async function main(): Promise<void> {
       category,
       valueText,
       sourceClass,
+      applicability,
       sourceUrl,
       sourceNote: `${sourceNote} — ${CHECKED}`,
       reason: 'fixture',
@@ -216,48 +226,55 @@ async function main(): Promise<void> {
   await field(
     eligibility,
     FieldCategory.requirement,
-    'RWTH M.Sc. Data Science ONLY: a first degree in Computer Science, Mathematics, Physics or a closely related area.',
+    'A first degree in Computer Science, Mathematics, Physics or a closely related area.',
     SourceClass.official,
+    [FieldApplicability.institution, FieldApplicability.programme],
     'https://sc.informatik.rwth-aachen.de/en/studium/master/master-data-science/application-for-admission/',
     'RWTH Aachen, Studiencenter Informatik. Programme-specific — other programmes differ',
   )
   await field(
     eligibility,
     FieldCategory.requirement,
-    'RWTH M.Sc. Data Science ONLY, computer-science profile: Programming 8 CP, Data Structures and Algorithms 7, Databases 6, Software Engineering 6, Computer Architecture 6, Operating Systems 6, Networks/Security 6, Theory of Computation 12, Logic 6, Discrete Structures 6, Calculus 8, Linear Algebra 6, Stochastics 6.',
+    'Computer-science profile: Programming 8 CP, Data Structures and Algorithms 7, Databases 6, Software Engineering 6, Computer Architecture 6, Operating Systems 6, Networks/Security 6, Theory of Computation 12, Logic 6, Discrete Structures 6, Calculus 8, Linear Algebra 6, Stochastics 6. Mathematics and physics profiles differ.',
     SourceClass.official,
+    [FieldApplicability.institution, FieldApplicability.programme],
     'https://sc.informatik.rwth-aachen.de/en/studium/master/master-data-science/application-for-admission/',
     'RWTH Aachen. Programme-specific credit prerequisites; mathematics and physics profiles differ',
   )
   await field(
     gre,
     FieldCategory.requirement,
-    'RWTH M.Sc. Data Science ONLY: GRE General Test required — quantitative above the 75th percentile, verbal above the 15th, analytical writing 3.5 or higher. Institution code 8504. EU/EEA citizens and holders of German secondary education are exempt; a Bangladeshi applicant is not.',
+    'GRE General Test required — quantitative above the 75th percentile, verbal above the 15th, analytical writing 3.5 or higher. Institution code 8504. EU/EEA citizens and holders of German secondary education are exempt; a Bangladeshi applicant is not.',
     SourceClass.official,
+    [FieldApplicability.institution, FieldApplicability.programme],
     'https://sc.informatik.rwth-aachen.de/en/studium/master/master-data-science/application-for-admission/',
     'RWTH Aachen. Programme-specific. NOT a German or Germany-wide requirement',
   )
   await field(
     language,
     FieldCategory.requirement,
-    'RWTH M.Sc. Data Science ONLY: an English certificate proving fluency, submitted at ENROLMENT rather than at application. Medium of Instruction (MOI) certificates are in general NOT accepted — relevant because many Bangladeshi degrees are English-medium and evidenced that way. UNVERIFIED: the numeric IELTS/TOEFL threshold is on a separate RWTH language page that has not been read, so no score is stated here.',
+    'An English certificate proving fluency, submitted at ENROLMENT rather than at application. Medium of Instruction (MOI) certificates are in general NOT accepted — relevant because many Bangladeshi degrees are English-medium and evidenced that way. UNVERIFIED: the numeric IELTS/TOEFL threshold is on a separate RWTH language page that has not been read, so no score is stated here.',
     SourceClass.official,
+    [FieldApplicability.institution, FieldApplicability.programme],
     'https://sc.informatik.rwth-aachen.de/en/studium/master/master-data-science/application-for-admission/',
     'RWTH Aachen. Programme-specific, and narrower than the visa language rule',
   )
   await field(
     apply,
     FieldCategory.deadline,
-    'RWTH, open-admission Master’s, non-EU/EEA applicants, winter semester: 1 MARCH. EU/EEA applicants have until 15 July, and restricted-admission (NC) programmes have 15 July. A Bangladeshi applicant therefore applies in March, not July. NEEDS-HUMAN: verified for a current cycle; not verified for Winter Semester 2027/28 specifically.',
+    'Open-admission Master’s, non-EU/EEA applicants, winter semester: 1 MARCH. EU/EEA applicants have until 15 July, and restricted-admission (NC) programmes have 15 July. A Bangladeshi applicant therefore applies in March, not July. NEEDS-HUMAN: verified for a current cycle; not verified for Winter Semester 2027/28 specifically.',
     SourceClass.official,
+    // Three dimensions at once. This is the case a single-value column could not express.
+    [FieldApplicability.institution, FieldApplicability.programme, FieldApplicability.intake],
     'https://www.rwth-aachen.de/cms/root/studium/vor-dem-studium/bewerbung-um-einen-studienplatz/master-bewerbung/~dqml/bewerbung-master-internationale/?lidx=1',
     'RWTH Aachen. Institution × admission type × applicant status',
   )
   await field(
     apply,
     FieldCategory.link,
-    'RWTH ONLY: applications are submitted through RWTH’s own portal at online.rwth-aachen.de. uni-assist is NOT used by RWTH. No physical documents are posted.',
+    'Applications are submitted through RWTH’s own portal at online.rwth-aachen.de. uni-assist is NOT used by RWTH. No physical documents are posted.',
     SourceClass.official,
+    [FieldApplicability.institution, FieldApplicability.application_channel],
     'https://www.rwth-aachen.de/cms/root/studium/vor-dem-studium/bewerbung-um-einen-studienplatz/master-bewerbung/~dqml/bewerbung-master-internationale/?lidx=1',
     'RWTH Aachen. Institution-specific — most other German universities use uni-assist',
   )
@@ -276,10 +293,11 @@ async function main(): Promise<void> {
     stepId: finance,
     category: FieldCategory.cost,
     valueText:
-      'ALL German student visas from Bangladesh: blocked account (Sperrkonto) with a minimum balance of €11,208 and a monthly disposal limit of €934.',
+      'Blocked account (Sperrkonto) with a minimum balance of €11,208 and a monthly disposal limit of €934.',
     valueAmount: 11208,
     valueCurrency: 'EUR',
     sourceClass: SourceClass.official,
+    applicability: [FieldApplicability.origin_specific],
     sourceUrl: 'https://www.auswaertiges-amt.de/en/sperrkonto-388600',
     sourceNote: `German mission sources: increased to €934/month from 01.10.2022, up from €861/month — ${CHECKED}`,
     effectiveFrom: new Date('2022-10-01T00:00:00.000Z'),
@@ -290,10 +308,11 @@ async function main(): Promise<void> {
     actor,
     fieldId: blockedAccount.fieldId,
     valueText:
-      'ALL German student visas from Bangladesh: blocked account (Sperrkonto) with a minimum balance of €11,904 and a monthly disposal limit of €992. This applies whichever university you attend.',
+      'Blocked account (Sperrkonto) with a minimum balance of €11,904 and a monthly disposal limit of €992. This applies whichever university you attend.',
     valueAmount: 11904,
     valueCurrency: 'EUR',
     sourceClass: SourceClass.official,
+    applicability: [FieldApplicability.origin_specific],
     sourceUrl: 'https://dhaka.diplo.de/bd-en/service/2685884-2685884',
     sourceNote: `German Embassy Dhaka, page dated 04.06.2026 — ${CHECKED}`,
     effectiveFrom: new Date('2024-09-01T00:00:00.000Z'),
@@ -303,16 +322,18 @@ async function main(): Promise<void> {
   await field(
     finance,
     FieldCategory.procedure,
-    'ALL German student visas: financing may also be shown through parents’ income and circumstances, a declaration of commitment under §§66–68 AufenthG, or an annually renewable bank guarantee at a German bank.',
+    'Financing may also be shown through parents’ income and circumstances, a declaration of commitment under §§66–68 AufenthG, or an annually renewable bank guarantee at a German bank.',
     SourceClass.official,
+    [FieldApplicability.route_wide],
     'https://www.auswaertiges-amt.de/en/visa-service/visabestimmungen-node/sperrkonto-seite',
     'Federal Foreign Office. Germany-wide alternatives to a blocked account',
   )
   await field(
     visaSubmit,
     FieldCategory.procedure,
-    'ALL study visas from Bangladesh: register for an appointment through the Consular Services Portal first. Master’s applicants submit documents through VFS; Bachelor’s applicants submit directly to the Embassy.',
+    'Register for an appointment through the Consular Services Portal first. Master’s applicants submit documents through VFS; Bachelor’s applicants submit directly to the Embassy.',
     SourceClass.official,
+    [FieldApplicability.origin_specific],
     'https://dhaka.diplo.de/bd-en/service/2685884-2685884',
     'German Embassy Dhaka. Bangladesh-specific routing, differs by degree level',
   )
@@ -321,6 +342,7 @@ async function main(): Promise<void> {
     FieldCategory.duration,
     'OFFICIAL PROCESSING GUIDANCE: “The minimum time to process your visa is approx. 4 weeks.” Processing starts when the application reaches the mission, not VFS, and does not start until the application is complete.',
     SourceClass.official,
+    [FieldApplicability.origin_specific],
     'https://dhaka.diplo.de/bd-en/service/2690988-2690988',
     'German Embassy Dhaka, page dated 15.04.2025. This is processing time, NOT total waiting time',
   )
@@ -329,14 +351,16 @@ async function main(): Promise<void> {
     FieldCategory.warning,
     'ACTUAL WAITING TIME: the Embassy states current waiting times “exceed 27 months”. This is the queue BEFORE processing begins, and it is the single most consequential fact on this route — planning around the 4-week processing figure would miss the intake by roughly two years. NEEDS-HUMAN: volatile, re-check before relying on it.',
     SourceClass.official,
+    [FieldApplicability.origin_specific],
     'https://dhaka.diplo.de/bd-en/service/2685884-2685884',
     'German Embassy Dhaka, page dated 04.06.2026. Bangladesh-specific',
   )
   await field(
     visaPrep,
     FieldCategory.requirement,
-    'ALL study visas from Bangladesh, English-taught programmes: TOEFL or IELTS, unless the Bachelor’s was completed in Australia, the UK or the US. This is the VISA requirement and is separate from — and sometimes weaker than — the programme’s own admission requirement.',
+    'English-taught programmes: TOEFL or IELTS, unless the Bachelor’s was completed in Australia, the UK or the US. This is the VISA requirement and is separate from — and sometimes weaker than — the programme’s own admission requirement.',
     SourceClass.official,
+    [FieldApplicability.origin_specific],
     'https://dhaka.diplo.de/bd-en/service/2685884-2685884',
     'German Embassy Dhaka. Bangladesh-specific, set by the Embassy not the university',
   )
@@ -345,6 +369,7 @@ async function main(): Promise<void> {
     FieldCategory.warning,
     'APS does NOT apply to Bangladeshi applicants. APS offices exist for China, Vietnam and India only, and APS appears nowhere in the German Embassy Dhaka study-visa requirements. If a guide or agency tells you otherwise, check the Embassy page.',
     SourceClass.official,
+    [FieldApplicability.origin_specific],
     'https://dhaka.diplo.de/bd-en/service/2685884-2685884',
     'German Embassy Dhaka requirements list; APS scope per uni-assist and APS India',
   )
@@ -355,24 +380,27 @@ async function main(): Promise<void> {
   await field(
     documents,
     FieldCategory.document,
-    'IF YOUR UNIVERSITY USES UNI-ASSIST (RWTH does not): uni-assist requires from Bangladeshi applicants a school leaving certificate with an overview of subjects and grades (X+II); the university diploma with an overview of subjects and grades; and your university’s grading system including the minimum passing grade for award of degree.',
+    'Where a university uses uni-assist (RWTH does not): uni-assist requires from Bangladeshi applicants a school leaving certificate with an overview of subjects and grades (X+II); the university diploma with an overview of subjects and grades; and your university’s grading system including the minimum passing grade for award of degree.',
     SourceClass.official,
+    [FieldApplicability.application_channel, FieldApplicability.origin_specific],
     'https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/bd/',
     'uni-assist country information for Bangladesh. Channel-specific, not applicable on this route',
   )
   await field(
     documents,
     FieldCategory.document,
-    'IF YOUR UNIVERSITY USES UNI-ASSIST: the minimum CGPA for the award of your degree must be evidenced. If it is not printed on your transcript, submit an official document from your university, or link to a university page stating it.',
+    'Where a university uses uni-assist: the minimum CGPA for the award of your degree must be evidenced. If it is not printed on your transcript, submit an official document from your university, or link to a university page stating it.',
     SourceClass.official,
+    [FieldApplicability.application_channel, FieldApplicability.origin_specific],
     'https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/bd/',
     'uni-assist. Channel-specific',
   )
   await field(
     documents,
     FieldCategory.document,
-    'RWTH ONLY: degree diploma and transcript; module descriptions matching the admission requirements, with a cover sheet; GRE results; CV in list form; certified translations if documents are not in German or English. Uploaded to the portal — nothing is posted.',
+    'Degree diploma and transcript; module descriptions matching the admission requirements, with a cover sheet; GRE results; CV in list form; certified translations if documents are not in German or English. Uploaded to the portal — nothing is posted.',
     SourceClass.official,
+    [FieldApplicability.institution],
     'https://www.rwth-aachen.de/cms/root/studium/vor-dem-studium/bewerbung-um-einen-studienplatz/master-bewerbung/~dqml/bewerbung-master-internationale/?lidx=1',
     'RWTH Aachen. Institution-specific document list',
   )
@@ -382,6 +410,7 @@ async function main(): Promise<void> {
     FieldCategory.warning,
     'UNVERIFIED: programme shortlisting sources, degree-recognition handling (anabin/ZAB), application fees, admission-decision handling and post-arrival formalities have not been researched. This route is a development fixture and is deliberately incomplete rather than filled in with plausible guesses.',
     SourceClass.community_submission,
+    [],
     null,
     'Not researched. Recorded as an explicit gap',
   )

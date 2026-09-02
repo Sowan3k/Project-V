@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 
 import { ROUTE_MECHANISMS, STUDY_LEVELS } from '@/domain/enums'
 import type { RouteMechanism, StudyLevel } from '@/domain/enums'
+import { GridRegion, PageCanvas, PageGrid } from '@/components/layout'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { RouteRibbon } from '@/components/route-ribbon'
@@ -54,11 +55,13 @@ export default async function RouteSearchPage({
   const [routes, options] = await Promise.all([searchRoutes(filters), availableFilters()])
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-5 py-10">
+    <PageCanvas className="py-10">
       <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{t.search.title}</h1>
       <p className="mt-2 text-sm text-ink-700">{t.search.lede}</p>
 
-      <form method="get" className="mt-6 grid gap-3 sm:grid-cols-2">
+      <PageGrid className="mt-8">
+        <GridRegion span={4}>
+      <form method="get" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 lg:sticky lg:top-6">
         <label className="text-sm">
           <span className="block text-ink-700">{t.search.origin}</span>
           <select
@@ -123,7 +126,7 @@ export default async function RouteSearchPage({
           </select>
         </label>
 
-        <div className="flex items-center gap-3 sm:col-span-2">
+        <div className="flex items-center gap-3 sm:col-span-2 lg:col-span-1">
           <button
             type="submit"
             className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-900"
@@ -138,7 +141,10 @@ export default async function RouteSearchPage({
         </div>
       </form>
 
-      <p className="mt-8 text-sm text-ink-500" role="status">
+        </GridRegion>
+
+        <GridRegion span={8}>
+      <p className="text-sm text-ink-500" role="status">
         {t.search.resultCount(routes.length)}
       </p>
 
@@ -158,6 +164,8 @@ export default async function RouteSearchPage({
           ))}
         </ul>
       )}
-    </div>
+        </GridRegion>
+      </PageGrid>
+    </PageCanvas>
   )
 }

@@ -85,6 +85,15 @@ enum LinkTrustClass {
   quarantined
 }
 
+enum FieldApplicability {
+  route_wide
+  origin_specific
+  application_channel
+  institution
+  programme
+  intake
+}
+
 enum ChallengeReason {
   obsolete
   incorrect

@@ -1,4 +1,10 @@
-import type { FieldCategory, RouteMechanism, SourceClass, StudyLevel } from '@/domain/enums'
+import type {
+  FieldApplicability,
+  FieldCategory,
+  RouteMechanism,
+  SourceClass,
+  StudyLevel,
+} from '@/domain/enums'
 import { StepCategory, StepEdgeKind } from '@/domain/enums'
 import { expectedFlyWindow, type FlyWindow } from '@/domain/fly-window'
 import type { RouteGraph } from '@/domain/graph/types'
@@ -147,6 +153,12 @@ export interface FieldView {
    * Phase 6; this is the honest minimum without which the page would misrepresent its data.
    */
   readonly sourceClass: SourceClass
+  /**
+   * How widely this claim applies (FR-81). Empty means the contributor did not state it —
+   * rendered as "scope not stated", never as "applies everywhere", because silence is not a
+   * claim of universality.
+   */
+  readonly applicability: readonly FieldApplicability[]
   readonly sourceUrl: string | null
   readonly sourceNote: string | null
   readonly lastConfirmedAt: Date | null
@@ -231,6 +243,7 @@ export async function getStepFields(stepId: string): Promise<readonly FieldView[
         valueDate: current.valueDate,
         valueDurationDays: current.valueDurationDays,
         sourceClass: current.sourceClass,
+        applicability: current.applicability,
         sourceUrl: current.sourceUrl,
         sourceNote: current.sourceNote,
         lastConfirmedAt: field.lastConfirmedAt,

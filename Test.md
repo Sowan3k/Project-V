@@ -50,6 +50,12 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-03 | **Amendment 001 applied to the frozen baseline** | Edited `word/document.xml` in the DOCX, then verified: valid zip, well-formed XML, text extraction | ✅ 81 FR ids and 47 D ids in the DOCX; 81 FR rows and 47 D rows in the regenerated `REQUIREMENTS.md` |
+| 2026-09-03 | **Applicability migration rehearsed against real data** | Branch from `test` (which holds the Germany fixture), then `migrate deploy` | ✅ **421 field revisions preserved**, column added, zero DROP statements |
+| 2026-09-03 | Applicability migration applied to `test` and `production` | `prisma migrate deploy` | ✅ Column is `ARRAY`, `FieldApplicability` enum type present, existing revisions intact |
+| 2026-09-03 | **The modelling gap is closed, demonstrably** | Germany fixture reloaded and inspected | ✅ Both facts are `official`, so source class cannot separate them — applicability does: GRE is `[institution + programme]`, blocked account is `[origin_specific]` |
+| 2026-09-03 | Multi-dimensional applicability works | Same inspection | ✅ 17 of 18 revisions state applicability; **8 carry more than one dimension**; the RWTH deadline carries three — `institution + programme + intake` |
+| 2026-09-03 | ⚠️ OF-6 misdiagnosed a **second** time | Neon dashboard screenshot + quoting inspection | ❗ Compute is 1.38/100 CU-hrs — never a quota issue. And most "unreachable" results came from my own scripts reading **quoted** values out of `.env.local`. See §12 |
 | 2026-09-02 | **Germany route research pass 2** — one real programme | RWTH Aachen M.Sc. Data Science, official university and programme pages | ✅ Channel, deadlines, prerequisites, GRE, language and documents verified. Deadline for non-EU/EEA is **1 March**, not 15 July |
 | 2026-09-02 | **Development fixture loads and models a real journey** | `npm run fixture:germany` against the test branch | ✅ 13 steps, 17 fields, **1136 days modelled vs 1284 summed** — overlap respected on real data |
 | 2026-09-02 | Fixture refuses any database not marked disposable | `assertDisposable` against the `platform_meta` marker | ✅ Production cannot receive a development fixture |
@@ -599,6 +605,34 @@ must not be recorded as one.
 
 Three branches remain: `production`, `test`, and `vercel-dev` (created and managed by the
 Neon–Vercel integration; deliberately left alone).
+
+### A second wrong diagnosis, on 2026-09-03
+
+The owner's Neon dashboard settled the quota question outright: **1.38 of 100 CU-hrs**. There
+was never any exhaustion, and the branch deletions had no bearing on it.
+
+Then a worse discovery. **`neon deploy` writes `.env.local` with quoted values**:
+
+```
+DATABASE_URL="postgresql://…"
+```
+
+Every diagnostic script here that read a URL with `grep … | cut -d= -f2-` therefore passed the
+**quotes as part of the URL**, producing an invalid host and the error message
+`Can't reach database server` — identical to a cold start. `.env.test.local` was written by
+hand without quotes, which is exactly why the `test` branch migrated on attempt 3 while
+`production` failed 25 times in a row.
+
+**Two distinct faults produce the same message**, and one of them cannot be fixed by retrying:
+
+| Fault | Signature | Fix |
+|---|---|---|
+| Scale-to-zero cold start | Fails ~10s, then succeeds after ~25-30s | Retry |
+| A quoted value read from a .env file | Fails identically, **forever** | Strip the quotes |
+
+Anything that reads a connection string from a file must strip surrounding quotes and check
+the result still starts with `postgres`. A retry loop that never succeeds is a signal to stop
+retrying and read the input, not to raise the attempt count.
 
 ### The part that matters for real users
 

@@ -758,6 +758,7 @@ The following requirements translate the concept into observable product behavio
 | FR-78 | Public-good neutrality | No paid actor shall be able to purchase confidence, official-source classification, trusted status or route prominence. |
 | FR-79 | Content-scope discipline | The first release shall remain focused on navigation/tracking rather than becoming a consultancy, application manager, document vault or general social network. |
 | FR-80 | Requirements traceability | First-release product behavior shall be traceable to this final baseline; materially new features shall be treated as requirement changes. |
+| FR-81 | Information applicability | Each information element shall record the applicability of its claim — such as route-wide, origin-specific, application-channel-specific, institution-specific, programme-specific or intake-specific — separately from its source classification, and shall support more than one applicability where a claim depends on more than one dimension. Information whose scope is narrower than the route shall not be presented in a way that implies it applies universally. |
 
 ## 30. Business Rules
 
@@ -1024,6 +1025,7 @@ General advertising only if needed to offset operating costs, without influencin
 | D-44 | Core route knowledge will be maintained natively by the website/community rather than depending on external study-data APIs. | Agreed |
 | D-45 | The platform should not become a general social feed or unsolicited private-messaging network. | Agreed |
 | D-46 | The first release concept is frozen by this document; new material features require explicit requirements change. | Agreed |
+| D-47 | Applicability is recorded on each field revision rather than as an unversioned property of the field, because the scope of a claim is part of the claim and can be corrected like any other part of it. It remains separate from source class: source class states who asserts a fact, applicability states whom it applies to. | Agreed |
 
 ## 38. Final Concept Statement
 
@@ -1393,3 +1395,11 @@ If this project must be explained quickly to a student, contributor, volunteer, 
 > Why people contribute Students who actually experience a step often discover outdated or missing information. They can immediately confirm or update it so the next person does not repeat the same confusion.
 
 > What it does not do It does not apply to universities or visas for users, store sensitive application documents, guarantee outcomes, verify personal progress, or sell higher placement/trust to agents.
+
+## Amendment 001 — Information applicability
+
+Approved 3 September 2026. Raised from Bangladesh → Germany seed-content research, which established that source class alone cannot tell a reader whether a claim is route-wide, channel-specific, institution-specific, programme-specific, intake-specific or origin-specific.
+
+The case that exposed it: a blocked-account requirement of €11,904 applies to every German student visa applicant from Bangladesh, while a GRE percentile requirement applies to one programme at one university. Both are official. Presented side by side with no applicability information, the second reads as a requirement of Germany.
+
+This amendment adds FR-81 and decision register entry D-47. No existing requirement is changed, withdrawn or renumbered.

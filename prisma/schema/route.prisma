@@ -277,8 +277,24 @@ model FieldRevision {
   valueDate         DateTime?
   valueDurationDays Int?
 
+  /// How widely this claim applies (FR-81, D-47).
+  ///
+  /// A SET, because a claim can vary along more than one dimension at once — a deadline that
+  /// is both programme-specific and intake-specific is a real case from Germany research, not
+  /// a hypothetical. Empty means "not stated", which is honest for a contributor who does not
+  /// know and for every row written before this column existed.
+  ///
+  /// On the revision rather than on Field, because the scope of a claim is part of the claim:
+  /// realising a fact is programme-specific rather than country-wide is a correction, and
+  /// corrections belong in history like any other (D-47).
+  ///
+  /// Deliberately NOT a rules engine. These are labels stating the dimension along which a
+  /// fact varies; nothing evaluates them against a particular reader.
+  applicability FieldApplicability[]
+
   /// Official and community claims are different claim types and never share a field
-  /// (FR-54, BR-07, BR-22, D-22, invariant 11).
+  /// (FR-54, BR-07, BR-22, D-22, invariant 11). Orthogonal to applicability above: source
+  /// class is who asserts the fact, applicability is whom it applies to.
   sourceClass SourceClass
   sourceUrl   String?
   /// Free-text attribution for a source that is not a URL, e.g. a named office.

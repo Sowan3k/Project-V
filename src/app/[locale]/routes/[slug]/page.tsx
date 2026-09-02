@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { FlyWindowNote, rendererStrings } from '@/components/route-shared'
+import { GridRegion, PageGrid } from '@/components/layout'
+import { RouteContext } from '@/components/route-context'
+import { rendererStrings } from '@/components/route-shared'
 import { StepFields } from '@/components/step-fields'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
@@ -9,15 +11,15 @@ import { Road } from '@/renderer'
 import { getRouteBySlug, getStepFields } from '@/server/routes/read'
 
 /**
- * The road — FR-03, FR-06, FR-09, VR-03, VR-04, VR-05.
+ * The route overview — FR-03, FR-06, FR-09, VR-03, VR-04, VR-05.
  *
- * The ribbon on the search page and this road are drawn by the same renderer from the same
- * graph, so opening a route unfolds the same object rather than navigating to a disconnected
- * detail page (D-33, invariant 25).
+ * One coherent, vertically scrollable journey. The ribbon in search results and this road are
+ * drawn by the same renderer from the same graph, so opening a route unfolds the same object
+ * rather than navigating to a disconnected detail page (D-33, invariant 25).
  *
- * A step expands via `?step=<id>` rather than client state: the expansion is server-rendered,
- * deep-linkable and works without JavaScript, and "the user should be able to collapse the
- * detail and return to the visual journey at any time" (§8.3) is then just a link.
+ * A step expands in place via `?step=<id>` rather than client state, so the expansion is
+ * deep-linkable, shareable and works with JavaScript disabled — and the road stays on screen
+ * above it, so inspecting a step never feels like leaving the route (§8.3).
  *
  * Anonymous throughout. No session is read anywhere in this file.
  */
@@ -43,97 +45,82 @@ export default async function RoutePage({
   const fields = openStep ? await getStepFields(openStep.id) : []
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-5 py-10">
-      <Link href={`/${locale}/routes`} className="text-sm text-brand-700 hover:underline">
-        ← {t.route.backToSearch}
-      </Link>
-
-      <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink-900">{route.title}</h1>
-      <p className="mt-1 text-sm text-ink-500">
-        {route.originCountry} → {route.destinationCountry} · {t.studyLevel[route.studyLevel]}
-        {route.mechanism === null ? '' : ` · ${t.routeMechanism[route.mechanism]}`}
-        {route.intake === null ? '' : ` · ${route.intake}`}
-      </p>
-      {route.summary === null ? null : (
-        <p className="mt-3 text-base leading-7 text-ink-700">{route.summary}</p>
-      )}
-
-      <div className="mt-5 flex flex-wrap items-start gap-3">
-        <span className="rounded-full border border-hairline bg-surface px-3 py-1 text-xs text-ink-700">
-          {t.routeLifecycle[route.lifecycleState as keyof typeof t.routeLifecycle]}
-        </span>
-        <Link
-          href={`/${locale}/routes/${route.slug}/history`}
-          className="rounded-full border border-hairline bg-surface px-3 py-1 text-xs text-brand-700 hover:underline"
-        >
-          {t.route.viewHistory}
-        </Link>
-      </div>
-
-      <div className="mt-5 max-w-md">
-        <FlyWindowNote window={route.flyWindow} dictionary={t} />
-      </div>
-
-      <section className="mt-8">
+    <RouteContext route={route} dictionary={t} locale={locale} tab="overview">
+      <section>
         <h2 className="sr-only">{t.route.roadLabel}</h2>
         {/* Wide content scrolls in its own container; the page never scrolls sideways. */}
-        <div className="overflow-x-auto rounded-xl border border-hairline bg-surface p-3">
+        <div className="overflow-x-auto rounded-xl border border-hairline bg-surface p-4">
           <Road graph={route.graph} strings={rendererStrings(t)} />
         </div>
       </section>
 
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold text-ink-900">
-          {t.route.steps}{' '}
-          <span className="text-sm font-normal text-ink-500">
-            ({t.route.stepCount(route.stepCount)})
-          </span>
-        </h2>
+      <PageGrid className="mt-10">
+        <GridRegion span={5}>
+          <h2 className="text-lg font-semibold text-ink-900">
+            {t.route.steps}{' '}
+            <span className="text-sm font-normal text-ink-500">
+              ({t.route.stepCount(route.stepCount)})
+            </span>
+          </h2>
 
-        {route.steps.length === 0 ? (
-          <p className="mt-3 text-sm text-ink-700">{t.route.noSteps}</p>
-        ) : (
-          <ol className="mt-3 space-y-2">
-            {route.steps.map((step, index) => {
-              const isOpen = openStep?.id === step.id
-              const href = isOpen
-                ? `/${locale}/routes/${route.slug}`
-                : `/${locale}/routes/${route.slug}?step=${step.id}`
+          {route.steps.length === 0 ? (
+            <p className="mt-3 text-sm text-ink-700">{t.route.noSteps}</p>
+          ) : (
+            <ol className="mt-3 space-y-2">
+              {route.steps.map((step, index) => {
+                const isOpen = openStep?.id === step.id
+                const href = isOpen
+                  ? `/${locale}/routes/${route.slug}`
+                  : `/${locale}/routes/${route.slug}?step=${step.id}`
 
-              return (
-                <li
-                  key={step.id}
-                  id={`step-${step.id}`}
-                  className="rounded-xl border border-hairline bg-surface"
-                >
-                  <Link href={href} className="flex items-baseline gap-3 p-4" scroll={false}>
-                    <span className="text-xs text-ink-500">{index + 1}</span>
-                    <span className="flex-1">
-                      <span className="block font-medium text-ink-900">{step.label}</span>
-                      <span className="block text-xs text-ink-500">
-                        {t.stepCategory[step.category as keyof typeof t.stepCategory]}
-                        {step.typicalDurationDays === null
-                          ? ''
-                          : ` · ${t.route.duration}: ${t.route.days(step.typicalDurationDays)}`}
-                        {` · ${t.route.fieldCount(step.fieldCount)}`}
+                return (
+                  <li key={step.id}>
+                    <Link
+                      href={href}
+                      scroll={false}
+                      aria-current={isOpen ? 'true' : undefined}
+                      className={`flex items-baseline gap-3 rounded-xl border p-4 ${
+                        isOpen
+                          ? 'border-brand-500 bg-brand-500/5'
+                          : 'border-hairline bg-surface hover:border-ink-500/30'
+                      }`}
+                    >
+                      <span className="text-xs text-ink-500">{index + 1}</span>
+                      <span className="flex-1">
+                        <span className="block font-medium text-ink-900">{step.label}</span>
+                        <span className="block text-xs text-ink-500">
+                          {t.stepCategory[step.category as keyof typeof t.stepCategory]}
+                          {step.typicalDurationDays === null
+                            ? ''
+                            : ` · ${t.route.duration}: ${t.route.days(step.typicalDurationDays)}`}
+                          {` · ${t.route.fieldCount(step.fieldCount)}`}
+                        </span>
                       </span>
-                    </span>
-                    <span className="text-xs text-brand-700">
-                      {isOpen ? t.route.closeStep : t.route.openStep}
-                    </span>
-                  </Link>
+                      <span className="text-xs text-brand-700">
+                        {isOpen ? t.route.closeStep : t.route.openStep}
+                      </span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ol>
+          )}
+        </GridRegion>
 
-                  {isOpen ? (
-                    <div className="border-t border-hairline p-4">
-                      <StepFields step={step} fields={fields} dictionary={t} />
-                    </div>
-                  ) : null}
-                </li>
-              )
-            })}
-          </ol>
-        )}
-      </section>
-    </div>
+        {/* The selected step's detail sits beside the list on desktop and stacks below it on
+            a phone — so selecting a step never replaces the journey it belongs to. */}
+        <GridRegion span={7}>
+          {openStep === null ? (
+            <div className="rounded-xl border border-dashed border-hairline p-6 text-sm text-ink-500">
+              {t.route.selectAStep}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-hairline bg-surface p-4 lg:sticky lg:top-6">
+              <StepFields step={openStep} fields={fields} dictionary={t} />
+            </div>
+          )}
+        </GridRegion>
+      </PageGrid>
+    </RouteContext>
   )
 }

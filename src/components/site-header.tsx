@@ -1,3 +1,4 @@
+import { PageCanvas } from '@/components/layout'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 
 /**
@@ -7,14 +8,14 @@ import type { Dictionary } from '@/i18n/dictionaries/en'
 export function SiteHeader({ dictionary: t }: { dictionary: Dictionary }) {
   return (
     <header className="border-b border-hairline bg-surface">
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-baseline gap-x-3 gap-y-1 px-5 py-4">
+      <PageCanvas className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-4">
         <span lang="bn" className="text-lg font-semibold text-brand-900">
           {t.brand.nameBn}
         </span>
         <span className="text-sm font-medium tracking-wide text-ink-700 uppercase">
           {t.brand.nameEn}
         </span>
-      </div>
+      </PageCanvas>
     </header>
   )
 }

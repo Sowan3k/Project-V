@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { ContentColumn, GridRegion, PageCanvas, PageGrid } from '@/components/layout'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
 
@@ -24,14 +25,18 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   ]
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-5 py-14 sm:py-20">
+    <PageCanvas className="py-14 sm:py-20">
+      <PageGrid>
+        <GridRegion span={7}>
       <p lang="bn" className="text-2xl font-semibold text-brand-900">
         {t.landing.headlineBn}
       </p>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight text-balance text-ink-900 sm:text-4xl">
         {t.landing.headline}
       </h1>
-      <p className="mt-5 text-base leading-7 text-ink-700">{t.landing.subhead}</p>
+      <ContentColumn width="reading">
+        <p className="mt-5 text-base leading-7 text-ink-700">{t.landing.subhead}</p>
+      </ContentColumn>
 
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <Link
@@ -56,7 +61,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         ))}
       </ul>
 
-      <section id="how-it-works" className="mt-14 scroll-mt-8">
+        </GridRegion>
+
+        <GridRegion span={5}>
+      <section id="how-it-works" className="scroll-mt-8 lg:mt-2">
         <h2 className="text-lg font-semibold text-ink-900">{t.landing.howItWorks}</h2>
         <ol className="mt-4 space-y-4">
           {t.landing.steps.map((entry, index) => (
@@ -72,6 +80,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           ))}
         </ol>
       </section>
-    </div>
+        </GridRegion>
+      </PageGrid>
+    </PageCanvas>
   )
 }

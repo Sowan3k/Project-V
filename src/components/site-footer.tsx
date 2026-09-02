@@ -1,3 +1,4 @@
+import { PageCanvas } from '@/components/layout'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 
 /**
@@ -7,10 +8,10 @@ import type { Dictionary } from '@/i18n/dictionaries/en'
 export function SiteFooter({ dictionary: t }: { dictionary: Dictionary }) {
   return (
     <footer className="border-t border-hairline bg-surface">
-      <div className="mx-auto w-full max-w-5xl space-y-1 px-5 py-6 text-sm text-ink-500">
+      <PageCanvas className="space-y-1 py-6 text-sm text-ink-500">
         <p>{t.footer.publicGood}</p>
         <p>{t.footer.notAnAgency}</p>
-      </div>
+      </PageCanvas>
     </footer>
   )
 }

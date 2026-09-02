@@ -14,6 +14,11 @@ import type { FieldView, StepView } from '@/server/routes/read'
  *   - **A link's real destination is visible before the reader leaves.** No bare "apply
  *     here" (FR-64, invariant 10). The host is printed next to the link, and unverified
  *     sources say so.
+ *   - **How widely a claim applies is shown next to who asserts it** (FR-81, D-47). These are
+ *     different questions and are rendered as visibly different things: source class is a
+ *     provenance line, applicability is a scope chip. Without it, "GRE required" sitting
+ *     beside "blocked account €11,904" reads as though Germany demanded both — the failure
+ *     this requirement exists to prevent.
  */
 export function StepFields({
   step,
@@ -38,6 +43,23 @@ export function StepFields({
               {t.fieldCategory[field.category]}
             </p>
             <p className="mt-1 text-sm leading-6 text-ink-900">{field.valueText}</p>
+
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {field.applicability.length === 0 ? (
+                <li className="rounded-full border border-dashed border-hairline px-2 py-0.5 text-xs text-ink-500">
+                  {t.applicabilityUnknown}
+                </li>
+              ) : (
+                field.applicability.map((scope) => (
+                  <li
+                    key={scope}
+                    className="rounded-full border border-brand-500/40 bg-brand-500/5 px-2 py-0.5 text-xs text-brand-900"
+                  >
+                    {t.applicability[scope]}
+                  </li>
+                ))
+              )}
+            </ul>
 
             <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-ink-500">
               <div className="flex gap-1">

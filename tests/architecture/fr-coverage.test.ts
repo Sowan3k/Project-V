@@ -51,10 +51,12 @@ function assignments(): Map<string, Set<string>> {
 }
 
 describe('every requirement is traceable to a phase (FR-80)', () => {
-  it('reads all 80 requirements from the baseline', () => {
-    expect(DEFINED_FRS).toHaveLength(80)
+  it('reads every requirement from the baseline', () => {
+    // 81 since Amendment 001 added FR-81 (information applicability). This count is asserted
+    // rather than derived so that a requirement silently appearing or vanishing fails here.
+    expect(DEFINED_FRS).toHaveLength(81)
     expect(DEFINED_FRS[0]).toBe('FR-01')
-    expect(DEFINED_FRS[79]).toBe('FR-80')
+    expect(DEFINED_FRS[80]).toBe('FR-81')
   })
 
   it('assigns every requirement to at least one delivering phase', () => {
