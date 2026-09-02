@@ -50,6 +50,7 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-03 | **The MHT no longer lags the DOCX** | Regenerated from the amended DOCX via Word `wdFormatWebArchive`; QP soft breaks stripped before counting | ✅ 81 FR / 35 BR / 47 D — **identical id sets** across DOCX, `REQUIREMENTS.md` and MHT. DOCX sha256 unchanged by the export. §13 |
 | 2026-09-03 | **Amendment 001 applied to the frozen baseline** | Edited `word/document.xml` in the DOCX, then verified: valid zip, well-formed XML, text extraction | ✅ 81 FR ids and 47 D ids in the DOCX; 81 FR rows and 47 D rows in the regenerated `REQUIREMENTS.md` |
 | 2026-09-03 | **Applicability migration rehearsed against real data** | Branch from `test` (which holds the Germany fixture), then `migrate deploy` | ✅ **421 field revisions preserved**, column added, zero DROP statements |
 | 2026-09-03 | Applicability migration applied to `test` and `production` | `prisma migrate deploy` | ✅ Column is `ARRAY`, `FieldApplicability` enum type present, existing revisions intact |
@@ -648,3 +649,50 @@ decision rather than a surprise. Options, unranked:
 - Raise `connect_timeout` in the connection string — fragile, since `neon deploy` regenerates
   `.env.local`.
 - Accept it and render a "waking up" state rather than an error.
+
+---
+
+## 13. Regenerating the MHT representation
+
+The MHT is Word's "Single File Web Page" export of the frozen DOCX. It exists so a
+non-technical reader can open the baseline in a browser. It has **no authority** and is never
+read during an agent session — but while it sits in the repository it must not be allowed to
+disagree with the DOCX, because a file that looks like the requirements and silently isn't is
+indistinguishable from one that is.
+
+Amendment 001 landed in the DOCX and `REQUIREMENTS.md` on 2026-09-03 and left the MHT one
+amendment behind for a single commit. Regenerated the same day.
+
+### Procedure
+
+Word is required — the format is Word's own. Run it non-interactively:
+
+```powershell
+$word = New-Object -ComObject Word.Application
+$word.Visible = $false ; $word.DisplayAlerts = 0
+$doc = $word.Documents.Open($docx, $false, $true, $false)   # read-only
+$doc.SaveAs2($outPath, 9)                                   # 9 = wdFormatWebArchive
+$doc.Close(0) ; $word.Quit()
+```
+
+Generate to a scratch path first, verify, then move it into place.
+
+### Verification that must pass before committing a regenerated MHT
+
+1. **The DOCX is byte-identical afterwards.** Compare `sha256sum` before and after. The export
+   must not modify the authority. Verified 2026-09-03: `b9ae526b…` unchanged.
+2. **Strip quoted-printable soft line breaks before counting anything** — `s/=\r?\n//g`. MHT is
+   QP-encoded, so a naive `grep FR-81` can return 0 for a file that contains it. Prove the
+   counter is not lying by checking a control id you know is present.
+3. **The three artifacts have identical id sets** — not merely identical counts. Compare
+   DOCX / `REQUIREMENTS.md` / MHT as sets of FR, BR and D ids.
+
+Result on 2026-09-03: **81 FR, 35 BR, 47 D in all three, identical sets, `FR-81`, `D-47` and
+the Amendment 001 record all present in the MHT.**
+
+### Cost, stated honestly
+
+The MHT is ~1.06 MB of Word-generated HTML, and each regeneration writes a new ~1 MB blob into
+git history. That is the price of keeping a browser-readable copy truthful. If it is ever
+judged not worth paying, the correct move is to **remove the file**, not to leave a stale one
+in place.

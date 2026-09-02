@@ -9,6 +9,30 @@ impressive in a demo.
 
 ---
 
+## This file has no authority
+
+It sits at the bottom of the hierarchy, and it never overrides anything above it:
+
+```
+1.  ..._Baseline.docx        the frozen requirements — the single authority
+2.  REQUIREMENTS.md          its generated development-readable representation
+3.  CLAUDE.md                product and development rules, the 25 invariants
+4.  Visual References/       our own design intent for this product
+5.  Design-References.md     external pattern references — this file
+```
+
+**External products are pattern references only.** GitHub's information architecture, a
+shader demo, a component gallery — these can suggest *how* to solve something we have already
+decided to do. None of them may introduce a requirement, change a requirement, or override a
+Vindeshi Express mockup. "The reference product does it this way" is not an argument; it is at
+most a starting sketch that still has to survive the constraints below.
+
+If something here appears to conflict with a level above it, the level above wins and this
+file is wrong. If a pattern here seems genuinely worth adopting *as* a requirement, that is a
+change request against the baseline (BR-35, §46.3) — not an edit to this file.
+
+---
+
 ## The constraints any of these has to survive
 
 Before evaluating a visual library, the non-negotiables it must not break:
