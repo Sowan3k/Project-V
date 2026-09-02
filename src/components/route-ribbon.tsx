@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { RibbonTrust } from '@/components/trust'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 import { Ribbon } from '@/renderer'
 import type { RouteSummary } from '@/server/routes/read'
@@ -42,12 +43,11 @@ export function RouteRibbon({
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-          {/* Maturity is shown as the plain lifecycle word. The full trust surface —
-              badges, confidence, freshness — is Phase 6; misrepresenting it here would be
-              worse than showing the honest minimum (FR-74). */}
-          <span className="rounded-full border border-hairline px-2 py-0.5 text-ink-700">
-            {t.routeLifecycle[route.lifecycleState as keyof typeof t.routeLifecycle]}
-          </span>
+          {/* Maturity and a count of things to know — not the list. A search result is a
+              place to choose what to open; the passport on the route itself is where the
+              detail belongs (FR-74). Both start from `snapshotCautions`, so this can never
+              look calmer than the route page it leads to. */}
+          <RibbonTrust trust={route.trust} dictionary={t} />
           <FlyWindowNote window={route.flyWindow} dictionary={t} compact />
         </div>
       </Link>

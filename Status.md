@@ -7,6 +7,112 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Session 9 — 2026-09-03
+
+**Goal:** clear the stale-MHT ambiguity, then Phase 6 — make uncertainty visible before the
+community can write anything.
+
+### Done
+
+**The MHT no longer lags the DOCX.** Amendment 001 had left it one amendment behind for a
+commit. Regenerated from the amended DOCX via Word's Single File Web Page export and verified
+properly: 81 FR / 35 BR / 47 D with **identical id sets** across all three artifacts, and the
+DOCX sha256 unchanged by the export. Two traps recorded in `Test.md` §13 — the MHT is
+quoted-printable, so a naive `grep FR-81` returns 0 for a file that contains it; and the
+export must be proved not to touch the authority it reads.
+
+The rule now lives in `CLAUDE.md` rather than in a commit message: **a requirements change
+regenerates every representation in the same commit, and no representation may be left an
+amendment behind.** A file that looks like the requirements but silently isn't is worse than
+no copy at all, because a reader cannot tell.
+
+`Design-References.md` gained an explicit statement that it has **no authority**, with the
+hierarchy written out. External products are pattern references; they never introduce or
+override a requirement.
+
+**Phase 6 — the trust surface.** `src/domain/trust.ts` and `src/domain/links.ts` decide which
+signals are true; `src/components/trust.tsx` decides how loud each is; the dictionary owns
+every word. 67 new tests — 44 unit, 13 architecture, 10 integration.
+
+### Decisions taken
+
+**1. A signal earns prominence by changing what the reader should do.** The hard part of this
+phase was not showing the metadata — a field now carries source class, applicability,
+freshness, review and expiry dates, revision count and fork history, and a route adds
+lifecycle state, contributors and change activity. Showing all of it at equal weight is easy
+and would have been a failure. Three weights: **caution**, **context**, and **nothing**.
+
+The third is load-bearing and has its own test: an official, route-wide, recently confirmed
+field produces **zero** cautions. `route_wide` renders as nothing at all — it is what a reader
+already assumes, and marking it would drown the `programme`-scoped fact beside it, which is
+the exact confusion FR-81 exists to prevent.
+
+**2. Provenance is a heading, not a badge.** Fields are grouped into disputed /
+official-and-institutional / community regions. Eleven fields state their provenance once
+instead of eleven times, and the FR-54 separation becomes positional rather than a matter of
+telling two chips apart. This is most of the reason the page is not a wall of badges.
+
+**3. No thresholds were invented, because CLAUDE.md §11 leaves them open.** Nothing decides a
+fact is stale after N days — staleness comes only from `reviewDueAt` and `expiresAt` dates a
+contributor actually stored. Dispute is structural: a field is contested when its revision
+chain has **forked**, which is evidence Phase 3 already preserves, not a "revised more than N
+times" guess.
+
+**4. No percentages.** VR-14 shows "20% freshness, 28% confidence" and VR-03 "Community
+Verified 98%". All illustrative (§8.6), and a percentage implies a precision we do not have.
+The passport reports counts and dates and lets the reader weigh them.
+
+**5. Invariant 12 is enforced by construction.** `RouteTrustInput` has no report count and no
+field one could be inferred from, so the function that summarises a route cannot observe
+reports at all. **Phase 9 must add reporting to a caution path, never to this one.** The
+passport also ends with the sentence the invariant exists for: the absence of a warning is
+not evidence that there is nothing wrong.
+
+**6. One attention colour, not a maturity palette.** `--color-caution-*` says "there is
+something here to read" and is identical for a disputed field, a shortened link and an
+experimental route. It assigns no colour to any lifecycle state, so §11's open palette
+decision stays open. Meaning never rests on it: every caution carries an icon and words.
+
+**7. Link trust can only ever fall.** A declared class is a ceiling; no URL shape promotes a
+link. Asserted over 13 URLs × 4 classes. Assigning `trusted` or `quarantined` is a
+contribution and a moderation action — Phase 8 and Phase 9. Phase 6 delivers the capability
+and the honest default: an unclassified link is a community submission, because silence is
+not endorsement.
+
+### Things that went wrong, and what they taught
+
+**A source guard failed its own planted violation.** The monetisation guard used `...`
+word boundaries and did not match `sponsoredRoutes` — camelCase leaves no boundary after
+`sponsored`, which is the exact identifier shape a real violation takes. It now matches
+unanchored stems. The planted-violation checks are the reason this was caught rather than
+shipped as decoration.
+
+**OF-6 has a second, independent cause.** Ten timed connects to a *demonstrably awake*
+compute: successes took 2.4–8.8s, failures cut off at ~5.01s, four in ten failed. Not the
+cold start of §12 and not the quoting bug either. It produced four test failures that looked
+like three different problems — a fixture that rebuilt a full route in every test, a
+global setup with no retry, and a search that loads every matching route's full graph. All
+three were real and were fixed on their own terms. See `Test.md` §14.
+
+The integration suite now gets a 20s connect timeout. **The application deliberately did
+not**, because the same exposure on the deployed read path is a real user-facing question
+that belongs to Phase 12 — widening it globally would have made the suite green and the
+product question invisible.
+
+### Blockers
+
+None. OF-4 and OF-5 remain open by the owner's decision and block nothing.
+
+### Next step
+
+**Phase 7 — identity and private journeys**, on approval. Auth.js with Google sign-in,
+pseudonymous public handle, follow a route, private progress. Invariant tests 5, 5b, 6, 8 and
+18 land there, and `src/domain/models.ts` already classifies journey state as private so it
+stays out of the public revision engine.
+
+Content track: the Germany worksheet still has UNVERIFIED sections (steps 1, 2, 5, 6, 7, 11,
+12, 13), and Australia, USA and Malaysia have not started.
+
 ## Session 8 — 2026-09-02
 
 **Goal:** Phase 5 — a Bangladeshi student can search and understand routes with no account.

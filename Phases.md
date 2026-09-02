@@ -37,7 +37,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 3 | Revision write engine | The only door into shared knowledge | ✅ |
 | 4 | Route renderer (production) | Ribbon + road from data, any structure | ✅ |
 | 5 | Anonymous read path | Search → ribbon → road → step → field | ✅ |
-| 6 | Trust, provenance and freshness surface | Uncertainty is visible | ⬜ |
+| 6 | Trust, provenance and freshness surface | Uncertainty is visible | ✅ |
 | 7 | Identity and private journeys | Follow a route, track privately | ⬜ |
 | 8 | Contribution loop | ADD / UPDATE / CONFIRM / CHALLENGE | ⬜ |
 | 9 | Safety: reporting and quarantine | Abuse containment | ⬜ |
@@ -344,6 +344,60 @@ alone cannot tell a reader whether a claim is route-wide or applies to one progr
 owns rendering it *alongside* source and freshness without implying that programme-specific
 information applies universally. A minimal honest rendering already exists on the step-field
 list so the read path does not misrepresent its own data in the meantime.
+
+### Phase 6 result (2026-09-03)
+
+`src/domain/trust.ts` and `src/domain/links.ts` decide **which signals are true**;
+`src/components/trust.tsx` decides how loud each one is; the dictionary owns every word. That
+split is why invariants 9–17 are testable without a browser or a database.
+
+**The design question this phase actually had to answer was not "can we show the metadata?"**
+By now a field carries source class, applicability, freshness, review and expiry dates,
+revision count, fork history; a route adds lifecycle state, contributors and change activity.
+Rendering all of it is trivial and would have been a failure — a wall of badges hides the one
+marker that mattered. So every signal is weighted: **caution** (changes what the reader should
+conclude), **context** (one quiet grey line), or **nothing at all**.
+
+The third category is the load-bearing one, and it has a test: *an official, route-wide,
+recently confirmed field produces zero cautions.* `route_wide` deliberately renders as
+nothing — it is what a reader already assumes, and marking it would drown the
+`programme`-scoped fact beside it, which is the exact confusion FR-81 exists to prevent.
+
+**Two structural decisions do most of the work of keeping cautions rare.** Fields are
+**grouped** into disputed / official-and-institutional / community regions rather than badged
+individually — so eleven fields state their provenance once, at the top of their group, and
+the FR-54 separation becomes positional rather than a matter of telling two chips apart.
+And the route's standing lives in a **passport**: cautions outside a disclosure, evidence
+inside it.
+
+**No thresholds were invented.** CLAUDE.md §11 leaves staleness thresholds open, so nothing
+decides a fact is stale after N days — staleness comes only from `reviewDueAt` and `expiresAt`
+dates a contributor actually stored. Dispute is structural too: a field is contested when its
+revision chain has **forked**, which is real evidence Phase 3 already preserves, not a
+"revised more than N times" guess. And no percentages: VR-14's "28% confidence" is
+illustrative sample data (§8.6), and a number implies precision we do not have.
+
+**Invariant 12 is enforced by construction rather than by discipline.** `RouteTrustInput` has
+no report count and no field one could be inferred from, so the function that summarises a
+route *cannot observe reports at all*. Phase 9 must add reporting to a caution path, never to
+this one. Similarly invariant 14: the passport echoes the stored `lifecycleState` and is
+asserted to return it unchanged across every state and counts up to ten million.
+
+**Deliberately not done, and why each is right to defer.**
+
+- **Assigning** `trusted` or `quarantined` to a link is a contribution and a moderation
+  action — Phase 8 and Phase 9. Phase 6 delivers the *capability* to distinguish all three
+  classes, proven in tests, and the honest default: an unclassified link is a community
+  submission, because silence is not endorsement.
+- **FR-10 names followers among a route's activity signals.** Followers do not exist until
+  Phase 7, so the passport reports contributors, recent changes and last confirmation, and
+  says nothing about followers rather than showing a zero that means "not built yet". When
+  Phase 7 adds them, note invariant 14: a follower count describes, it never confers.
+- **Lifecycle *transitions*** — dormancy, staleness, quiet — are Phase 11. Phase 6 displays
+  the stored state and is asserted never to change it.
+
+**FRs:** FR-10, FR-11, FR-33, FR-34, FR-49, FR-52, FR-53, FR-54, FR-62, FR-64, FR-65, FR-66,
+FR-67, FR-70, FR-74, FR-81 · **Invariants:** 9–17
 
 ---
 

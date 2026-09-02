@@ -41,8 +41,24 @@ describe('i18n scaffolding', () => {
     expect(strings).not.toContain('safe route')
   })
 
-  it('separates community submissions from official sources in the labels themselves', () => {
-    expect(en.sourceClass.community_submission).toContain('unverified')
+  /**
+   * Invariant 9: a community submission must render visibly as uncorroborated.
+   *
+   * Phase 0 asserted this against `sourceClass.community_submission`, because the label was
+   * then the only place the marking could live. Phase 6 moved it to a caution — an icon, a
+   * border and its own words — and left the label to state plain provenance, so that a field
+   * no longer says the same thing three times over.
+   *
+   * The assertion moved with it rather than being dropped. It is now stronger, because it
+   * covers the link path too: an uncorroborated *link* is the case FR-34 and FR-65 actually
+   * care about, and the old label check never touched it.
+   */
+  it('marks an uncorroborated community claim, in the words a reader sees', () => {
+    expect(en.trust.fieldSignal.unverified_submission).toMatch(/not corroborated/i)
+    expect(en.trust.linkCaution.not_corroborated).toMatch(/not corroborated/i)
+
+    // And provenance labels stay distinguishable from one another.
     expect(en.sourceClass.official).not.toBe(en.sourceClass.community_submission)
+    expect(en.sourceClass.community_confirmed).not.toBe(en.sourceClass.community_submission)
   })
 })

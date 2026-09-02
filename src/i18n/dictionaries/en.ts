@@ -1,12 +1,15 @@
 import type {
   FieldApplicability,
   FieldCategory,
+  LinkTrustClass,
   SourceClass,
   RouteLifecycleState,
   RouteMechanism,
   StepCategory,
   StudyLevel,
 } from '@/domain/enums'
+import type { LinkCautionId } from '@/domain/links'
+import type { FieldGroupId, FieldSignalId, RouteCautionId } from '@/domain/trust'
 
 /**
  * English interface strings.
@@ -203,17 +206,124 @@ export const en = {
     intake: 'Depends on the intake',
   } satisfies Record<FieldApplicability, string>,
 
-  /** Silence is not a claim of universality, and must not read like one. */
-  applicabilityUnknown: 'Scope not stated',
-  applicabilityLabel: 'Applies to',
-
   sourceClass: {
     official: 'Official source',
     institutional_public: 'Institutional public source',
     community_confirmed: 'Community confirmed',
-    community_submission: 'Community submission — unverified',
-    disputed_under_review: 'Disputed — under review',
+    community_submission: 'Community submission',
+    disputed_under_review: 'Disputed',
   } satisfies Record<SourceClass, string>,
+
+
+  /**
+   * The trust surface — Phase 6.
+   *
+   * Every label here is deliberately static, with no interpolation. Counts and dates are
+   * composed at the render site from labels that already exist, which keeps each map an
+   * exhaustive `Record` — so adding a signal in src/domain/trust.ts fails typecheck until
+   * every locale has words for it, rather than silently rendering an id to a reader.
+   *
+   * Wording rules, non-negotiable:
+   *   - Nothing claims anything is verified, safe or checked (BR-20, invariant 12).
+   *   - A caution says what is true, not what to feel.
+   */
+  trust: {
+    /** Field-level signals. Order of appearance is decided by src/domain/trust.ts. */
+    fieldSignal: {
+      source_disputed: 'Disputed — under review',
+      history_forked: 'Contested — two contributors corrected this from the same starting point',
+      unverified_submission: 'Community submission — not corroborated by anyone else',
+      past_expiry: 'Past the expiry date given for it',
+      not_yet_effective: 'Not in effect yet',
+      review_due: 'Due for review',
+      narrow_scope: 'Applies only to',
+      scope_not_stated: 'Scope not stated',
+      changed_recently: 'Changed recently',
+      never_confirmed: 'Not yet confirmed by anyone',
+    } satisfies Record<FieldSignalId, string>,
+
+    /**
+     * Group headings. Official requirements and community experience sit in separate,
+     * labelled regions rather than being told apart by a badge colour (FR-54, invariant 11).
+     */
+    fieldGroup: {
+      group_disputed: {
+        title: 'Disputed information',
+        note: 'Contributors do not agree on this yet. Treat it as unsettled.',
+      },
+      group_official: {
+        title: 'From official and institutional sources',
+        note: 'Stated by an authority or an institution. Check the source and the date — rules change.',
+      },
+      group_community: {
+        title: 'From the community',
+        note: 'Shared by people who have been through this. Useful, and not an official rule.',
+      },
+    } satisfies Record<FieldGroupId, { title: string; note: string }>,
+
+    /** Route-level cautions — FR-11, FR-74. */
+    routeCaution: {
+      lifecycle_not_established: 'This route has not reached established standing yet',
+      no_information: 'This route has steps but no information inside them yet',
+      disputed_information: 'Some information on this route is disputed or contested',
+      information_needs_review: 'Some information is past the review date given for it',
+      no_confirmations: 'Nobody has confirmed any of this information yet',
+      single_contributor: 'Only one person has worked on this route, so nothing here has been checked by anyone else',
+    } satisfies Record<RouteCautionId, string>,
+
+    linkCaution: {
+      link_quarantined: 'Quarantined — this link is not opened from here',
+      unparseable: 'This address cannot be read, so we cannot tell you where it goes',
+      unsupported_scheme: 'Not an ordinary web address — not opened from here',
+      insecure_scheme: 'Not a secure (https) address',
+      embedded_credentials: 'This address is written to look like one site and goes to another',
+      ip_address_host: 'Goes to a numeric address rather than a named site',
+      punycode_host: 'This domain name may be imitating another one',
+      known_shortener: 'A shortened link — the real destination is hidden',
+      not_corroborated: 'Submitted by a community member and not corroborated',
+    } satisfies Record<LinkCautionId, string>,
+
+    /**
+     * What we recognise about a domain — never a claim about the content behind it. We are
+     * not an admission or immigration authority (BR-20).
+     */
+    linkTrust: {
+      trusted: 'Recognised official domain',
+      community_submitted: 'Community-submitted link',
+      quarantined: 'Quarantined link',
+    } satisfies Record<LinkTrustClass, string>,
+
+    cautionLabel: 'Read with care',
+    goesTo: 'Goes to',
+    fullAddress: 'Full address',
+    opensExternally: 'Opens an external site in a new tab',
+
+    passport: {
+      title: 'What is known about this route',
+      lede: 'Evidence, not a score. Weigh it yourself.',
+      readWithCare: 'Read this route with care',
+      contributors: (n: number) =>
+        n === 0 ? 'No named contributors' : n === 1 ? '1 contributor' : `${n} contributors`,
+      information: (n: number) =>
+        n === 0 ? 'No information items yet' : n === 1 ? '1 information item' : `${n} information items`,
+      confirmed: (n: number) => `${n} confirmed by someone`,
+      needsReview: (n: number) => `${n} past their review date`,
+      disputed: (n: number) => `${n} disputed or contested`,
+      recentChanges: (n: number, days: number) =>
+        n === 1 ? `1 change in the last ${days} days` : `${n} changes in the last ${days} days`,
+      firstPublished: 'First published',
+      lastChanged: 'Last changed',
+      lastConfirmed: 'Last confirmed',
+      never: 'Never',
+      moreDetail: 'What is known about this route',
+      /**
+       * Invariant 12, said out loud (BR-04, D-19). The most dangerous reading of a clean
+       * page is "nothing is flagged, so this is fine". This paragraph exists to deny it.
+       */
+      noVerificationClaim:
+        'Vindeshi Express does not verify routes. Nothing here has been checked by an authority, and the absence of a warning is not evidence that there is nothing wrong. Confirm anything that matters against the official source before you rely on it.',
+    },
+  },
 
   routeLifecycle: {
     experimental: 'Experimental',

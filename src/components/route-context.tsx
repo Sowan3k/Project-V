@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import { ContentColumn, PageCanvas } from '@/components/layout'
 import { FlyWindowNote } from '@/components/route-shared'
+import { RoutePassportPanel } from '@/components/trust'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 import type { RouteDetail } from '@/server/routes/read'
 
@@ -63,14 +64,13 @@ export function RouteContext({
                   <p className="mt-3 text-base leading-7 text-ink-700">{route.summary}</p>
                 </ContentColumn>
               )}
-              <p className="mt-3">
-                <span className="rounded-full border border-hairline px-3 py-1 text-xs text-ink-700">
-                  {t.routeLifecycle[route.lifecycleState as keyof typeof t.routeLifecycle]}
-                </span>
-              </p>
             </div>
 
-            <div className="w-full max-w-sm shrink-0">
+            {/* Standing and timing sit together, beside the route rather than under it, and
+                stay on screen across both tabs. A reader who opens the history should not
+                lose sight of how mature the route they are reading actually is (FR-74). */}
+            <div className="w-full max-w-sm shrink-0 space-y-3">
+              <RoutePassportPanel trust={route.trust} dictionary={t} />
               <FlyWindowNote window={route.flyWindow} dictionary={t} />
             </div>
           </div>

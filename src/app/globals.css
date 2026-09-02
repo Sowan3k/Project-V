@@ -24,6 +24,22 @@
   --color-surface: oklch(1 0 0);
   --color-surface-muted: oklch(0.985 0.003 258);
   --color-hairline: oklch(0.91 0.006 258);
+
+  /*
+   * ONE attention colour, shared by every caution — Phase 6.
+   *
+   * This is not the route-maturity palette that CLAUDE.md §11 leaves open, and the
+   * difference matters: a maturity palette assigns a colour per lifecycle state, which is
+   * the decision still to be made. This assigns no colour to any state. It says "there is
+   * something here to read" and is identical for a disputed field, a shortened link and an
+   * experimental route.
+   *
+   * Meaning never rests on it (§10.4): every caution carries an icon and its own words, and
+   * removing all colour would lose nothing but emphasis.
+   */
+  --color-caution-900: oklch(0.42 0.09 62);
+  --color-caution-500: oklch(0.7 0.14 68);
+  --color-caution-50: oklch(0.975 0.022 82);
 }
 
 :root {

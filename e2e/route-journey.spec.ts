@@ -45,9 +45,10 @@ test.describe('anonymous reading journey', () => {
     await firstStep.click()
     await expect(page).toHaveURL(/[?&]step=/)
 
-    // 6. Field — the smallest community-maintained unit, with its source visible
+    // 6. Field — the smallest community-maintained unit, under a heading that says who is
+    // making the claim. Provenance is a group heading rather than a per-row badge (Phase 6).
     await expect(page.getByText(/information in/i)).toBeVisible()
-    await expect(page.getByText(/^Source:/i).first()).toBeVisible()
+    await expect(page.getByRole('heading', { name: /from the community/i })).toBeVisible()
 
     // Collapsing returns to the visual journey (§8.3).
     // The whole step row is the link, so its accessible name is the row text, not just 'Close'.
@@ -69,6 +70,10 @@ test.describe('anonymous reading journey', () => {
     await expect(page.locator('svg[role="img"]')).toBeVisible()
     await page.getByRole('link', { name: /open this step/i }).first().click()
     await expect(page.getByText(/information in/i)).toBeVisible()
+
+    // The trust surface must survive too. A student on a slow phone should still be able to
+    // see that a route has not been checked by anyone — every disclosure is a <details>.
+    await expect(page.getByText(/does not verify routes/i)).toBeVisible()
 
     await context.close()
   })
@@ -103,5 +108,82 @@ test.describe('anonymous reading journey', () => {
   test('a route that does not exist is a 404, not a crash', async ({ page }) => {
     const response = await page.goto('/en/routes/definitely-not-a-real-route')
     expect(response?.status()).toBe(404)
+  })
+})
+
+/**
+ * Phase 6 exit criteria, proved in a browser.
+ *
+ *   "a `community_submission` field is visually distinct from an `official` one"
+ *   "no badge derives from absence of reports"
+ *
+ * The unit and integration suites prove the rules and the projection. Only a browser can
+ * prove a reader actually *sees* the difference, which is the whole point of the phase.
+ */
+test.describe('the trust surface is legible to a reader', () => {
+  test.skip(!seeded, 'needs a seeded route; the deployed target is deliberately not seeded')
+
+  test('separates official claims from community ones, and says what applies narrowly', async ({
+    page,
+  }) => {
+    await page.goto('/en/routes/e2e-test-route')
+
+    // The first step carries both an official claim and a community submission.
+    await page.getByRole('link', { name: /open this step/i }).first().click()
+
+    // Separation is positional: two regions, two headings, in that order.
+    const official = page.getByRole('heading', { name: /from official and institutional/i })
+    const community = page.getByRole('heading', { name: /from the community/i })
+    await expect(official).toBeVisible()
+    await expect(community).toBeVisible()
+
+    // Official comes first. A reader scanning downward meets the authoritative claim before
+    // the anecdote, never the other way round (FR-33, FR-54, invariant 11).
+    const headings = await page.getByRole('heading', { level: 4 }).allInnerTexts()
+    const officialAt = headings.findIndex((h) => /official and institutional/i.test(h))
+    const communityAt = headings.findIndex((h) => /from the community/i.test(h))
+    expect(officialAt).toBeGreaterThanOrEqual(0)
+    expect(officialAt).toBeLessThan(communityAt)
+
+    // FR-81: the programme-scoped claim says so; the route-wide one beside it does not
+    // shout. Both are official, so only scope distinguishes them.
+    await expect(page.getByText(/applies only to/i).first()).toBeVisible()
+
+    // FR-64: an external link shows the host it will actually visit.
+    await expect(page.getByText(/goes to/i).first()).toBeVisible()
+    await expect(page.getByRole('link', { name: /example\.org/i }).first()).toBeVisible()
+
+    // Invariant 9: the community submission says nobody has corroborated it.
+    await expect(page.getByText(/not corroborated/i).first()).toBeVisible()
+  })
+
+  test('never implies safety, and says outright that silence is not reassurance', async ({
+    page,
+  }) => {
+    await page.goto('/en/routes/e2e-test-route')
+
+    // Invariant 12 / BR-04 / D-19. This route has no reports against it — and the page must
+    // not let that read as approval.
+    await expect(page.getByText(/does not verify routes/i)).toBeVisible()
+    await expect(page.getByText(/absence of a warning is not evidence/i)).toBeVisible()
+
+    // A new route shows its maturity honestly rather than hiding it (FR-74).
+    await expect(page.getByText(/experimental/i).first()).toBeVisible()
+    await expect(page.getByText(/read this route with care/i)).toBeVisible()
+
+    const body = (await page.locator('body').innerText()).toLowerCase()
+    expect(body).not.toMatch(/(?<!un)verified/)
+    expect(body).not.toContain('trusted route')
+    expect(body).not.toContain('100% ')
+  })
+
+  test('a ribbon in search results agrees with the route it leads to', async ({ page }) => {
+    await page.goto('/en/routes')
+
+    // The ribbon shows maturity and a count of things to know — not the list, and never a
+    // calmer picture than the route page itself (FR-74).
+    const ribbon = page.locator('main ul li a').first()
+    await expect(ribbon.getByText(/experimental/i)).toBeVisible()
+    await expect(ribbon.getByText(/read with care/i)).toBeVisible()
   })
 })

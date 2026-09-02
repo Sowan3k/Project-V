@@ -1,13 +1,20 @@
 import type {
   FieldApplicability,
   FieldCategory,
+  LinkTrustClass,
+  RouteLifecycleState,
   RouteMechanism,
   SourceClass,
   StudyLevel,
 } from '@/domain/enums'
-import { StepCategory, StepEdgeKind } from '@/domain/enums'
+import { SourceClass as Source, StepCategory, StepEdgeKind } from '@/domain/enums'
 import { expectedFlyWindow, type FlyWindow } from '@/domain/fly-window'
 import type { RouteGraph } from '@/domain/graph/types'
+import {
+  RECENT_ACTIVITY_WINDOW_DAYS,
+  type RouteTrustInput,
+  type RouteTrustSnapshot,
+} from '@/domain/trust'
 import { prisma } from '@/server/db/client'
 
 /**
@@ -39,12 +46,19 @@ export interface RouteSummary {
   readonly studyLevel: StudyLevel
   readonly intake: string | null
   readonly mechanism: RouteMechanism | null
-  readonly lifecycleState: string
+  readonly lifecycleState: RouteLifecycleState
   readonly createdAt: Date
   /** The graph, so the ribbon draws from the same data the road will (invariant 25). */
   readonly graph: RouteGraph
   readonly stepCount: number
   readonly flyWindow: FlyWindow | null
+  /**
+   * What the ribbon may say about this route's standing — Phase 6.
+   *
+   * A strict subset of what the route page sees, so a ribbon can show fewer concerns than
+   * the road but never a different set (`RouteTrustInput extends RouteTrustSnapshot`).
+   */
+  readonly trust: RouteTrustSnapshot
 }
 
 const toGraph = (
@@ -74,6 +88,95 @@ const ROUTE_INCLUDE = {
   edges: { where: { archivedAt: null }, include: { currentRevision: true }, orderBy: { id: 'asc' } },
 } as const
 
+interface FieldStanding extends Omit<RouteTrustSnapshot, 'lifecycleState'> {
+  readonly lastConfirmedAt: Date | null
+}
+
+/**
+ * The field-derived half of a route's standing, for many routes at once — Phase 6.
+ *
+ * Two queries whatever the number of routes, rather than one per route: the fields
+ * themselves, and a grouped scan for **forked revision history**. A fork — two revisions of
+ * one field sharing a `previousRevisionId` — is a structural disagreement between two
+ * contributors that Phase 3 deliberately preserves, and this is where it finally becomes
+ * visible to a reader (invariant 15, FR-70).
+ *
+ * Counting a fork as disputed here, rather than only on the route page, is what keeps the
+ * ribbon and the road from disagreeing about whether a route has contested information.
+ */
+async function fieldStandings(
+  routeIds: readonly string[],
+  now: Date,
+): Promise<Map<string, FieldStanding>> {
+  const byRoute = new Map<string, FieldStanding>()
+  if (routeIds.length === 0) return byRoute
+
+  const [fields, forkedGroups] = await Promise.all([
+    prisma.field.findMany({
+      where: { archivedAt: null, step: { routeId: { in: [...routeIds] } } },
+      select: {
+        id: true,
+        lastConfirmedAt: true,
+        reviewDueAt: true,
+        step: { select: { routeId: true } },
+        currentRevision: { select: { sourceClass: true, expiresAt: true } },
+      },
+    }),
+    prisma.fieldRevision.groupBy({
+      by: ['fieldId', 'previousRevisionId'],
+      where: {
+        previousRevisionId: { not: null },
+        field: { archivedAt: null, step: { routeId: { in: [...routeIds] } } },
+      },
+      _count: { _all: true },
+      having: { previousRevisionId: { _count: { gt: 1 } } },
+    }),
+  ])
+
+  const forkedFieldIds = new Set(forkedGroups.map((group) => group.fieldId))
+
+  // Note what this map does NOT carry: `lifecycleState`. The stored state is the caller's,
+  // and there is deliberately no placeholder here that a later edit could start deriving
+  // from counts (invariant 14).
+  for (const routeId of routeIds) {
+    byRoute.set(routeId, {
+      informationCount: 0,
+      confirmedCount: 0,
+      needsReviewCount: 0,
+      disputedCount: 0,
+      lastConfirmedAt: null,
+    })
+  }
+
+  for (const field of fields) {
+    const routeId = field.step.routeId
+    const current = byRoute.get(routeId)
+    if (!current || field.currentRevision === null) continue
+
+    const past = (date: Date | null): boolean => date !== null && date.getTime() <= now.getTime()
+    const needsReview = past(field.reviewDueAt) || past(field.currentRevision.expiresAt)
+    const disputed =
+      field.currentRevision.sourceClass === Source.disputed_under_review ||
+      forkedFieldIds.has(field.id)
+
+    byRoute.set(routeId, {
+      informationCount: current.informationCount + 1,
+      confirmedCount: current.confirmedCount + (field.lastConfirmedAt === null ? 0 : 1),
+      needsReviewCount: current.needsReviewCount + (needsReview ? 1 : 0),
+      disputedCount: current.disputedCount + (disputed ? 1 : 0),
+      lastConfirmedAt: laterOf(current.lastConfirmedAt, field.lastConfirmedAt),
+    })
+  }
+
+  return byRoute
+}
+
+function laterOf(a: Date | null, b: Date | null): Date | null {
+  if (a === null) return b
+  if (b === null) return a
+  return a.getTime() >= b.getTime() ? a : b
+}
+
 /**
  * Route search — FR-01, FR-02, REQUIREMENTS.md §9.
  *
@@ -84,7 +187,10 @@ const ROUTE_INCLUDE = {
  * Removed and archived routes never appear. Everything else does, including experimental
  * ones — a new route is shown, honestly labelled, rather than hidden (FR-74).
  */
-export async function searchRoutes(filters: RouteSearchFilters = {}): Promise<readonly RouteSummary[]> {
+export async function searchRoutes(
+  filters: RouteSearchFilters = {},
+  now: Date = new Date(),
+): Promise<readonly RouteSummary[]> {
   const routes = await prisma.route.findMany({
     where: {
       archivedAt: null,
@@ -96,11 +202,17 @@ export async function searchRoutes(filters: RouteSearchFilters = {}): Promise<re
       ...(filters.mechanism ? { mechanism: filters.mechanism } : {}),
     },
     include: ROUTE_INCLUDE,
+    // Newest first, and nothing else. There is no relevance score, no boost and no sponsored
+    // slot to insert one into — ordering that money could influence is exactly what
+    // invariant 13 (FR-78, BR-13, BR-14) forbids.
     orderBy: [{ createdAt: 'desc' }],
   })
 
+  const standings = await fieldStandings(routes.map((route) => route.id), now)
+
   return routes.map((route) => {
     const graph = toGraph(route.steps, route.edges)
+    const standing = standings.get(route.id)
     return {
       id: route.id,
       slug: route.slug,
@@ -116,6 +228,13 @@ export async function searchRoutes(filters: RouteSearchFilters = {}): Promise<re
       graph,
       stepCount: graph.steps.filter((s) => !s.archived).length,
       flyWindow: expectedFlyWindow(graph),
+      trust: {
+        lifecycleState: route.lifecycleState,
+        informationCount: standing?.informationCount ?? 0,
+        confirmedCount: standing?.confirmedCount ?? 0,
+        needsReviewCount: standing?.needsReviewCount ?? 0,
+        disputedCount: standing?.disputedCount ?? 0,
+      },
     }
   })
 }
@@ -163,6 +282,23 @@ export interface FieldView {
   readonly sourceNote: string | null
   readonly lastConfirmedAt: Date | null
   readonly revisionCount: number
+
+  // ── Phase 6 trust inputs. Raw stored values only: nothing here is judged, scored or
+  // thresholded in the read layer. `src/domain/trust.ts` turns these into signals, which is
+  // what lets invariants 9-17 be tested without a database (FR-49, FR-52, FR-53, FR-70).
+  /** A date a contributor stored, meaning "look at this again after". Never inferred. */
+  readonly reviewDueAt: Date | null
+  readonly effectiveFrom: Date | null
+  readonly expiresAt: Date | null
+  readonly lastRevisedAt: Date | null
+  /**
+   * Two revisions of this field share a `previousRevisionId`: two contributors corrected the
+   * same starting value and Phase 3 kept both. Structural evidence of disagreement, not a
+   * heuristic (invariant 15, FR-70, BR-21).
+   */
+  readonly hasForkedHistory: boolean
+  /** Only meaningful for links. `null` means never classified — treated as unverified. */
+  readonly linkTrustClass: LinkTrustClass | null
 }
 
 export interface StepView {
@@ -177,9 +313,81 @@ export interface StepView {
 
 export interface RouteDetail extends RouteSummary {
   readonly steps: readonly StepView[]
+  /**
+   * The full standing, which is a superset of the ribbon's — same shape, more of it. The
+   * route page can afford the extra aggregation that a page of search results cannot.
+   */
+  readonly trust: RouteTrustInput
 }
 
-export async function getRouteBySlug(slug: string): Promise<RouteDetail | null> {
+/**
+ * Contributor count and change activity for one route — FR-10, FR-62.
+ *
+ * One query, computed in Postgres, returning three scalars.
+ *
+ * The first version was four `findMany` calls — one per revision table — pulling every
+ * revision row for the route across the network so Node could count them. That is
+ * O(revisions) transfer to produce three numbers, and on the Germany fixture alone it is
+ * over four hundred rows. It also meant `getRouteBySlug` opened seven queries, six of them
+ * concurrent, which on a slow link is six chances to hit the connection timeout instead of
+ * one (Test.md §12).
+ *
+ * Raw SQL is deliberate here rather than incidental: a UNION across four revision tables has
+ * no Prisma expression. The cost is that table and column names are written out, so a rename
+ * would not be caught by the compiler — which is why `tests/db/trust-surface.db.test.ts`
+ * asserts the exact revision count this returns rather than merely that it is positive. A
+ * broken join shows up as a wrong number, loudly.
+ *
+ * `recentChangeCount` is a plain count inside a stated display window. It is not a
+ * volatility grade — see the note on thresholds in src/domain/trust.ts.
+ */
+interface ActivityRow {
+  readonly contributorCount: number
+  readonly recentChangeCount: number
+  readonly lastChangedAt: Date | null
+}
+
+async function routeActivity(routeId: string, now: Date): Promise<ActivityRow> {
+  const since = new Date(now.getTime() - RECENT_ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1000)
+
+  const rows = await prisma.$queryRaw<ActivityRow[]>`
+    WITH revisions AS (
+      SELECT r."authorId", r."createdAt"
+        FROM route_revisions r
+       WHERE r."routeId" = ${routeId}
+      UNION ALL
+      SELECT sr."authorId", sr."createdAt"
+        FROM step_revisions sr
+        JOIN steps s ON s.id = sr."stepId"
+       WHERE s."routeId" = ${routeId}
+      UNION ALL
+      SELECT er."authorId", er."createdAt"
+        FROM step_edge_revisions er
+        JOIN step_edges e ON e.id = er."stepEdgeId"
+       WHERE e."routeId" = ${routeId}
+      UNION ALL
+      SELECT fr."authorId", fr."createdAt"
+        FROM field_revisions fr
+        JOIN fields f ON f.id = fr."fieldId"
+        JOIN steps fs ON fs.id = f."stepId"
+       WHERE fs."routeId" = ${routeId}
+    )
+    SELECT
+      -- COUNT(DISTINCT ...) ignores NULLs, which is what we want: a seed or system write
+      -- has no author and is not a person who has looked at this route.
+      COUNT(DISTINCT "authorId")::int                       AS "contributorCount",
+      COUNT(*) FILTER (WHERE "createdAt" >= ${since})::int   AS "recentChangeCount",
+      MAX("createdAt")                                      AS "lastChangedAt"
+    FROM revisions
+  `
+
+  return rows[0] ?? { contributorCount: 0, recentChangeCount: 0, lastChangedAt: null }
+}
+
+export async function getRouteBySlug(
+  slug: string,
+  now: Date = new Date(),
+): Promise<RouteDetail | null> {
   const route = await prisma.route.findUnique({
     where: { slug },
     include: {
@@ -194,6 +402,9 @@ export async function getRouteBySlug(slug: string): Promise<RouteDetail | null> 
   if (!route || route.archivedAt !== null) return null
 
   const graph = toGraph(route.steps, route.edges)
+  const standings = await fieldStandings([route.id], now)
+  const activity = await routeActivity(route.id, now)
+  const standing = standings.get(route.id)
 
   return {
     id: route.id,
@@ -210,6 +421,16 @@ export async function getRouteBySlug(slug: string): Promise<RouteDetail | null> 
     graph,
     stepCount: graph.steps.filter((s) => !s.archived).length,
     flyWindow: expectedFlyWindow(graph),
+    trust: {
+      lifecycleState: route.lifecycleState,
+      createdAt: route.createdAt,
+      informationCount: standing?.informationCount ?? 0,
+      confirmedCount: standing?.confirmedCount ?? 0,
+      needsReviewCount: standing?.needsReviewCount ?? 0,
+      disputedCount: standing?.disputedCount ?? 0,
+      lastConfirmedAt: standing?.lastConfirmedAt ?? null,
+      ...activity,
+    },
     steps: route.steps.map((s) => ({
       id: s.id,
       label: s.currentRevision?.label ?? '',
@@ -226,13 +447,29 @@ export async function getRouteBySlug(slug: string): Promise<RouteDetail | null> 
 export async function getStepFields(stepId: string): Promise<readonly FieldView[]> {
   const fields = await prisma.field.findMany({
     where: { stepId, archivedAt: null },
-    include: { currentRevision: true, _count: { select: { revisions: true } } },
+    include: {
+      currentRevision: true,
+      // Revision metadata only — never the historical values, which the history tab owns.
+      // One step's fields, so this stays a small read rather than a scan of the ledger.
+      revisions: { select: { previousRevisionId: true, createdAt: true } },
+    },
     orderBy: [{ category: 'asc' }, { createdAt: 'asc' }],
   })
 
   return fields.flatMap((field) => {
     const current = field.currentRevision
     if (!current) return []
+
+    const parents = field.revisions
+      .map((revision) => revision.previousRevisionId)
+      .filter((id): id is string => id !== null)
+    const hasForkedHistory = new Set(parents).size !== parents.length
+
+    const lastRevisedAt = field.revisions.reduce<Date | null>(
+      (latest, revision) => laterOf(latest, revision.createdAt),
+      null,
+    )
+
     return [
       {
         id: field.id,
@@ -247,7 +484,13 @@ export async function getStepFields(stepId: string): Promise<readonly FieldView[
         sourceUrl: current.sourceUrl,
         sourceNote: current.sourceNote,
         lastConfirmedAt: field.lastConfirmedAt,
-        revisionCount: field._count.revisions,
+        revisionCount: field.revisions.length,
+        reviewDueAt: field.reviewDueAt,
+        effectiveFrom: current.effectiveFrom,
+        expiresAt: current.expiresAt,
+        lastRevisedAt,
+        hasForkedHistory,
+        linkTrustClass: field.linkTrustClass,
       },
     ]
   })

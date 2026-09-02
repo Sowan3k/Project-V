@@ -1,8 +1,15 @@
 import { test as setup } from '@playwright/test'
 
-import { FieldCategory, SourceClass, StepCategory, StepEdgeKind, StudyLevel } from '../src/domain/enums'
+import {
+  FieldApplicability,
+  FieldCategory,
+  SourceClass,
+  StepCategory,
+  StepEdgeKind,
+  StudyLevel,
+} from '../src/domain/enums'
 import { addEdge, addField, addStep, createRoute } from '../src/server/revisions/service'
-import { getRouteBySlug } from '../src/server/routes/read'
+import { getRouteBySlug, getStepFields } from '../src/server/routes/read'
 
 /**
  * Seeds one route for the journey spec to walk through.
@@ -22,6 +29,10 @@ import { getRouteBySlug } from '../src/server/routes/read'
  */
 const SLUG = 'e2e-test-route'
 const actor = { id: null, system: true }
+
+/** Referenced by `e2e/route-journey.spec.ts`. Both say plainly that they are not real. */
+export const OFFICIAL_FIELD = 'Test official requirement. Not a real requirement.'
+export const PROGRAMME_FIELD = 'Test programme-specific requirement. Not a real requirement.'
 
 setup('seed a route for the reading journey', async () => {
   if (process.env.E2E_BASE_URL) return // Deployed target: never seeded.
@@ -72,5 +83,45 @@ setup('seed a route for the reading journey', async () => {
       sourceClass: SourceClass.community_submission,
       sourceUrl: 'https://example.org/not-a-real-source',
     })
+  }
+
+  /**
+   * The first step also gets an OFFICIAL field and a PROGRAMME-SCOPED one — Phase 6.
+   *
+   * The journey spec has to prove in a real browser that an official claim and a community
+   * submission are visibly different (FR-33, FR-54, invariant 11), and that a claim narrower
+   * than the route says so (FR-81). Neither is provable against a seed containing only
+   * community submissions, which is what this used to be.
+   *
+   * Matched by value text rather than by count, so a rerun against a branch that already has
+   * the community field still adds these.
+   */
+  const firstStep = route.steps[0]
+  if (firstStep) {
+    const existing = await getStepFields(firstStep.id)
+    const has = (text: string) => existing.some((field) => field.valueText.startsWith(text))
+
+    if (!has(OFFICIAL_FIELD)) {
+      await addField({
+        actor,
+        stepId: firstStep.id,
+        category: FieldCategory.requirement,
+        valueText: OFFICIAL_FIELD,
+        sourceClass: SourceClass.official,
+        applicability: [FieldApplicability.route_wide],
+        sourceUrl: 'https://example.org/official-test-source',
+      })
+    }
+
+    if (!has(PROGRAMME_FIELD)) {
+      await addField({
+        actor,
+        stepId: firstStep.id,
+        category: FieldCategory.requirement,
+        valueText: PROGRAMME_FIELD,
+        sourceClass: SourceClass.official,
+        applicability: [FieldApplicability.institution, FieldApplicability.programme],
+      })
+    }
   }
 })

@@ -50,6 +50,18 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-03 | **Trust integration suite, full pass** | `npm run test:db -- tests/db/trust-surface.db.test.ts` | ✅ **10/10 in 246s.** See the caveat in §14 — one test was edited afterwards and its current form is CI-verified, not locally verified |
+| 2026-09-03 | ❗ The whole integration suite could not complete locally | Repeated runs against the Neon `test` branch | ❌ **Blocked by the link, not by the code.** A re-probe at 05:10 failed **6 of 10** connects; a Phase 3 write transaction blew its 20s budget after 26s of latency. Verification moves to CI, which runs against a `postgres:18` container. §14 |
+| 2026-09-03 | **Phase 6 trust surface — full gate** | lint, typecheck, 430 unit/architecture tests, build | ✅ All pass. 67 of the 430 are new |
+| 2026-09-03 | **The unremarkable case stays unremarkable** | `tests/unit/trust.test.ts` | ✅ An official, route-wide, confirmed field raises **zero** cautions — the assertion that keeps the page from becoming a wall of badges |
+| 2026-09-03 | **Trust can only ever fall, never rise** | 13 URLs × 4 declared classes | ✅ No URL shape promotes a link. `https://embassy.example.de@evil.example.com` reports host `evil.example.com` |
+| 2026-09-03 | **Counts never decide standing** | Every lifecycle state × counts to 10,000,000 | ✅ Stored `lifecycleState` returned unchanged; 100,000 confirmations leave an experimental route experimental |
+| 2026-09-03 | **The passport cannot see reports** | Structural scan of `RouteTrustInput` | ✅ No report, flag or complaint field exists — invariant 12 is unbreakable by refactor, not merely unbroken |
+| 2026-09-03 | **A ribbon never looks calmer than its route** | `tests/db/trust-surface.db.test.ts`, two separate queries | ✅ Snapshot fields identical; every ribbon caution appears in the route passport |
+| 2026-09-03 | Forked revision history detected from real rows | Two `reviseField` calls sharing one `basedOnRevisionId` | ✅ `hasForkedHistory` true for the forked field, false for a linear one; counted as disputed at route level |
+| 2026-09-03 | Hand-written activity SQL joins all four revision tables correctly | Exact count assertion, not "greater than zero" | ✅ 9 revisions — 1 route + 1 step + 5 addField + 2 reviseField. `confirmField` correctly creates none |
+| 2026-09-03 | ⚠️ A source guard failed its own planted violation | `sponsoredRoutes` against a ``-anchored pattern | ❗ camelCase leaves no word boundary — the guard would have missed the exact identifier a real violation uses. Now unanchored stems |
+| 2026-09-03 | ⚠️ OF-6 has a **second, independent** cause | 10 timed connects to a woken compute | ❗ Successful connects 2.4–8.8s, failures at ~5.01s. Not a cold start. See §14 |
 | 2026-09-03 | **The MHT no longer lags the DOCX** | Regenerated from the amended DOCX via Word `wdFormatWebArchive`; QP soft breaks stripped before counting | ✅ 81 FR / 35 BR / 47 D — **identical id sets** across DOCX, `REQUIREMENTS.md` and MHT. DOCX sha256 unchanged by the export. §13 |
 | 2026-09-03 | **Amendment 001 applied to the frozen baseline** | Edited `word/document.xml` in the DOCX, then verified: valid zip, well-formed XML, text extraction | ✅ 81 FR ids and 47 D ids in the DOCX; 81 FR rows and 47 D rows in the regenerated `REQUIREMENTS.md` |
 | 2026-09-03 | **Applicability migration rehearsed against real data** | Branch from `test` (which holds the Germany fixture), then `migrate deploy` | ✅ **421 field revisions preserved**, column added, zero DROP statements |
@@ -177,15 +189,48 @@ acceptable is shipping the phase without them.**
 
 | # | Test | State |
 |---|---|---|
-| 9 | A community-submitted link renders with an unverified marker, never as official | ⬜ |
-| 10 | External links expose their real host; shortened domains never classify as `trusted` | ⬜ |
-| 11 | A community experience cannot overwrite or occupy an official requirement field | ⬜ |
-| 12 | Zero reports never produces a "safe"/"verified" badge | ⬜ |
-| 13 | No code path lets payment or sponsorship affect ordering, confidence or source class | ⬜ |
-| 14 | Follower/vote/report counts alone never trigger archival, deletion or trusted status | ⬜ |
-| 15 | A rapidly re-revised field renders as disputed / frequently changed | ⬜ |
-| 16 | Fly window and durations always render with estimate wording | ⬜ |
-| 17 | Completion aggregates render as "users marked completed", never "verified" | ⬜ |
+| 9 | A community-submitted link renders with an unverified marker, never as official | ✅ |
+| 10 | External links expose their real host; shortened domains never classify as `trusted` | ✅ |
+| 11 | A community experience cannot overwrite or occupy an official requirement field | ✅ |
+| 12 | Zero reports never produces a "safe"/"verified" badge | ✅ |
+| 13 | No code path lets payment or sponsorship affect ordering, confidence or source class | ✅ |
+| 14 | Follower/vote/report counts alone never trigger archival, deletion or trusted status | ✅ |
+| 15 | A rapidly re-revised field renders as disputed / frequently changed | ✅ |
+| 16 | Fly window and durations always render with estimate wording | ✅ |
+| 17 | Completion aggregates render as "users marked completed", never "verified" | 🟡 |
+
+**Notes on the Phase 6 rows.**
+
+**9** is proved twice: `fieldSignals` marks a `community_submission` uncorroborated, and
+`classifyLink` marks an unclassified link `not_corroborated`. A `null` link class is treated
+as a community submission, not as an absence of concern — silence is not endorsement.
+
+**10** rests on one property rather than a list of bad hosts: **classification can only ever
+lower trust, never raise it.** Asserted over every combination of thirteen URLs and four
+declared classes. The credential-spoofing case (`https://embassy.example.de@evil.example.com`)
+is asserted explicitly, because that is where printing the raw string and printing the parsed
+host give different answers.
+
+**11** is positional, not cosmetic. `fieldGroup` puts official/institutional and community
+claims in different regions with different headings, and the tests assert every source class
+maps to exactly one group and that the two never collide.
+
+**12** has two halves. The vocabulary half forbids `verified|certified|trustworthy|guaranteed`
+anywhere in `src/` — with a planted-violation check, and with the deliberate exception that
+*denying* verification ("does not verify routes") is allowed. The structural half asserts
+`RouteTrustInput` contains no report, flag or complaint field, so the summary function cannot
+observe reports at all. **Phase 9 must not add one.**
+
+**14** is asserted across every lifecycle state × counts up to ten million: the stored state
+comes back unchanged. A route with 100,000 confirmations stays `experimental`.
+
+**15** uses forked revision history — two revisions sharing a `previousRevisionId` — as
+structural evidence of disagreement rather than a "revised more than N times" threshold.
+Recent re-revision is reported as a plain count, quietly.
+
+**17** is 🟡 rather than ✅ because no completion aggregate exists to render until Phase 7.
+The vocabulary guard that would catch a violation is in place and proven to fire; the
+rendering it guards is not written yet.
 
 ### Structure
 
@@ -279,7 +324,33 @@ violated (§2). A guard nobody has watched fail is a guard that may do nothing.
 | Expected fly window | 3 | ✅ | `tests/db/read-path.db.test.ts` |
 | Full anonymous journey, JS on and off | 6 | ✅ | `e2e/route-journey.spec.ts` |
 
-### 4.4 Product feature coverage
+### 4.4 Phase 6 — trust, provenance and freshness surface (landed 2026-09-03)
+
+67 new tests: 44 unit, 13 architecture, 10 integration.
+
+| Area | Tests | State | File |
+|---|---|---|---|
+| Field signals — scope, freshness, dispute, fork, quiet-by-default | 32 | ✅ | `tests/unit/trust.test.ts` |
+| Link classification — host exposure, monotonic trust, quarantine, shorteners | 12 | ✅ | `tests/unit/links.test.ts` |
+| Forbidden vocabulary, no monetisation, no embedding, no-JS disclosure | 13 | ✅ | `tests/architecture/trust-vocabulary.test.ts` |
+| Trust surface over real rows — projection, fork detection, passport counts, ribbon agreement | 10 | ✅ | `tests/db/trust-surface.db.test.ts` |
+
+Each source guard in `trust-vocabulary.test.ts` carries a **planted-violation check**. One of
+them earned its keep immediately: the monetisation guard was written with `...` word
+boundaries and failed its own planted `sponsoredRoutes`, because camelCase leaves no boundary
+after `sponsored`. A guard that cannot catch the identifier a real violation would use is a
+guard that does nothing. It now matches unanchored stems.
+
+**Two assertions carry more weight than the rest:**
+
+- *"produces no caution at all for an official, route-wide, confirmed field."* If the
+  unremarkable case ever raises a marker, every field on the page raises one and the reader
+  learns to ignore all of them — including the one that mattered.
+- *"gives a ribbon the same standing the route page reports."* Search results and the route
+  page derive cautions from one function over numbers from two different queries. A ribbon
+  that looks calmer than the route behind it is a search result that misleads.
+
+### 4.5 Product feature coverage
 
 Populated as phases land. One row per feature area.
 
@@ -288,15 +359,15 @@ Populated as phases land. One row per feature area.
 | Route search and filters | ⬜ | ✅ | ✅ | Anonymous; GET form, no JS required |
 | Ribbon rendering | ✅ | ✅ | ✅ | Same renderer and graph as the road |
 | Ribbon → road expansion | ✅ | ✅ | ✅ | Visual continuity (D-33) — one component, two densities |
-| Step / field display | ⬜ | ✅ | ✅ | `?step=` expansion, source class always shown |
+| Step / field display | ✅ | ✅ | ✅ | `?step=` expansion; fields grouped by claim type, not badged |
 | Revision engine | ⬜ | ⬜ | ⬜ | Highest-risk area |
 | ADD / UPDATE / CONFIRM / CHALLENGE | ⬜ | ⬜ | ⬜ | |
 | Journey follow and progress | ⬜ | ⬜ | ⬜ | |
 | Change propagation to followers | ⬜ | ⬜ | ⬜ | |
 | Shadow route diff | ⬜ | ⬜ | ⬜ | |
 | Reporting and quarantine | ⬜ | ⬜ | ⬜ | |
-| Link trust classification | ⬜ | ⬜ | ⬜ | |
-| Route lifecycle and freshness | ⬜ | ⬜ | ⬜ | |
+| Link trust classification | ✅ | ✅ | ⬜ | Host always shown; trust can only fall. Assigning `trusted`/`quarantined` is Phase 8/9 |
+| Route lifecycle and freshness | ✅ | ✅ | ⬜ | Displayed and explained. Lifecycle *transitions* are Phase 11 |
 | Auth and session | ⬜ | ⬜ | ⬜ | |
 | Anonymous access paths | ⬜ | ✅ | ✅ | Read layer takes no session, actor or role at all |
 | Accessibility | ⬜ | ⬜ | ⬜ | Meaning never colour-only |
@@ -310,7 +381,7 @@ Populated as phases land. One row per feature area.
 |---|---|---|---|
 | OF-4 | **`CLAUDE.md` and the Neon endpoint id are still in public git history** — 8 and 2 commits respectively on `origin/main`. Untracking and redaction stopped future publication, not past publication. | Test.md §10 publication rules | ⏸️ **Deferred by the owner (2026-09-02): to be removed manually, not by this project's tooling.** Not a credential exposure — neither is a secret, and the password behind that endpoint is rotated. Note that a rewrite cannot guarantee erasure anyway: GitHub retains unreachable objects, and old SHAs stay referenced by Vercel deployments and Actions runs. |
 | OF-5 | **The Neon API key `3303456` is account-scoped and embedded in 7 local config files.** Neon's own warning: it reaches everything the account can, in every organization. | Least privilege | ⏸️ **Deliberately open. Owner's decision 2026-09-02: close it only when a phase actually needs automated Neon branch or project management.** Not a leak — never committed, confirmed by the full-history blob scan. See §11. |
-| OF-6 | **Neon computes scale to zero; a cold branch takes ~25–30s to wake while Prisma's default connect timeout is 10s.** A script that tries once reports an unreachable database for one that is merely asleep. **Initially misdiagnosed as free-tier compute exhaustion** — see §12. | Development, integration testing, and the first visitor after an idle period | 🟡 Open — application code is unaffected (deployed `/api/health` returns 200 in 292ms once warm). The user-facing half is Phase 12 scope. |
+| OF-6 | **Reaching Neon from a workstation is unreliable in two independent ways.** (a) Computes scale to zero; a cold branch takes ~25–30s to wake. (b) Even when awake, connects over a degraded link took 2.4–8.8s while failures cut off at ~5.01s — see §14. **Misdiagnosed twice**: as free-tier compute exhaustion, then as a quoting bug (which was also real) — see §12. | Development, integration testing, and the first visitor after an idle period | 🟡 Open — application code is unaffected (deployed `/api/health` returns 200 in 292ms once warm). Development is unblocked: `test:db` wakes first, `setup.ts` retries, and the integration suite gets a 20s connect timeout. **The user-facing half remains Phase 12 scope and was deliberately not fixed by widening the application's timeout.** |
 
 > When a test fails, add it here with the failing output and the FR/invariant it guards.
 > Remove the row only when it passes — never by deleting the test.
@@ -696,3 +767,78 @@ The MHT is ~1.06 MB of Word-generated HTML, and each regeneration writes a new ~
 git history. That is the price of keeping a browser-readable copy truthful. If it is ever
 judged not worth paying, the correct move is to **remove the file**, not to leave a stale one
 in place.
+
+---
+
+## 14. Connection latency to Neon, and what it cost (2026-09-03)
+
+Recorded because it produced four test failures that looked like three different problems,
+and because the underlying number matters for Phase 12.
+
+### What was measured
+
+Ten sequential connect-and-`select 1` attempts against the `test` branch, from this
+workstation, immediately after `scripts/db/wake.mjs` reported the compute awake:
+
+```
+ 1 OK   8813ms      6 OK   2581ms
+ 2 FAIL 5027ms      7 FAIL 5010ms
+ 3 OK   3997ms      8 FAIL 5017ms
+ 4 OK   4250ms      9 FAIL 5018ms
+ 5 OK   2381ms     10 OK   7704ms
+```
+
+**Successful connects took 2.4–8.8 seconds. Failures clustered at ~5.01s.** The compute was
+demonstrably awake — attempt 5 answered in 2.4s — so this is not the cold start of §12. The
+connection string sets no `connect_timeout`, so Prisma's default applies, and it sits below
+the latency this link was actually delivering. Four attempts in ten failed.
+
+### Why it looked like three problems
+
+| Symptom | First reading | Actual |
+|---|---|---|
+| Suite took 219s, four timeouts | Connectivity | The fixture rebuilt a full route in **every** test — ten builds of ~15 write transactions |
+| `globalSetup` failed instantly | Compute asleep | One connect attempt, no retry, against a link failing ~40% of connects |
+| One test timed out at 30s | Slow query | `searchRoutes` loads the full graph of **every** matching route, and this branch accumulates a fixture route per run |
+
+Each was real and each was fixed on its own terms — the fixture builds once, `setup.ts`
+retries, `routeActivity` went from four `findMany` calls pulling every revision row to one
+aggregate query returning three scalars. None of them was "the network is slow", which was
+the thing actually underneath.
+
+### What changed, and what deliberately did not
+
+`vitest.db.config.mts` raises `connect_timeout` to 20s **for the integration suite only**.
+
+It was not raised for the application. The same exposure on the deployed read path is a real
+user-facing question — the first visitor after an idle period — and it belongs to Phase 12's
+performance and error-state work, where it is already recorded as OF-6. Widening the timeout
+globally would have made the test suite green and the product question invisible.
+
+### Where this ended up
+
+The trust suite passed **10/10 in 246 seconds** while the link was merely slow. It degraded
+further afterwards — a re-probe failed 6 of 10 connects, and a Phase 3 write transaction
+exceeded its 20-second budget after 26 seconds of latency inside a single transaction.
+
+**That timeout was not raised.** It was set at 20s in Phase 3 for a real reason — a queue of
+concurrent contributors — and widening it to accommodate one bad afternoon on one workstation
+would weaken a deliberate decision for no product benefit.
+
+So the full integration suite's verification is **CI's**, which runs it against a `postgres:18`
+service container with no network in the path. That is where it should have been all along for
+a run this size; a remote branch is the right target for a focused check, not for the whole
+suite. One consequence to be honest about: `tests/db/trust-surface.db.test.ts` was edited after
+its 10/10 pass — the archival test now reuses the shared route instead of building a second one
+— so that file's *current* form is verified by CI rather than locally.
+
+**Docker is installed on this workstation but its daemon was not running.** Starting it would
+make the whole suite run locally in seconds, which is the better local loop.
+
+### Two things to carry forward
+
+1. **`searchRoutes` loads every matching route's full graph.** Fine at four routes, a real
+   question at four hundred. Phase 12.
+2. **The `test` branch accumulates a route per fixture build.** Nothing deletes it, correctly
+   — the schema forbids deleting shared knowledge. Reset the branch from its parent when the
+   accumulation starts to matter, rather than adding a delete path that invariant 1 forbids.

@@ -33,3 +33,22 @@ export function walk(dir: string, extensions: readonly string[]): string[] {
 export function read(repoRelativePath: string): string {
   return readFileSync(resolve(process.cwd(), repoRelativePath), 'utf8')
 }
+
+/**
+ * Removes comments so prose cannot trip a source scan.
+ *
+ * Block comments go entirely; only whole-line `//` comments are removed, never a trailing
+ * one, because truncating at a `//` inside a string literal — a URL, say — could hide a real
+ * violation further along the line. Missing a comment is harmless; missing a violation is not.
+ *
+ * `tests/architecture/enum-single-source.test.ts` keeps its own copy of this deliberately:
+ * it is Phase 0's exit criterion and depends on as little as possible, including as little
+ * of this file as possible.
+ */
+export function stripComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter((line) => !/^\s*\/\//.test(line))
+    .join('\n')
+}
