@@ -2,7 +2,9 @@ import type {
   FieldCategory,
   SourceClass,
   RouteLifecycleState,
+  RouteMechanism,
   StepCategory,
+  StudyLevel,
 } from '@/domain/enums'
 
 /**
@@ -62,6 +64,20 @@ export const en = {
       'Vindeshi Express is not an education agency, consultancy or application service.',
   },
 
+  studyLevel: {
+    bachelors: "Bachelor's",
+    masters: "Master's",
+    phd: 'PhD',
+    other: 'Other level',
+  } satisfies Record<StudyLevel, string>,
+
+  routeMechanism: {
+    direct_admission: 'Direct admission',
+    government_scholarship: 'Government scholarship',
+    university_scholarship: 'University scholarship',
+    other_mechanism: 'Other route type',
+  } satisfies Record<RouteMechanism, string>,
+
   stepCategory: {
     documents_preparation: 'Documents and preparation',
     language_testing: 'Language and testing',
@@ -71,12 +87,85 @@ export const en = {
     travel_departure: 'Travel and departure',
   } satisfies Record<StepCategory, string>,
 
+  landing: {
+    headlineBn: 'ভিনদেশী এক্সপ্রেস',
+    headline: 'Understand the road before you fly',
+    subhead:
+      'Compare the ways to reach an overseas study destination, open a route to see every step, and benefit as the community keeps it current.',
+    findMyRoute: 'Find my route',
+    howItWorks: 'How it works',
+    steps: [
+      { title: 'Search', body: 'Choose where you are going and what you are studying.' },
+      { title: 'Compare', body: 'Each route appears as a ribbon you can compare at a glance.' },
+      { title: 'Open', body: 'A ribbon unfolds into a road: every step, in order, with its detail.' },
+    ],
+  },
+
+  search: {
+    title: 'Find a route',
+    lede: 'A few filters, not a profile. Nothing here needs an account.',
+    origin: 'From',
+    destination: 'To',
+    studyLevel: 'Study level',
+    intake: 'Intake',
+    mechanism: 'Route type',
+    any: 'Any',
+    submit: 'Search routes',
+    reset: 'Clear filters',
+    resultCount: (n: number) => (n === 1 ? '1 route' : `${n} routes`),
+    emptyTitle: 'No routes yet',
+    emptyBody:
+      'Nothing has been published for these filters. This platform is new and its routes are researched and seeded carefully rather than generated — an empty result is honest, not an error.',
+    emptyBodyNoFilters:
+      'No routes have been published yet. Routes are researched from official sources and reviewed before they appear here.',
+  },
+
   route: {
     start: 'Start of the route',
     destination: 'Departure',
     stepAdded: 'New',
     stepArchived: 'Archived',
     stepDisrupted: 'Temporary disruption affects this step',
+    backToSearch: 'Back to search',
+    ribbonLabel: 'Route overview',
+    roadLabel: 'The full road',
+    steps: 'Steps',
+    stepCount: (n: number) => (n === 1 ? '1 step' : `${n} steps`),
+    openStep: 'Open this step',
+    closeStep: 'Close',
+    noSteps: 'This route has no steps yet.',
+    noFields: 'No information has been added to this step yet.',
+    history: 'Route history',
+    viewHistory: 'See what has changed',
+    historyEmpty: 'No changes recorded yet.',
+    historyLede:
+      'Every change is kept. Earlier values are never overwritten, so you can see what a route said before.',
+    fieldsIn: (step: string) => `Information in "${step}"`,
+    source: 'Source',
+    lastConfirmed: 'Last confirmed',
+    neverConfirmed: 'Not yet confirmed by anyone',
+    fieldCount: (n: number) => (n === 0 ? 'no information yet' : n === 1 ? '1 item' : `${n} items`),
+    revisionCount: (n: number) => (n === 1 ? '1 version' : `${n} versions`),
+    duration: 'Typical duration',
+    days: (n: number) => (n === 1 ? '1 day' : `${n} days`),
+    startsAfter: (n: number) => `Can start about day ${n}`,
+    deadline: 'Deadline',
+  },
+
+  flyWindow: {
+    label: 'Expected fly window',
+    /** Never a date. Wording is deliberate — this is a planning aid, not a promise (BR-18). */
+    value: (from: string, to: string) => `Roughly ${from} to ${to}`,
+    estimate: 'An estimate from this route’s own timing, not a guarantee.',
+    partial: 'Some steps have no timing yet, so the real journey is likely longer.',
+    unknown: 'Not enough timing information yet',
+    totalDuration: 'Estimated total',
+    months: (n: number) => (n === 1 ? 'about 1 month' : `about ${n} months`),
+  },
+
+  notPublished: {
+    title: 'This route is not available',
+    body: 'It may have been archived, merged into another route, or never existed.',
   },
 
   fieldCategory: {

@@ -7,6 +7,108 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Session 8 — 2026-09-02
+
+**Goal:** Phase 5 — a Bangladeshi student can search and understand routes with no account.
+Content track continues in parallel.
+
+### Done
+
+**The reading journey exists end to end.** Landing (VR-01) → search → ribbon → road → step →
+field → history. All server-rendered, all anonymous.
+
+| Page | Purpose |
+|---|---|
+| `/[locale]` | Minimal landing: Bengali headline, one primary action, how it works |
+| `/[locale]/routes` | Search with a GET form; ribbons as results |
+| `/[locale]/routes/[slug]` | The road, with in-place step expansion via `?step=` |
+| `/[locale]/routes/[slug]/history` | Every revision, newest first |
+
+**Anonymous is structural, not remembered.** No function in `src/server/routes/read.ts` takes
+a session, an actor or a role. There is no parameter a caller could use to gate access, which
+is a stronger guarantee than a convention about not checking one (FR-01, D-03). A test
+requests every read URL directly and asserts none redirects anywhere resembling auth.
+
+**Step expansion is a URL, not client state.** `?step=<id>` is deep-linkable, shareable and
+survives JavaScript being off — proved by running the whole journey in a context with JS
+disabled. Search is the first thing a visitor does and must not wait on a bundle (§8.1), and
+many arrive on a phone browser on a slow connection.
+
+**The renderer was reused unchanged.** Phase 4's architecture needed no integration changes:
+the ribbon in search results and the road on the route page are the same component, from the
+same graph, at two densities. Opening a route unfolds the same object rather than navigating
+to a disconnected detail page (D-33, invariant 25). An integration test asserts search and
+detail return identical step sets, so the two views cannot drift.
+
+**The expected fly window is a range by type, not by convention.** `FlyWindow` has no field
+that could be rendered as a single date, and `expectedFlyWindow` returns `null` rather than
+guessing when a route has no timing. Verified that overlap is respected: the test route models
+67 days, not the 97 a naive sum would give (invariant 16, §20.2).
+
+**Production is still empty, deliberately.** The E2E server runs against the **test** database;
+the seeded route says in its own summary that it is test data. Confirmed after the full run:
+production has 0 routes, 0 steps, 0 fields.
+
+### Decisions taken
+
+| # | Decision | Why |
+|---|---|---|
+| 1 | **Search is a plain GET form, server-rendered.** | Deep-linkable, shareable and works with no JavaScript. The first interaction should resemble searching for a journey, not booting an application (§8.1). |
+| 2 | **Step expansion via `?step=`, not client state.** | Makes "collapse the detail and return to the visual journey" (§8.3) a link, and makes any step in any route directly linkable. |
+| 3 | **Fields show their source class as plain text now**, with badges deferred to Phase 6. | Invariant 11 says an official requirement and a community experience must never look alike. Showing nothing until Phase 6 would have misrepresented the data; showing a full trust surface would have been Phase 6's work. Plain text is the honest minimum. |
+| 4 | **A real empty state that explains itself.** | §45's first risk is the empty platform. "No routes have been published yet — routes are researched from official sources and reviewed before they appear here" is honest. Inventing routes to look populated is the failure mode. |
+| 5 | **E2E runs against the test database, not production.** | The journey spec needs a route to walk through. Seeding production would put unreviewed content in front of real visitors, which the content track forbids outright. |
+| 6 | **Playwright assertion timeout raised to 15s.** | Every read page is server-rendered against a remote database whose compute scales to zero. The 5s default produced failures that looked like product bugs and were cold starts. |
+| 7 | **Step rows show how much information they hold.** | Added while fixing a test that opened an empty step. It is genuinely useful — a reader can see where the detail is before clicking (VR-05). |
+
+### Issues found
+
+**The E2E seed was create-once, so it went stale.** It returned early if any route existed,
+which meant a route seeded by an earlier run never gained fields added to the seed later, and
+the journey spec failed against data that no longer matched its own setup. Nothing can be
+deleted (the database refuses), so the seed now **converges** on the shape it wants rather
+than assuming a clean slate. Worth remembering for every future fixture: in an append-only
+system, seeds must be ensure-shaped.
+
+**Three test defects of my own**, each mistaken for a product failure at first: an assertion
+timeout too short for a cold database; a strict-mode clash once the brand appeared in both the
+header and the landing headline; and a URL captured before client navigation settled, which
+produced a request for `/en/routes/history`.
+
+### Content track
+
+Continues in parallel. `content/` holds worksheets only — no facts were added this session
+and nothing was loaded into any database. The Bangladesh → Germany → Master's → Direct
+admission worksheet remains `UNVERIFIED` by design, and `MODELLING-NOTES.md` still has an
+empty findings table because no research has been carried out yet.
+
+**This remains the project's biggest schedule risk.** The engineering is now far enough along
+that a student could read a route — there simply are not any. Phase 6 does not change that.
+
+### Blockers
+
+**None.**
+
+### Carried forward — not done
+
+**OF-5, the account-scoped Neon API key.** Open by decision, with the agreed trigger: close it
+when a phase actually needs automated Neon branch or project management (`Test.md` §11).
+
+**OF-4, `CLAUDE.md` in public git history** — the owner's to remove manually.
+
+**Shadow-route overlap** — recorded in Phase 4, untouched here as agreed. An overlay at
+identical geometry is invisible; VR-07 shows side by side. Phase 10 owns it.
+
+### Next step
+
+**Phase 6 — trust, provenance and freshness surface.** Deliberately ordered before the
+contribution loop: the day an unverified link can be added is the day it must already render
+as unverified. Source-class badges, link trust with visible destination domain, route maturity
+and lifecycle display, freshness and last-confirmed, volatility, dispute markers, and the
+route passport summary.
+
+---
+
 ## Session 7 — 2026-09-02
 
 **Goal:** Phase 3 — make non-destructive, attributed, append-only writing the *only* physical

@@ -50,6 +50,14 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-02 | **Anonymous journey end to end** | Playwright: landing → search → ribbon → road → step → field, at 360px and 1280px | ✅ 22/22 including history and a 404 case |
+| 2026-09-02 | **The read path works with JavaScript disabled** | Same journey in a `javaScriptEnabled: false` context | ✅ Search, road and step expansion all server-rendered |
+| 2026-09-02 | **No read path redirects to a sign-in** | Every anonymous URL requested directly, checking status and final URL | ✅ All under 400, none redirected to any auth path |
+| 2026-09-02 | Read layer takes no session, actor or role | `tests/db/read-path.db.test.ts` — 15 tests calling every read function with no identity | ✅ Compiles and passes; there is no parameter a caller could use to gate access |
+| 2026-09-02 | Search, detail and ribbon agree on the same graph | Compared search summary against route detail | ✅ Identical step sets — search and detail cannot diverge (invariant 25) |
+| 2026-09-02 | Archived content is absent from current views but present in history | Archived a field and a step, then read both views | ✅ Gone from the road, still in history |
+| 2026-09-02 | Fly window is a range and never a date | Window assertions plus overlap arithmetic | ✅ End strictly later than start; 67 days not 97, because two steps overlap |
+| 2026-09-02 | **Production contains no test or unreviewed data** | `npm run db:objects` after the full E2E run | ✅ 0 routes, 0 steps, 0 fields — E2E runs against the test branch only |
 | 2026-09-02 | **Production renderer draws every stress fixture** | 88 layout assertions + gallery screenshots at 360/768/1280 | ✅ All fixtures render; no page-wide horizontal overflow at any width |
 | 2026-09-02 | **24 — structural equivalence** | Every fixture against a twin with different ids, labels and categories | ✅ Identical width, height, rows, node geometry and every connector path |
 | 2026-09-02 | **24b — generative coverage** | 60 random graphs × 3 densities, asserting containment, no overlap and in-bounds connectors | ✅ All valid |
@@ -247,16 +255,26 @@ violated (§2). A guard nobody has watched fail is a guard that may do nothing.
 | Model classification, shared vs private | 24 | ✅ | `tests/architecture/model-classification.test.ts` |
 | Append-only history, immutability, bypass refusal, transactional safety, concurrency, archival, diff, no-ownership | 28 | ✅ | `tests/db/revision-service.db.test.ts` |
 
-### 4.3 Product feature coverage
+### 4.3 Phase 5 — anonymous read path (landed 2026-09-02)
+
+| Area | Tests | State | File |
+|---|---|---|---|
+| Search, filters, empty state | 5 | ✅ | `tests/db/read-path.db.test.ts` |
+| Route detail, steps, fields, archival | 5 | ✅ | `tests/db/read-path.db.test.ts` |
+| History readable anonymously | 2 | ✅ | `tests/db/read-path.db.test.ts` |
+| Expected fly window | 3 | ✅ | `tests/db/read-path.db.test.ts` |
+| Full anonymous journey, JS on and off | 6 | ✅ | `e2e/route-journey.spec.ts` |
+
+### 4.4 Product feature coverage
 
 Populated as phases land. One row per feature area.
 
 | Area | Unit | Integration | E2E | Notes |
 |---|---|---|---|---|
-| Route search and filters | ⬜ | ⬜ | ⬜ | |
-| Ribbon rendering | ⬜ | ⬜ | ⬜ | |
-| Ribbon → road expansion | ⬜ | ⬜ | ⬜ | Visual continuity (D-33) |
-| Step / field display | ⬜ | ⬜ | ⬜ | |
+| Route search and filters | ⬜ | ✅ | ✅ | Anonymous; GET form, no JS required |
+| Ribbon rendering | ✅ | ✅ | ✅ | Same renderer and graph as the road |
+| Ribbon → road expansion | ✅ | ✅ | ✅ | Visual continuity (D-33) — one component, two densities |
+| Step / field display | ⬜ | ✅ | ✅ | `?step=` expansion, source class always shown |
 | Revision engine | ⬜ | ⬜ | ⬜ | Highest-risk area |
 | ADD / UPDATE / CONFIRM / CHALLENGE | ⬜ | ⬜ | ⬜ | |
 | Journey follow and progress | ⬜ | ⬜ | ⬜ | |
@@ -266,7 +284,7 @@ Populated as phases land. One row per feature area.
 | Link trust classification | ⬜ | ⬜ | ⬜ | |
 | Route lifecycle and freshness | ⬜ | ⬜ | ⬜ | |
 | Auth and session | ⬜ | ⬜ | ⬜ | |
-| Anonymous access paths | ⬜ | ⬜ | ⬜ | Must work with no session |
+| Anonymous access paths | ⬜ | ✅ | ✅ | Read layer takes no session, actor or role at all |
 | Accessibility | ⬜ | ⬜ | ⬜ | Meaning never colour-only |
 | Mobile layout | ⬜ | ⬜ | ⬜ | Phone browser is primary |
 

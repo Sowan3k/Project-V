@@ -21,7 +21,8 @@ test('the shell renders and redirects to the default locale', async ({ page }) =
 
 test('the Bengali brand and English name are both present', async ({ page }) => {
   await page.goto('/en')
-  await expect(page.getByText('ভিনদেশী এক্সপ্রেস')).toBeVisible()
+  // Appears in the header and again as the landing headline, so match the first.
+  await expect(page.getByText('ভিনদেশী এক্সপ্রেস').first()).toBeVisible()
   await expect(page.getByText('Vindeshi Express').first()).toBeVisible()
 })
 

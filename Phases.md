@@ -36,7 +36,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 2 | Route graph + revision ledger schema | The irreversible migration | ✅ |
 | 3 | Revision write engine | The only door into shared knowledge | ✅ |
 | 4 | Route renderer (production) | Ribbon + road from data, any structure | ✅ |
-| 5 | Anonymous read path | Search → ribbon → road → step → field | ⬜ |
+| 5 | Anonymous read path | Search → ribbon → road → step → field | ✅ |
 | 6 | Trust, provenance and freshness surface | Uncertainty is visible | ⬜ |
 | 7 | Identity and private journeys | Follow a route, track privately | ⬜ |
 | 8 | Contribution loop | ADD / UPDATE / CONFIRM / CHALLENGE | ⬜ |
@@ -287,8 +287,35 @@ owns that design decision; Phase 4 deliberately did not invent it.
 unfold, step expansion, field display, route/step/field history views, expected fly window and
 timing (VR-01, VR-02 intent, VR-03, VR-04, VR-05).
 
-**Exit criteria:** every read path works signed-out; no anonymous route hits an auth check;
-Playwright covers landing → search → ribbon → road → step → field.
+**Exit criteria:**
+- ✅ Every read path works signed-out
+- ✅ No anonymous route hits an auth check
+- ✅ Playwright covers landing → search → ribbon → road → step → field
+
+### Phase 5 result (2026-09-02)
+
+Landing (VR-01), search, road with in-place step expansion, fields, and route history. All
+server-rendered, all anonymous — **no function in `src/server/routes/read.ts` takes a
+session, an actor or a role**, which is a stronger guarantee than remembering not to check
+one.
+
+**Step expansion is `?step=<id>`, not client state.** It is deep-linkable, shareable and
+works with JavaScript disabled — proved by a test that runs the whole journey in a context
+with JS off. Search is the first thing a visitor does and must not wait on a bundle (§8.1).
+
+**The renderer was reused unchanged.** The ribbon on the search page and the road on the
+route page are the same component from the same graph, so opening a route unfolds the same
+object (D-33). Phase 4's architecture needed no integration changes.
+
+**Production stays empty and that is deliberate.** The E2E server runs against the test
+database; the seeded route is labelled test data and never reaches production. The search
+page has a real empty state that says routes are researched and reviewed rather than
+generated — §45's cold-start risk answered honestly rather than disguised.
+
+**Deferred as agreed:** the shadow-route overlap issue is untouched (Phase 10), and the full
+trust surface — badges, freshness scoring, confidence, dispute markers — is Phase 6. Fields
+show their source class as plain text, which is the honest minimum without which the page
+would misrepresent its own data (invariant 11).
 
 **FRs:** FR-01, FR-02, FR-03, FR-06, FR-08, FR-09, FR-31
 

@@ -32,6 +32,11 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
+  // Every page on the read path is server-rendered against a remote database, and Neon's
+  // compute scales to zero — a cold first request genuinely takes several seconds. The
+  // default 5s assertion timeout produces flakes that look like product bugs.
+  expect: { timeout: 15_000 },
+  timeout: 60_000,
   use: {
     baseURL,
     trace: 'on-first-retry',
@@ -47,7 +52,10 @@ export default defineConfig({
   webServer: usingDeployedTarget
     ? undefined
     : {
-        command: 'npm run build && npm run start -- --port 3100',
+        // The local server runs against the TEST database, never production. The route
+        // journey spec seeds a route to walk through, and seeded test data must not reach
+        // production (content track rules, content/README.md).
+        command: 'npm run build && dotenv -e .env.test.local -- npm run start -- --port 3100',
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 180_000,
