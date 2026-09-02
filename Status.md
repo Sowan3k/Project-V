@@ -99,9 +99,54 @@ not**, because the same exposure on the deployed read path is a real user-facing
 that belongs to Phase 12 — widening it globally would have made the suite green and the
 product question invisible.
 
+### Phase 6 regression gate — verified on a container, not on a home network
+
+Reported at first as *implementation complete, full regression gate pending*, because the
+integration and E2E suites had not finished against the remote Neon branch. That gap is now
+closed, and it is worth recording how rather than just that.
+
+**GitHub Actions turned out to be reachable** without the `gh` CLI: the repository is public,
+so `https://api.github.com/repos/Sowan3k/Project-V/actions/runs` and the per-job endpoints
+answer unauthenticated. Only the raw log download needs admin rights; per-step conclusions do
+not, and they are what matters.
+
+Inspecting it exposed something the earlier report had wrongly assumed away: **CI had a
+`verify` job and a `database` job and no E2E job at all.** Run #21 on the Phase 6 commit
+`68be0b7` was green — but green over lint, typecheck, unit tests, build, migrations and the
+integration suite only. It never executed Playwright. Claiming that run proved E2E would have
+been false.
+
+So E2E was added to CI against the same `postgres:18` service container, and **it failed on its
+first run** — which is the entire argument for adding it. The failure was in the test: the spec
+still clicked a *"See what has changed"* link that the navigation work had replaced with a
+**History tab**, and `route.viewHistory` had been orphaned copy ever since. Nothing was
+watching, because E2E only ever ran on a workstation. My replacement then failed a second time
+on a race I introduced — reading the `h1` before the click navigation settled, so it captured
+the search page's title.
+
+**Final result — run #24, commit `b9348c3`, all three jobs green:**
+
+| Job | What it actually executed |
+|---|---|
+| `lint · typecheck · test · build` | eslint · `tsc --noEmit` · **430** unit/architecture tests · production build |
+| `schema · migration · integration` | migrations onto an **empty** database · schema-drift check · disposability marker · full integration suite |
+| `end-to-end journey` | `npx playwright test` — **28** assertions at 360px and 1280px, JavaScript on and off |
+
+**The remote-Neon failures were not a Phase 6 defect.** The same commit that could not finish
+locally passes every job on a container; the variable was the network. And nothing was weakened
+to get there — the Phase 3 interactive-transaction budget stays at 20 seconds. The only timeout
+raised was `connect_timeout` in `vitest.db.config.mts`, which the application never reads.
+
 ### Blockers
 
-None. OF-4 and OF-5 remain open by the owner's decision and block nothing.
+None. OF-4 and OF-5 remain open by the owner's decision and block nothing. OF-6 is an
+infrastructure and testing concern, not a Phase 6 architecture question, and its user-facing
+half stays Phase 12 scope.
+
+**One item for the owner, unrelated to the build:** every commit carries a failing
+`Workers Builds: project-v` check from the `cloudflare-workers-and-pages` GitHub app. Nothing
+here targets Cloudflare Workers and CLAUDE.md §4 puts it outside the architecture. Disconnecting
+that integration is an owner action.
 
 ### Next step
 

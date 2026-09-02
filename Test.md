@@ -50,8 +50,11 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-03 | **Phase 6 gate verified in full, on a container** | GitHub Actions run #24, commit `b9348c3` — all three jobs | ✅ **lint · typecheck · 430 unit/architecture tests · build · migrations to an empty database · schema-drift check · integration suite · E2E (28 assertions, 360px and 1280px, JS on and off)** |
+| 2026-09-03 | **E2E now runs in CI at all** | New `e2e` job against a `postgres:18` service container | ✅ It caught a real stale test on its first run — see §15. Until now E2E ran only on a workstation against remote Neon |
+| 2026-09-03 | The remote-Neon failures were **not** a Phase 6 defect | Same code, same commit, container instead of Neon | ✅ Everything that failed locally passes in CI. The variable was the network, not the code |
 | 2026-09-03 | **Trust integration suite, full pass** | `npm run test:db -- tests/db/trust-surface.db.test.ts` | ✅ **10/10 in 246s.** See the caveat in §14 — one test was edited afterwards and its current form is CI-verified, not locally verified |
-| 2026-09-03 | ❗ The whole integration suite could not complete locally | Repeated runs against the Neon `test` branch | ❌ **Blocked by the link, not by the code.** A re-probe at 05:10 failed **6 of 10** connects; a Phase 3 write transaction blew its 20s budget after 26s of latency. Verification moves to CI, which runs against a `postgres:18` container. §14 |
+| 2026-09-03 | ❗ The whole integration suite could not complete locally | Repeated runs against the Neon `test` branch | ❌ **Blocked by the link, not by the code** — later confirmed by the same commit passing on a container. A re-probe at 05:10 failed **6 of 10** connects; a Phase 3 write transaction blew its 20s budget after 26s of latency. §14 |
 | 2026-09-03 | **Phase 6 trust surface — full gate** | lint, typecheck, 430 unit/architecture tests, build | ✅ All pass. 67 of the 430 are new |
 | 2026-09-03 | **The unremarkable case stays unremarkable** | `tests/unit/trust.test.ts` | ✅ An official, route-wide, confirmed field raises **zero** cautions — the assertion that keeps the page from becoming a wall of badges |
 | 2026-09-03 | **Trust can only ever fall, never rise** | 13 URLs × 4 declared classes | ✅ No URL shape promotes a link. `https://embassy.example.de@evil.example.com` reports host `evil.example.com` |
@@ -842,3 +845,73 @@ make the whole suite run locally in seconds, which is the better local loop.
 2. **The `test` branch accumulates a route per fixture build.** Nothing deletes it, correctly
    — the schema forbids deleting shared knowledge. Reset the branch from its parent when the
    accumulation starts to matter, rather than adding a delete path that invariant 1 forbids.
+
+---
+
+## 15. Phase 6 verification, and where it actually happened (2026-09-03)
+
+### The result
+
+**GitHub Actions run #24, commit `b9348c3` — all three jobs green.**
+
+| Job | Steps verified |
+|---|---|
+| `lint · typecheck · test · build` | eslint · `tsc --noEmit` · 430 unit and architecture tests · production build |
+| `schema · migration · integration` | migrations applied to an **empty** database · schema/migration drift check · disposability marker · full integration suite |
+| `end-to-end journey` | 28 browser assertions at 360px and 1280px, with JavaScript on and off |
+
+That is the whole Phase 6 gate, and it ran against a `postgres:18` service container with no
+home network anywhere in the path.
+
+### The remote-Neon problem was not a Phase 6 defect
+
+Worth stating plainly, because the two are easy to conflate: **the same commit that could not
+finish its integration suite against Neon passed every job on a container.** The variable was
+the network, not the code. §14 has the measurements — successful connects taking 2.4–8.8s,
+failures cutting off at ~5.01s, 6 of 10 failing on the final probe.
+
+**Nothing was weakened to make this pass.** The Phase 3 interactive-transaction budget stays at
+20 seconds; it was set for a queue of concurrent contributors, and widening it to survive one
+bad afternoon on one workstation would have traded a real guarantee for a green tick. The only
+timeout raised was `connect_timeout` in `vitest.db.config.mts`, which applies to the test runner
+and not to the application.
+
+The Neon reliability question stays where it belongs: an **infrastructure and testing** concern
+(OF-6, §12, §14), not a reason to revisit Phase 6 architecture. Its user-facing half — the first
+visitor after an idle period — remains Phase 12 scope.
+
+### Adding E2E to CI paid for itself immediately
+
+CI had a `verify` job and a `database` job and **no E2E job at all**, so the one suite that
+proves a reader can get from the front page to a field was also the only suite whose result
+depended on a home network. It now runs on a container.
+
+It failed on its first run, and the failure was real: the spec still clicked a
+*"See what has changed"* link that the navigation work had replaced with a **History tab**.
+The product was correct; the test had been stale since that refactor, and nothing was watching.
+`route.viewHistory` had been orphaned copy for just as long.
+
+The replacement asserts more than the original: it clicks the tab inside the route-views
+navigation and then asserts the route's own `h1` is *still on screen*, so "a tab changes the
+view, not the place" is proved rather than assumed. That itself took a second attempt — the
+first read the heading before the click navigation had settled and captured the search page's
+title. Both fixes are in `e2e/route-journey.spec.ts`.
+
+**The lesson is about where tests run, not about this one test.** A suite that only ever runs
+in one fragile place will drift, and the drift will be invisible.
+
+### Phase 6 exit criteria
+
+| Criterion | State |
+|---|---|
+| Invariant tests 9–17 pass | ✅ 9–16 fully; **17 is 🟡 by design** — its vocabulary guard is in place and proven to fire, but the completion aggregate it guards is not rendered until Phase 7 |
+| A `community_submission` field is visually distinct from an `official` one | ✅ Separate labelled regions, asserted in the browser, official first |
+| No badge derives from absence of reports | ✅ Structurally: `RouteTrustInput` cannot observe reports. Plus the passport says so in words |
+
+### One thing that is not ours
+
+The commit also carries a failing **`Workers Builds: project-v`** check from the
+`cloudflare-workers-and-pages` GitHub app. Nothing in this repository targets Cloudflare
+Workers, and CLAUDE.md §4 puts it explicitly outside the architecture. It is an integration
+connected to the repository on GitHub's side, failing on every commit and adding a red mark
+that has nothing to do with the build. Disconnecting it is an owner action.

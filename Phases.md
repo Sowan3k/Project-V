@@ -396,6 +396,11 @@ asserted to return it unchanged across every state and counts up to ten million.
 - **Lifecycle *transitions*** — dormancy, staleness, quiet — are Phase 11. Phase 6 displays
   the stored state and is asserted never to change it.
 
+**Gate: verified in full.** GitHub Actions run #24, commit `b9348c3` — lint, typecheck, 430
+unit/architecture tests, build, migrations onto an empty database, schema-drift check, the
+integration suite and **28 E2E assertions**, all on a `postgres:18` container. E2E was not in
+CI before this phase closed; adding it caught a stale spec on its first run (Test.md §15).
+
 **FRs:** FR-10, FR-11, FR-33, FR-34, FR-49, FR-52, FR-53, FR-54, FR-62, FR-64, FR-65, FR-66,
 FR-67, FR-70, FR-74, FR-81 · **Invariants:** 9–17
 
