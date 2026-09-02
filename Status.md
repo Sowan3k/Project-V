@@ -7,6 +7,104 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Session 10 — 2026-09-03
+
+**Goal:** close the Phase 6 verification gap properly, then Phase 7 — identity and private
+journeys.
+
+### Phase 6, actually verified
+
+The previous report said the gate was pending and that GitHub Actions could not be inspected
+from here. Both halves were wrong in useful ways.
+
+**Actions is reachable without the `gh` CLI** — the repository is public, so the runs and jobs
+endpoints answer unauthenticated; only raw log download needs admin. Inspecting it exposed the
+real gap: **CI had no E2E job at all.** Run #21 on the Phase 6 commit was green over lint,
+typecheck, unit tests, build, migrations and integration — and never executed Playwright.
+Calling that proof of E2E would have been false.
+
+E2E now runs in CI against the same `postgres:18` container, and **failed on its first run**,
+which is the entire argument for adding it: the spec still clicked a "See what has changed"
+link that the navigation work had replaced with a History tab, and `route.viewHistory` had been
+orphaned copy ever since. Nothing was watching, because E2E only ever ran on a workstation.
+
+Phase 6 closed on run #24. **The remote-Neon failures were never a Phase 6 defect** — the same
+commit that could not finish locally passes every job on a container.
+
+### Phase 7 — identity and private journeys
+
+Auth.js with Google, a generated pseudonymous handle, following a route, private per-step
+progress with dates and notes, personal tasks, and self-reported completion. `My journey` is a
+**tab on the route**, so the road and the route's standing stay on screen; `/journeys` is the
+index across routes.
+
+**Gate green on run #28, `cc42268`:** lint, typecheck, 460 unit/architecture tests, build,
+migrations onto an empty database, schema-drift check, the integration suite, and 38 E2E
+assertions.
+
+### Decisions taken
+
+**1. Unfollow archives; delete is separate and explicit.** Asked rather than invented, and
+approved. Months of private notes should not go to a mis-click, and "I stopped following" is
+not the same statement as "erase my data" — but a platform that promises privacy must let
+somebody actually erase their own data. The explicit delete is the only hard delete in the
+application; invariant 1 protects *shared* knowledge and deliberately not this.
+
+**2. Privacy is structural, not remembered.** Every exported function in
+`src/server/journeys/` takes `userId` and every query against a private model filters on it in
+its own `where` clause. Not fetched-then-checked: a fetch followed by an `if` is a rule
+somebody can forget to write. Public aggregates live on the public read path instead, so the
+rule needs no exceptions — and an exception list is where a rule like this goes to die.
+
+**3. The handle is generated, never derived.** A handle taken from a Google display name would
+publish the real identity §24.3 says a contributor need not expose — by default, without
+asking, which is the worst way to make that choice for someone. Its alphabet has no vowels, so
+no generated handle can spell a word by chance and land a slur on somebody who did not pick it.
+
+**4. Database sessions, not JWTs.** Signing out revokes immediately, and the E2E suite can
+write a session row directly — so **the application contains no test-only authentication path
+at all.** A credentials provider behind a flag is one misconfiguration away from a
+password-free login on the real site.
+
+**5. We keep the email and discard the rest.** Google offers a name and a photograph with
+every sign-in; the adapter drops both and there are no columns for them to land in (§24.2).
+
+### Things that went wrong, and what they taught
+
+**Next.js encodes every server-action form as `multipart/form-data`.** An E2E assertion that no
+form is multipart failed — the enctype is the framework's, on forms accepting only text. The
+useful reading: a hand-crafted POST could carry a file part whatever the page renders, so "no
+upload path" can never be proved from markup. It is refused at the action boundary instead, by
+a helper that throws on a `File` rather than coercing it. That helper began life as an ESLint
+`no-base-to-string` error, which was right for a reason the rule does not know about.
+
+**Auth.js returns no session, silently, when `trustHost` is unset.** Ten E2E failures that all
+looked like a bad cookie. The cookie was fine; `trustHost` derives from `AUTH_URL`, which CI
+did not set. A signed-in flow behaving exactly like a signed-out one is a host-trust problem
+before it is a cookie problem.
+
+### Blockers
+
+None for Phase 8. Two owner actions, neither blocking development:
+
+- **The Phase 7 migration is on no Neon branch yet** — verified against CI's empty Postgres and
+  nothing else. `npm run db:deploy` against `test` then `production` is deliberately a person's
+  job (CLAUDE.md §4), best done when the link is healthy.
+- **Sign-in needs secrets that must never be in this repository**: `AUTH_SECRET`, and
+  `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` from a Google Cloud OAuth client. Until they exist,
+  `/en/signin` says so plainly rather than offering a button that fails, and reading the
+  platform works without any of it.
+- Still outstanding from before: the failing `Workers Builds: project-v` check from the
+  Cloudflare GitHub app, which targets an architecture this project does not use.
+
+### Next step
+
+**Phase 8 — the contribution loop**, on approval. ADD / UPDATE / CONFIRM / CHALLENGE with
+reasons, the create-route flow (VR-09), the update-field flow (VR-08), and the "Was this still
+accurate?" prompt after a follower marks a step complete (FR-42, §16.5) — which Phase 7
+deliberately left alone. **There is no approval gate**: updates go live and create a revision
+(CLAUDE.md §8.6).
+
 ## Session 9 — 2026-09-03
 
 **Goal:** clear the stale-MHT ambiguity, then Phase 6 — make uncertainty visible before the

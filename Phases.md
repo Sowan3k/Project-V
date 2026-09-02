@@ -38,7 +38,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 4 | Route renderer (production) | Ribbon + road from data, any structure | ✅ |
 | 5 | Anonymous read path | Search → ribbon → road → step → field | ✅ |
 | 6 | Trust, provenance and freshness surface | Uncertainty is visible | ✅ |
-| 7 | Identity and private journeys | Follow a route, track privately | ⬜ |
+| 7 | Identity and private journeys | Follow a route, track privately | ✅ |
 | 8 | Contribution loop | ADD / UPDATE / CONFIRM / CHALLENGE | ⬜ |
 | 9 | Safety: reporting and quarantine | Abuse containment | ⬜ |
 | 10 | Change propagation and shadow route | Followers see what changed | ⬜ |
@@ -416,7 +416,57 @@ self-reported completion, `My Journey` (VR-06).
 flow.** User A cannot read User B's journey through any endpoint. Aggregates say "users marked
 completed".
 
-**FRs:** FR-12, FR-23, FR-24, FR-25, FR-26, FR-27, FR-41
+### Phase 7 result (2026-09-03)
+
+Auth.js with Google, a generated pseudonymous handle, following a route, and a private journey
+that is edited in place and never revisioned.
+
+**Privacy is structural, not remembered.** Every exported function in `src/server/journeys/`
+takes `userId`, and every query against a private model filters on it *in its own `where`
+clause* — not fetched-then-checked, because a fetch followed by an `if` is a rule somebody can
+forget to write. Public aggregates live in `src/server/routes/read.ts` instead, so the rule in
+that directory needs no exceptions. The architecture suite asserts the shape; the integration
+suite has one user hold another's journey id and try four separate writes, and asserts nothing
+moves.
+
+**We keep the email and discard the rest.** Google offers a name and a photograph with every
+sign-in; the adapter drops both, and there are no columns for them to land in. The handle is
+*generated*, never derived — one taken from a display name would publish the real identity
+§24.3 says a contributor need not expose, by default, without asking. Its alphabet has no
+vowels, so no handle can spell a word by chance and land a slur on somebody who did not choose
+it.
+
+**Database sessions rather than JWTs**, for two reasons that both mattered: signing out
+revokes immediately, and the E2E suite can write a session row directly — so **the application
+contains no test-only authentication path at all.** Nothing to misconfigure, nothing to leave
+switched on.
+
+**Invariant 8 is held at two levels.** Archiving a step leaves a follower's progress untouched,
+and the foreign key is `RESTRICT`, so the database refuses to delete a tracked step even with
+the write guard bypassed. One is the product rule; the other is the floor under it.
+
+**Unfollow archives; delete is separate and explicit** (owner's decision, 2026-09-03). Months
+of notes should not go to a mis-click, and "I stopped following" is not "erase my data". The
+explicit delete is the only hard delete in the application — invariant 1 protects *shared*
+knowledge and deliberately not this.
+
+**Followers and self-reported completions joined the passport as evidence, never as a lever.**
+A route with 250,000 followers stays `experimental`, asserted (invariant 14).
+
+**Two findings recorded in Test.md §16:** Next.js encodes every server-action form as
+`multipart/form-data`, so "no upload path" cannot be proved from markup and is enforced at the
+action boundary instead; and Auth.js silently returns no session when `trustHost` is unset,
+which looks exactly like a bad cookie.
+
+**Gate: verified in full.** GitHub Actions run #28, commit `cc42268` — lint, typecheck, 460
+unit/architecture tests, build, migrations onto an empty database, schema-drift check, the
+integration suite and 38 E2E assertions, all on a `postgres:18` container.
+
+**Deferred deliberately:** the "Was this still accurate?" prompt after completing a step
+belongs to the contribution loop (Phase 8, FR-42, §16.5), and contributor credibility signals
+with it.
+
+**FRs:** FR-12, FR-23, FR-24, FR-25, FR-26, FR-27, FR-41 · **Invariants:** 5, 5b, 6, 7, 8, 18
 
 ---
 

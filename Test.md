@@ -50,6 +50,15 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-03 | **Phase 7 gate verified in full** | GitHub Actions run #28, commit `cc42268`, all three jobs | ✅ lint · typecheck · **460** unit/architecture tests · build · migrations onto an empty database · schema-drift check · integration suite · **38 E2E assertions** |
+| 2026-09-03 | **One user cannot reach another's journey** | `tests/db/journeys.db.test.ts` — Nadia holding Rahim's journey id | ✅ Read returns nothing; four separate writes all reject; his journey is byte-for-byte as he left it |
+| 2026-09-03 | **And not in a browser either** | Two fabricated sessions, same route, same URL | ✅ The second follower's page never contains the first's note, before or after following |
+| 2026-09-03 | **A public change never erases private progress** | Revised a step, then archived one, with progress on both | ✅ Status, note and date survive. `prisma.step.delete` on a tracked step is **refused by the foreign key** even with the write guard bypassed |
+| 2026-09-03 | Following links rather than copies | Added a step to the route after two people followed it | ✅ Step count rises and the journey still points at the same live route (invariant 18) |
+| 2026-09-03 | Aggregates expose counts and nothing else | Serialised the whole public route projection | ✅ No user id, no handle, no note, no date anywhere in it |
+| 2026-09-03 | Unfollow keeps the data; delete really deletes | Archive → resume → hard delete | ✅ Note returns verbatim after resuming; delete removes progress and leaves every step of the route intact |
+| 2026-09-03 | ⚠️ **Next encodes every server-action form as multipart** | An E2E assertion that no form is multipart, which failed | ❗ The enctype is the framework's, on forms accepting only text. "No upload" cannot be proved from markup — it is enforced at the action boundary instead. §16 |
+| 2026-09-03 | ⚠️ Auth.js rejects an untrusted host silently | 10 E2E failures that looked like a bad cookie | ❗ `trustHost` derives from `AUTH_URL`, which CI did not set, so every session read returned `null`. Cookie name confirmed from `@auth/core`, not guessed |
 | 2026-09-03 | **Phase 6 gate verified in full, on a container** | GitHub Actions run #24, commit `b9348c3` — all three jobs | ✅ **lint · typecheck · 430 unit/architecture tests · build · migrations to an empty database · schema-drift check · integration suite · E2E (28 assertions, 360px and 1280px, JS on and off)** |
 | 2026-09-03 | **E2E now runs in CI at all** | New `e2e` job against a `postgres:18` service container | ✅ It caught a real stale test on its first run — see §15. Until now E2E ran only on a workstation against remote Neon |
 | 2026-09-03 | The remote-Neon failures were **not** a Phase 6 defect | Same code, same commit, container instead of Neon | ✅ Everything that failed locally passes in CI. The variable was the network, not the code |
@@ -182,11 +191,11 @@ acceptable is shipping the phase without them.**
 
 | # | Test | State |
 |---|---|---|
-| 5 | User A cannot read User B's journey progress, notes or dates via any endpoint | ⬜ |
-| 5b | Public aggregates cannot be reduced to an individual's progress | ⬜ |
-| 6 | No file-upload path exists anywhere in the journey flow | ⬜ |
+| 5 | User A cannot read User B's journey progress, notes or dates via any endpoint | ✅ |
+| 5b | Public aggregates cannot be reduced to an individual's progress | ✅ |
+| 6 | No file-upload path exists anywhere in the journey flow | ✅ |
 | 7 | No schema field accepts passport, transcript, certificate, bank or address data | ✅ |
-| 8 | Revising a route does not cascade-delete or reset JourneyStepProgress | ⬜ |
+| 8 | Revising a route does not cascade-delete or reset JourneyStepProgress | ✅ |
 
 ### Trust and truth
 
@@ -239,7 +248,7 @@ rendering it guards is not written yet.
 
 | # | Test | State |
 |---|---|---|
-| 18 | Following a route does not create a detached copy; route edits surface in the journey | ⬜ |
+| 18 | Following a route does not create a detached copy; route edits surface in the journey | ✅ |
 | 19 | A temporary disruption expires without mutating the base route | ⬜ |
 | 20 | Merging two routes preserves both follower sets and both revision histories | ⬜ |
 | 21 | Change relevance is computed from effective date, not edit date | ⬜ |
@@ -353,7 +362,29 @@ guard that does nothing. It now matches unanchored stems.
   page derive cautions from one function over numbers from two different queries. A ribbon
   that looks calmer than the route behind it is a search result that misleads.
 
-### 4.5 Product feature coverage
+### 4.5 Phase 7 — identity and private journeys (landed 2026-09-03)
+
+19 new unit/architecture tests, an integration suite, and 5 browser tests × 2 viewports.
+
+| Area | Tests | State | File |
+|---|---|---|---|
+| Pseudonymous handles — generated, unpronounceable, unmistakable | 5 | ✅ | `tests/unit/handle.test.ts` |
+| Privacy by construction — scoping, no uploads, no real identity, no revisioning | 14 | ✅ | `tests/architecture/journey-privacy.test.ts` |
+| One user against another's journey; invariants 5, 5b, 8, 18 over real rows | ✅ | ✅ | `tests/db/journeys.db.test.ts` |
+| The journey in a browser, signed in and anonymous | 5 | ✅ | `e2e/journey.spec.ts` |
+
+**The architecture suite proves the shape; the integration suite proves the behaviour.** Static
+analysis can assert that every exported function in `src/server/journeys/` names `userId` and
+that every query against a private model filters on it. It cannot prove that a `journeyId` in
+scope was verified — so the integration suite has Nadia hold Rahim's journey id and try four
+different writes, and asserts his journey is untouched. Neither half is sufficient alone.
+
+**The scoping rule is stated per model, not as a blanket.** `setStepProgress` looks up the
+*step* to confirm it belongs to the journey's route: that is public data with no owner, and
+demanding a `userId` on it would be cargo cult. A blanket rule would have needed an exception
+list, and an exception list is where a rule like this goes to die.
+
+### 4.6 Product feature coverage
 
 Populated as phases land. One row per feature area.
 
@@ -365,13 +396,13 @@ Populated as phases land. One row per feature area.
 | Step / field display | ✅ | ✅ | ✅ | `?step=` expansion; fields grouped by claim type, not badged |
 | Revision engine | ⬜ | ⬜ | ⬜ | Highest-risk area |
 | ADD / UPDATE / CONFIRM / CHALLENGE | ⬜ | ⬜ | ⬜ | |
-| Journey follow and progress | ⬜ | ⬜ | ⬜ | |
+| Journey follow and progress | ✅ | ✅ | ✅ | Private by construction; unfollow archives, delete is separate |
 | Change propagation to followers | ⬜ | ⬜ | ⬜ | |
 | Shadow route diff | ⬜ | ⬜ | ⬜ | |
 | Reporting and quarantine | ⬜ | ⬜ | ⬜ | |
 | Link trust classification | ✅ | ✅ | ⬜ | Host always shown; trust can only fall. Assigning `trusted`/`quarantined` is Phase 8/9 |
 | Route lifecycle and freshness | ✅ | ✅ | ⬜ | Displayed and explained. Lifecycle *transitions* are Phase 11 |
-| Auth and session | ⬜ | ⬜ | ⬜ | |
+| Auth and session | ✅ | ✅ | ✅ | Google OAuth, database sessions, generated handle. **Needs `AUTH_SECRET` and Google credentials to work on a deployment** |
 | Anonymous access paths | ⬜ | ✅ | ✅ | Read layer takes no session, actor or role at all |
 | Accessibility | ⬜ | ⬜ | ⬜ | Meaning never colour-only |
 | Mobile layout | ⬜ | ⬜ | ⬜ | Phone browser is primary |
@@ -915,3 +946,59 @@ The commit also carries a failing **`Workers Builds: project-v`** check from the
 Workers, and CLAUDE.md §4 puts it explicitly outside the architecture. It is an integration
 connected to the repository on GitHub's side, failing on every commit and adding a red mark
 that has nothing to do with the build. Disconnecting it is an owner action.
+
+---
+
+## 16. Two Phase 7 findings worth keeping
+
+### Next.js encodes every server-action form as `multipart/form-data`
+
+An E2E assertion that no form on the journey page carries a multipart enctype was written,
+and failed. The enctype belongs to the framework, appears on forms that accept nothing but
+text, and cannot be removed.
+
+The useful reading is not "the assertion was wrong" but what it implies: **a hand-crafted POST
+to a server action can carry a file part whatever the page renders.** So "there is no upload
+path in the journey flow" (FR-25, BR-06, D-09, invariant 6) can never be proved from markup.
+
+It is enforced at the boundary instead. Every journey action reads its fields through:
+
+```ts
+function text(form: FormData, field: string): string {
+  const value = form.get(field)
+  if (value === null) return ''
+  if (typeof value !== 'string') throw new UploadRefusedError(field)
+  return value
+}
+```
+
+A fabricated multipart request is refused rather than coerced to `"[object Object]"`. Both the
+spec and the architecture test now say why, so the assertion does not get helpfully re-added.
+
+It arrived as an ESLint `no-base-to-string` error about `String(formData.get(...))`. The lint
+rule was right for a reason the rule does not know about.
+
+### Auth.js rejects an untrusted host silently
+
+Ten E2E failures that all looked like a bad session cookie. The cookie was fine —
+`authjs.session-token`, confirmed by reading `@auth/core` rather than guessing, with the
+`__Secure-` prefix appearing only over https.
+
+The cause was `trustHost`, which Auth.js derives from `AUTH_URL`. CI did not set it, so the
+runner's host was untrusted and **every session read returned `null`** — indistinguishable from
+a cookie that never arrived. `AUTH_URL` and `AUTH_TRUST_HOST` are now set for the E2E job.
+
+Worth remembering because it will recur on any new deployment target: a signed-in flow that
+behaves exactly like a signed-out one is a host-trust problem before it is a cookie problem.
+
+### What still needs a person
+
+The Phase 7 migration has been applied to **no Neon branch yet** — it is verified against CI's
+empty Postgres, and nothing else. CLAUDE.md §4 requires migrations to be applied deliberately
+rather than on deploy, so `npm run db:deploy` against `test` and then `production` remains an
+owner action, best done when the link is healthy (§14).
+
+Sign-in also needs two secrets that are not and must never be in this repository:
+`AUTH_SECRET`, and `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` from a Google Cloud OAuth client.
+Until they are set, `/en/signin` says so plainly rather than offering a button that fails —
+and reading the platform continues to work without any of it.
