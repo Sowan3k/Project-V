@@ -49,6 +49,15 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-02 | **Spike A go/no-go — renderer** | 79 assertions in `spikes/renderer/layout.spike.test.ts` + screenshots at 360/768/1280 | ✅ **GO.** All 10 fixtures render legibly at all three widths with no per-fixture code; no page-wide horizontal overflow at any width |
+| 2026-09-02 | Ribbon and road share one layout pass | Order and count compared for every fixture | ✅ Identical step count and order at both densities, for all 10 |
+| 2026-09-02 | Structural equivalence across destinations (test 24, early) | `wrapping15` vs `wrapping15Twin` | ✅ Identical width, height, row count, node geometry and every connector path |
+| 2026-09-02 | Generative coverage (test 24b, early) | 60 random valid graphs, 3–20 steps, mixed edge kinds, both densities | ✅ All render to valid, in-bounds, non-overlapping geometry |
+| 2026-09-02 | Road adapts to 360px by density constant alone | `ROAD_NARROW` (columnsPerRow 2) on the 15-step fixture | ✅ Whole route fits 360px in 8 rows, correct order, no horizontal scroll, no branching in the renderer |
+| 2026-09-02 | **Spike B go/no-go — revision graph** | 13 assertions in `spikes/revision/revision.spike.test.ts` | ✅ **GO.** Diff of a branch addition reads `1 step added, route structure changed (2 branch connections), 1 field changed` — it names the branch kinds, not just a step count |
+| 2026-09-02 | Concurrent revisions preserve both edits | Two revisions against the same parent revision | ✅ 3 revisions retained, none lost, `contested: true` — conflict surfaced, not auto-resolved |
+| 2026-09-02 | Archived content leaves the current view and stays in history | Field and step archival, then history query | ✅ Absent from `project()`, present in `project({includeArchived:true})` and in the operation log with actor and reason |
+| 2026-09-02 | Time-travel projection for the shadow route | `project({ at })` at a follower's start date | ✅ Returns the route as it was; diff against now reports the added step and the changed field |
 | 2026-09-02 | **Deployment healthy on the rotated credential** | Authenticated fetch of `/api/health` on `dpl_4uLewvGDfHYTjKearPDfb3vCz4J4` (commit `8c4a0d2`) | ✅ 200 `{"status":"ok","database":"reachable","latencyMs":269}`, and no `branch` field — Vercel re-synced and the deployed environment no longer announces it |
 | 2026-09-02 | **Database credential rotated on every branch** | `reset_postgres_role_password` on `production`, `vercel-dev` and `phase-0-migration-rehearsal` | ✅ Rotated. The previously exposed password was verified **still live on `vercel-dev` and `phase-0-migration-rehearsal`** before rotation — branches inherit the role password — and REJECTED on all three afterwards |
 | 2026-09-02 | Refreshed local credential works | `neon deploy` → `npm run db:objects` | ✅ `.env.local` regenerated; schema reads correctly |
@@ -105,7 +114,7 @@ acceptable is shipping the phase without them.**
 |---|---|---|
 | 1 | No non-admin route reaches a hard delete for Route, Step or Field | ⬜ |
 | 2 | Updating a field creates a revision; the prior value is still readable afterwards | ⬜ |
-| 2b | Concurrent updates to one field produce two revisions, neither lost | ⬜ |
+| 2b | Concurrent updates to one field produce two revisions, neither lost | 🟡 |
 | 3 | A user who did not create a route can still revise its fields | ⬜ |
 | 4 | Archived content disappears from current view but is returned by history queries | ⬜ |
 
@@ -141,10 +150,16 @@ acceptable is shipping the phase without them.**
 | 19 | A temporary disruption expires without mutating the base route | ⬜ |
 | 20 | Merging two routes preserves both follower sets and both revision histories | ⬜ |
 | 21 | Change relevance is computed from effective date, not edit date | ⬜ |
-| 22 | The route model represents a branch that diverges and reconnects | ⬜ |
+| 22 | The route model represents a branch that diverges and reconnects | 🟡 |
 | 23 | 30-day dormancy applies to unused new routes only; established routes go quiet/stale | ⬜ |
 
 ### Rendering
+
+**🟡 rows below were proved in Phase 1 against throwaway spike code, not against production
+code.** Spike A and Spike B answered their go/no-go questions (§2, 2026-09-02) and the
+assertions are written down — but `spikes/` does not ship and does not run in CI. A 🟡 here
+means "the approach is known to work"; it becomes ✅ only when the same assertion passes
+against `src/` in Phases 2–4.
 
 Invariant 24 prohibits destination- or route-specific *rendering logic*, not the appearance of
 destination names in data, labels, alt text or fixtures. These tests prove genericity by
@@ -159,14 +174,14 @@ nothing real is standing behind it until Phase 4.
 
 | # | Test | State |
 |---|---|---|
-| 24 | **Structural equivalence** — two routes with identical graph structure but different destination, title and ids produce identical geometry; only labels differ | ⬜ |
-| 24b | **Generative coverage** — randomly generated valid route graphs (3–20 steps, mixed branch kinds, parallelism, archived/new steps) all render to valid geometry | ⬜ |
+| 24 | **Structural equivalence** — two routes with identical graph structure but different destination, title and ids produce identical geometry; only labels differ | 🟡 |
+| 24b | **Generative coverage** — randomly generated valid route graphs (3–20 steps, mixed branch kinds, parallelism, archived/new steps) all render to valid geometry | 🟡 |
 | 24c | **Dependency boundary** — ESLint import rule: the renderer may not import from seed, content or destination modules | 🟡 |
 | 24d | **No identity branching** — scoped check over `src/renderer/**` only: no comparison against route id, slug, destination or title. Not a repo-wide country grep | ⬜ |
 | 24e | A route created through the UI renders with zero developer involvement | ⬜ |
 | 24f | The stress route (§7) renders correctly through the production renderer, no per-route code | ⬜ |
-| 25 | Ribbon and road derive from one layout pass — step count and order match for every fixture | ⬜ |
-| 25b | Adding a step to a route changes both ribbon and road with no separate work | ⬜ |
+| 25 | Ribbon and road derive from one layout pass — step count and order match for every fixture | 🟡 |
+| 25b | Adding a step to a route changes both ribbon and road with no separate work | 🟡 |
 
 ---
 
@@ -241,41 +256,64 @@ Populated as phases land. One row per feature area.
 
 ---
 
-## 7. Visualisation stress route (development only)
+## 7. Visualisation stress fixtures (development only)
 
-A fixture route that exists **only** to prove the renderer is route-agnostic. It is never
-seeded, never published, and must be excluded from production data. Built in Phase 1 as JSON
-fixtures, promoted to a permanent test asset, and re-run at every renderer change.
+Fixtures that exist **only** to prove the renderer is route-agnostic. Never seeded, never
+published, excluded from production data.
 
-The point is that the architecture must not only work for the tidy 8–9 step Germany examples in
-the mockups.
+**Promoted from Spike A on 2026-09-02** (Phases.md Phase 1 exit criterion). They were
+authored and exercised in `spikes/renderer/fixtures.ts`; this table is the durable
+specification and outlives that directory. Phase 4 must reimplement them against the
+production renderer and re-run at every renderer change.
 
-**Required contents**
+**Every value in them is invented for layout testing. None is seed data and none is
+factual** (CLAUDE.md §8.6). Destination names are deliberately `Placeholder A…I` so no
+fixture can be mistaken for content.
 
-| Feature | Requirement | State |
+### Required fixtures
+
+| # | Fixture | Feature it forces | Proven in Spike A |
+|---|---|---|---|
+| F1 | `tiny3` | Minimum viable route, 3 steps | ✅ |
+| F2 | `linear4` | The simple case must survive supporting the hard ones | ✅ |
+| F3 | `optionalBranch` | One step reachable but skippable | ✅ |
+| F4 | `alternativeBranch` | Two mutually exclusive paths (IELTS vs PTE) | ✅ |
+| F5 | `parallelActivities` | Three steps genuinely concurrent, on separate lanes | ✅ |
+| F6 | `rejoiningBranch` | A divergence that reconnects downstream | ✅ |
+| F7 | `evolvedRoute` | Archived step, newly added step, prior version for the shadow overlay, and a scoped disruption — all in one route | ✅ |
+| F8 | `wrapping15` | Long enough to wrap across rows (VR-04) | ✅ |
+| F9 | `large20` | Upper bound of the 3–20 step range | ✅ |
+| F10 | `wrapping15Twin` | Structural twin of F8: same shape, different destination, title and **every id** — geometry must be identical (test 24) | ✅ |
+
+### Responsive acceptance
+
+| Width | Target | Spike A result |
 |---|---|---|
-| Length | ~15 primary steps | ⬜ |
-| Optional branch | One step reachable but skippable | ⬜ |
-| Alternative branch | Two mutually exclusive paths (e.g. IELTS vs PTE) | ⬜ |
-| Parallel activities | At least two steps running concurrently | ⬜ |
-| Rejoining branch | A divergence that reconnects downstream | ⬜ |
-| Archived step | Present in history, absent from current view | ⬜ |
-| Newly added step | Marked as added, visible in shadow diff | ⬜ |
-| Previous version | A prior route version for shadow comparison | ⬜ |
-| Temporary disruption | Scoped by date and location, attached to one step | ⬜ |
-| Wrapping | Long enough to wrap across rows | ⬜ |
+| 360px | Legible, no page-wide horizontal overflow | ✅ Ribbon fits whole; road scrolls inside its own container |
+| 768px | Legible | ✅ |
+| 1280px | Legible | ✅ |
 
-**Responsive acceptance**
+**Range acceptance:** 3-step and 20-step routes both render usably. ✅
 
-| Width | Target | State |
-|---|---|---|
-| 360px | Mobile — legible, no page-wide horizontal overflow | ⬜ |
-| 768px | Tablet — legible | ⬜ |
-| 1280px | Desktop — legible | ⬜ |
+### Automated invariants the fixtures are not enough on their own to catch
 
-**Range acceptance:** also verify a 3-step route and a 20-step route render usably. ⬜
+Spike A found three real defects that no fixture exercised and no eye caught reliably. Phase 4
+must carry these assertions forward, not just the fixtures:
 
----
+| Assertion | Defect it caught |
+|---|---|
+| Every node's **full box** lies within the canvas | A dense rank fanned its lanes past the top edge — nodes at negative `y`, silently clipped |
+| Every node's box lies within the canvas **horizontally** | Node coordinates are centres, so the leftmost marker overhung the viewBox |
+| **No two node boxes overlap** | At ribbon density the lane gap was smaller than the marker height, so concurrent steps stacked and the ribbon showed fewer steps than the road |
+| Every **connector coordinate** lies within the canvas | Wrap hooks overshot by a fixed offset and were clipped at both edges |
+| Generative coverage over 60 random valid graphs, both densities | All four of the above were found here or by looking at output these seeds produced |
+
+### Density parametrisation
+
+Spike A proved the road adapts to a 360px screen through **density constants alone** —
+`ROAD_NARROW` differs from `ROAD` only in `columnsPerRow` and sizing, with no branching and
+no second code path. Phase 4 should select density from a media query rather than writing a
+mobile renderer.
 
 ## 8. Pre-launch gate verification
 

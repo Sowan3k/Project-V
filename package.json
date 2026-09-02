@@ -16,6 +16,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "seed": "dotenv -e .env.local -- tsx prisma/seed.ts",
+    "spike:test": "vitest run --config vitest.spike.config.mts",
+    "spike:gallery": "tsx spikes/renderer/gallery.ts",
     "prisma:enums": "tsx scripts/generate-prisma-enums.ts",
     "prisma:generate": "prisma generate",
     "db:migrate": "dotenv -e .env.local -- prisma migrate dev",

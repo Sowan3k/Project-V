@@ -32,7 +32,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | # | Phase | Ends with | State |
 |---|---|---|---|
 | 0 | Foundation spine | Deployed empty shell, green CI | ✅ |
-| 1 | Kill spikes: renderer + revision graph | Two go/no-go answers, throwaway code | ⬜ |
+| 1 | Kill spikes: renderer + revision graph | Two go/no-go answers, throwaway code | ✅ |
 | 2 | Route graph + revision ledger schema | The irreversible migration | ⬜ |
 | 3 | Revision write engine | The only door into shared knowledge | ⬜ |
 | 4 | Route renderer (production) | Ribbon + road from data, any structure | ⬜ |
@@ -138,11 +138,33 @@ views while staying in history.
 **Go/no-go:** the diff correctly describes a change involving a branch, not just a field edit.
 
 **Exit criteria**
-- Both go/no-go answers recorded in `Status.md` with evidence
-- Fixture set from Spike A promoted into `Test.md` as the permanent stress-route spec
-- Spike code deleted or clearly quarantined outside `src/`
+- ✅ Both go/no-go answers recorded in `Status.md` with evidence
+- ✅ Fixture set from Spike A promoted into `Test.md` §7 as the permanent stress-route spec
+- ✅ Spike code quarantined outside `src/` in `spikes/`, excluded from CI, imported by nothing
 
 **FRs (proved, not delivered):** FR-04, FR-05, FR-09, FR-20, FR-22, FR-57, FR-77
+
+### Phase 1 result (2026-09-02): both GO
+
+**Spike A — renderer: GO.** 10 fixtures render legibly at 360/768/1280 with no per-fixture
+code and no page-wide overflow. Ribbon and road share one `layout()`, differing only in
+density constants, so step count and order match at both densities for every fixture. The
+road adapts to 360px through a density constant alone — `ROAD_NARROW` changes
+`columnsPerRow` and sizing, nothing else — so **Phase 4 needs no mobile renderer**, only a
+media query choosing a density.
+
+**Spike B — revision graph: GO.** The decisive diff reads
+`1 step added, route structure changed (2 branch connections), 1 field changed` — naming the
+`alternative` and `rejoin` connections, not just counting steps. Concurrent revisions against
+one parent all survive and read as `contested`; a sequential chain correctly does not.
+Archived content leaves the projection and stays in history. `project({ at })` reconstructs
+the route as a follower first saw it, which is what the shadow comparison needs.
+
+**Four real defects were caught**, all promoted into `Test.md` §7 as assertions Phase 4 must
+carry. The one that justifies the phase: at ribbon density the lane gap was smaller than the
+marker height, so concurrent steps stacked and **the ribbon silently showed fewer steps than
+the road** — a correctness bug in exactly the place invariant 25 lives, invisible to every
+assertion until a screenshot was inspected.
 
 ---
 

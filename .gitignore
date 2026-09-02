@@ -59,3 +59,6 @@ next-env.d.ts
 # CLAUDE.md holds the working rules, invariants and conventions for this repo. It stays on
 # disk and is read at the start of every session — it is simply not uploaded.
 CLAUDE.md
+
+# spike output (throwaway, Phase 1)
+spikes/**/out/

@@ -7,6 +7,122 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Session 5 — 2026-09-02
+
+**Goal:** Phase 1 — the two kill spikes. Answer the questions that would invalidate the
+architecture, using disposable code, **before** Phase 2 commits a schema and Phase 4 commits
+a renderer.
+
+### Go/no-go answers
+
+Both **GO**. Evidence in `Test.md` §2; assertions in `spikes/`; screenshots in
+`spikes/renderer/out/` (gitignored, regenerate with `npm run spike:gallery`).
+
+#### Spike A — ribbon-to-road renderer: **GO**
+
+*Can one data-driven renderer draw every route shape, on a phone, with no route-specific code?*
+
+Yes. 10 fixtures — 3-step, 4-step linear, 15-step wrapping, 20-step, optional branch,
+alternative branch, three parallel activities, a rejoining divergence, and one route carrying
+an archived step, a newly added step, a prior version and a scoped disruption at once — all
+render legibly at 360, 768 and 1280 with **no per-fixture code**. No page-wide horizontal
+overflow at any width.
+
+Three findings worth more than the pass:
+
+1. **Ribbon and road genuinely share one layout pass.** There is a single `layout()`; ribbon
+   and road differ only in density constants. Step count and order are identical at both
+   densities for all 10 fixtures, and adding a step changes both with no separate work.
+   Invariant 25 is achievable by construction, not by discipline.
+2. **The road adapts to a phone through a density constant alone.** `ROAD_NARROW` differs
+   from `ROAD` only in `columnsPerRow` and sizing — no branching, no second code path, no
+   mobile renderer. The 15-step route fits entirely within 360px in 8 rows, in correct order,
+   with no horizontal scroll. Phase 4 should pick density from a media query.
+3. **Serpentine wrapping is the right model for VR-04.** Odd rows run right-to-left so a wrap
+   is a short hook, not a sweep back across the page.
+
+#### Spike B — revision graph: **GO**
+
+*Does a branching graph with append-only revisions support concurrent edits, structural
+diffing and archival?*
+
+Yes. The decisive test was the diff, and it passes on its own terms:
+
+```
+1 step added, route structure changed (2 branch connections), 1 field changed
+```
+
+It names the **branch connections** — `alternative` and `rejoin` — not merely a step count. A
+shadow route built on this can say what changed, where and how much (FR-77). A diff that
+could only count fields would have failed the phase.
+
+Also proved: two contributors revising one field against the same parent revision keep all
+three revisions with none lost, and the field reads `contested: true` — conflict surfaced,
+never auto-resolved (invariant 15). A sequential edit chain is correctly *not* flagged.
+Archived fields and steps leave the current projection and remain in history with actor and
+reason. `project({ at })` reconstructs the route as it was when a follower started, which is
+exactly what the shadow comparison needs.
+
+### What the spikes actually caught
+
+This is the return on doing them. Four real defects, none of which a fixture alone would have
+found — every one is now a written assertion promoted into `Test.md` §7 for Phase 4:
+
+| Defect | How it was caught |
+|---|---|
+| Dense ranks fanned lanes past the top edge — nodes at negative `y`, silently clipped | Generative test, seed 56 |
+| Node coordinates are centres, so the leftmost marker overhung the viewBox | Tightening the assertion to the full box rather than the centre point |
+| At ribbon density the lane gap was smaller than the marker height, so concurrent steps stacked and **the ribbon showed fewer steps than the road** | Looking at a screenshot, then encoded as a no-overlap invariant |
+| Wrap connectors overshot by a fixed offset and were clipped at both canvas edges | Looking at a screenshot, then encoded as a connector-bounds invariant |
+
+The third is the one that justifies the phase. It is a silent correctness bug in the exact
+place invariant 25 lives — the ribbon under-reporting a route's shape — and it was invisible
+to every assertion until a screenshot was inspected and the finding turned into a test.
+
+### Decisions taken
+
+| # | Decision | Why |
+|---|---|---|
+| 1 | **Ordering lives in typed edges, never in array position.** Spike shapes are `steps[] + edges[]` with `sequential`/`optional_branch`/`alternative`/`rejoin`. | Phase 2 has to commit this and cannot retrofit it. Using an ordered array in the spike would have proved nothing, since the whole question is whether a branching graph draws. |
+| 2 | **Rank = longest path from a start node; shared rank means concurrent.** | Makes parallel activities and mutually exclusive alternatives fall out of the graph rather than needing a flag, and makes a rejoin land after both of its branches automatically. |
+| 3 | **Density is a parameter, not a mode.** Ribbon, road and narrow road are three constant sets through one function. | The only way invariant 25 stays true without discipline. Also removes the need for a mobile renderer. |
+| 4 | **Concurrency is detected structurally, via `basedOn`.** Two revisions sharing a parent is a conflict; a chain is not. | Gives invariant 15 ("conflict is shown, not hidden") a mechanical definition rather than a heuristic like edit frequency. |
+| 5 | **Edges are versioned, and archival is a flag on an append-only log.** | Without versioned edges a branch change is undiffable. Without append-only, "archived is not deleted" is a promise rather than a property. |
+| 6 | **Spikes run outside CI.** `npm run test` excludes `spikes/`; they run via `npm run spike:test`. | Throwaway code must never gate the build. It is still linted and typechecked, which keeps it honest. |
+| 7 | **The placeholder palette stays placeholder.** Six category colours and the maturity labels are invented for the spike and labelled as such. | Those are open decisions (CLAUDE.md §11). A spike must not settle them by accident. |
+
+### What ships from this phase
+
+Nothing. That is correct and intended.
+
+The durable outputs are: the fixture specification promoted into `Test.md` §7, the four
+assertions listed above, and the two answers recorded here. `spikes/` is quarantined outside
+`src/`, imported by nothing in `src/`, excluded from CI, and carries a README stating when to
+delete it — once Phase 4 passes tests 24–24f against production code.
+
+### Blockers
+
+**None.**
+
+### Carried forward — not done
+
+**OF-5, the account-scoped Neon API key, is still pending.** Procedure in `Test.md` §11.
+Needs an interactive terminal. Unchanged by this session.
+
+**OF-4, `CLAUDE.md` in public git history**, remains the owner's to remove manually.
+
+### Next step
+
+**Phase 2 — route graph + revision ledger schema.** The one irreversible migration: `Route`
+identity held separately from revisable content, `Step` nodes plus a `StepEdge` table forming
+a DAG, `Field` rows with freshness columns, and revision tables for route, step, field **and
+edge**. Phase 1 says the shapes work; Phase 2 commits them to Postgres.
+
+Before Phase 2 closes, the FR coverage audit owed since session 2 must run: verify every
+FR-01…FR-80 appears in exactly one phase (Phases.md, open plan items).
+
+---
+
 ## Session 4 — 2026-09-02
 
 **Goal:** Build Phase 0 — the foundation spine. First implementation session.

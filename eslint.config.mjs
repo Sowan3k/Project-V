@@ -125,6 +125,14 @@ export default tseslint.config(
   },
 
   {
+    // Spike browser drivers run code inside the page via page.evaluate, so they touch
+    // browser globals. Scoped narrowly to spikes/ rather than loosened project-wide.
+    name: 'vindeshi/spike-browser-scripts',
+    files: ['spikes/**/*.mjs'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
+
+  {
     name: 'vindeshi/config-and-tooling',
     files: ['**/*.mjs', '**/*.js', '**/*.cjs'],
     extends: [tseslint.configs.disableTypeChecked],
