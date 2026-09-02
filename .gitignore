@@ -62,3 +62,6 @@ CLAUDE.md
 
 # spike output (throwaway, Phase 1)
 spikes/**/out/
+
+# renderer gallery output (development only)
+scripts/renderer/out/

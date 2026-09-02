@@ -1,3 +1,4 @@
+import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
 import { fileURLToPath } from 'node:url'
 
@@ -9,6 +10,8 @@ import { fileURLToPath } from 'node:url'
  * at `production` (Test.md §1).
  */
 export default defineConfig({
+  // The renderer is React components, so tests that render them need the JSX transform.
+  plugins: [react()],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   test: {
     environment: 'node',

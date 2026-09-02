@@ -35,7 +35,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 1 | Kill spikes: renderer + revision graph | Two go/no-go answers, throwaway code | ✅ |
 | 2 | Route graph + revision ledger schema | The irreversible migration | ✅ |
 | 3 | Revision write engine | The only door into shared knowledge | ✅ |
-| 4 | Route renderer (production) | Ribbon + road from data, any structure | ⬜ |
+| 4 | Route renderer (production) | Ribbon + road from data, any structure | ✅ |
 | 5 | Anonymous read path | Search → ribbon → road → step → field | ⬜ |
 | 6 | Trust, provenance and freshness surface | Uncertainty is visible | ⬜ |
 | 7 | Identity and private journeys | Follow a route, track privately | ⬜ |
@@ -45,7 +45,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 11 | Lifecycle, dormancy, merge, admin | Maintenance without data loss | ⬜ |
 | 12 | Responsive, accessibility, polish, support link | Launch-quality UI | ⬜ |
 | 13 | Pre-launch gates and release | Gates 1–3 pass | ⬜ |
-| — | **Content track** (parallel, from Phase 1) | Real seeded routes | ⬜ |
+| — | **Content track** (parallel, from Phase 1) | Real seeded routes | 🟡 |
 
 ---
 
@@ -246,13 +246,33 @@ Both would have silently lost contributions in production.
 - Responsive at 360 / 768 / 1280
 
 **Exit criteria**
-- The Phase 1 stress route renders correctly through the production renderer
-- **Genericity proved by construction** (Test.md tests 24–24d): structural equivalence across
-  destinations, generative coverage over random valid graphs, a lint-enforced import boundary
-  keeping seed/content/destination modules out of the renderer, and a narrowly scoped
-  no-identity-branching check over `src/renderer/**`
-- A route created through the Phase 8 UI renders with zero developer involvement
-- Ribbon and road step counts and order match for every fixture
+- ✅ The Phase 1 stress route renders correctly through the production renderer
+- ✅ **Genericity proved by construction** (Test.md tests 24–24d)
+- ✅ A route created with **zero developer involvement** renders — proved through the Phase 3
+  service, which is what the Phase 8 UI will call. See the note below.
+- ✅ Ribbon and road step counts and order match for every fixture
+
+### Phase 4 result (2026-09-02)
+
+`src/renderer/` — one `layout()`, a primitive library, and `Ribbon`/`Road` as the same
+component at different densities. 88 layout tests, 25 identity/boundary tests, 5 database
+round-trip tests.
+
+**The mobile strategy is a constant, not a renderer.** `ROAD_NARROW` differs from `ROAD` only
+in `columnsPerRow` and sizing, and fits a 15-step route inside 360px. There is no second
+implementation to keep in step.
+
+**On "a route created through the Phase 8 UI":** that UI does not exist yet, so the criterion
+is met through the layer beneath it. `tests/db/renderer-roundtrip.db.test.ts` builds a
+branching route at runtime through the Phase 3 revision service — the same functions the
+Phase 8 UI will call — loads it back, and renders it. No fixture, no mapping, no renderer
+change. Phase 8 should re-run the equivalent through the real UI, but the renderer's part of
+the claim is proved.
+
+**One finding recorded for Phase 10:** the shadow-route primitives draw correctly, but an
+overlay at identical geometry is invisible — a previous version with a similar shape sits
+exactly behind the current one. VR-07 shows side-by-side rather than pure overlay. Phase 10
+owns that design decision; Phase 4 deliberately did not invent it.
 
 **FRs:** FR-04, FR-05, FR-06, FR-09, FR-57
 **Invariants:** 24, 25

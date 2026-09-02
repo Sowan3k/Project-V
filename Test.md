@@ -50,6 +50,13 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-02 | **Production renderer draws every stress fixture** | 88 layout assertions + gallery screenshots at 360/768/1280 | ✅ All fixtures render; no page-wide horizontal overflow at any width |
+| 2026-09-02 | **24 — structural equivalence** | Every fixture against a twin with different ids, labels and categories | ✅ Identical width, height, rows, node geometry and every connector path |
+| 2026-09-02 | **24b — generative coverage** | 60 random graphs × 3 densities, asserting containment, no overlap and in-bounds connectors | ✅ All valid |
+| 2026-09-02 | **24d — no identity branching** | Scoped scan of `src/renderer/**`, with a not-vacuous proof of the patterns | ✅ No identity comparison, membership test or switch; renderer never even reads a slug or country |
+| 2026-09-02 | **24e — a route built through the service renders unaided** | Route created at runtime via the Phase 3 service, loaded and rendered | ✅ No fixture, mapping or renderer change; branch reconstructed; ribbon and road agree |
+| 2026-09-02 | Narrow density fits a 15-step route on a phone | `ROAD_NARROW` layout width | ✅ ≤360px, same order as the wide road, no second renderer |
+| 2026-09-02 | Renderer holds no English of its own | Scan of `src/renderer/**` for hardcoded strings | ❗→✅ Found two English defaults (`'New'`, `'Archived'`) in a primitive; labels are now required props |
 | 2026-09-02 | **Revision rows are immutable — enforced by Postgres** | `UPDATE` and `DELETE` attempted on all four revision tables through an **unguarded** client | ✅ All refused by trigger with "revision rows are immutable"; prior values unchanged afterwards |
 | 2026-09-02 | **Shared knowledge cannot be hard-deleted** | `delete` attempted on routes/steps/edges/fields via guarded client, unguarded client and trigger | ✅ Refused at all three layers |
 | 2026-09-02 | **Application code cannot bypass the revision service** | ESLint boundary probes + guarded-client writes outside the service context + a scan of the real tree | ✅ Rejected; and no file outside `src/server/` imports a client today |
@@ -190,14 +197,14 @@ nothing real is standing behind it until Phase 4.
 
 | # | Test | State |
 |---|---|---|
-| 24 | **Structural equivalence** — two routes with identical graph structure but different destination, title and ids produce identical geometry; only labels differ | 🟡 |
-| 24b | **Generative coverage** — randomly generated valid route graphs (3–20 steps, mixed branch kinds, parallelism, archived/new steps) all render to valid geometry | 🟡 |
-| 24c | **Dependency boundary** — ESLint import rule: the renderer may not import from seed, content or destination modules | 🟡 |
-| 24d | **No identity branching** — scoped check over `src/renderer/**` only: no comparison against route id, slug, destination or title. Not a repo-wide country grep | ⬜ |
-| 24e | A route created through the UI renders with zero developer involvement | ⬜ |
-| 24f | The stress route (§7) renders correctly through the production renderer, no per-route code | ⬜ |
-| 25 | Ribbon and road derive from one layout pass — step count and order match for every fixture | 🟡 |
-| 25b | Adding a step to a route changes both ribbon and road with no separate work | 🟡 |
+| 24 | **Structural equivalence** — two routes with identical graph structure but different destination, title and ids produce identical geometry; only labels differ | ✅ |
+| 24b | **Generative coverage** — randomly generated valid route graphs (3–20 steps, mixed branch kinds, parallelism, archived/new steps) all render to valid geometry | ✅ |
+| 24c | **Dependency boundary** — ESLint import rule: the renderer may not import from seed, content or destination modules | ✅ |
+| 24d | **No identity branching** — scoped check over `src/renderer/**` only: no comparison against route id, slug, destination or title. Not a repo-wide country grep | ✅ |
+| 24e | A route created through the UI renders with zero developer involvement | 🟡 |
+| 24f | The stress route (§7) renders correctly through the production renderer, no per-route code | ✅ |
+| 25 | Ribbon and road derive from one layout pass — step count and order match for every fixture | ✅ |
+| 25b | Adding a step to a route changes both ribbon and road with no separate work | ✅ |
 
 ---
 
@@ -270,7 +277,7 @@ Populated as phases land. One row per feature area.
 | # | What | Guards | Status |
 |---|---|---|---|
 | OF-4 | **`CLAUDE.md` and the Neon endpoint id are still in public git history** — 8 and 2 commits respectively on `origin/main`. Untracking and redaction stopped future publication, not past publication. | Test.md §10 publication rules | ⏸️ **Deferred by the owner (2026-09-02): to be removed manually, not by this project's tooling.** Not a credential exposure — neither is a secret, and the password behind that endpoint is rotated. Note that a rewrite cannot guarantee erasure anyway: GitHub retains unreachable objects, and old SHAs stay referenced by Vercel deployments and Actions runs. |
-| OF-5 | **The Neon API key `3303456` is account-scoped and embedded in 7 local config files.** Neon's own warning: it reaches everything the account can, in every organization. Minted by `neon mcp -y` in session 1. | Least privilege | ⏸️ **Pending, owner: project owner. Deferred 2026-09-02 — see §11 for the procedure.** Not a leak: never committed, confirmed by the full-history blob scan. |
+| OF-5 | **The Neon API key `3303456` is account-scoped and embedded in 7 local config files.** Neon's own warning: it reaches everything the account can, in every organization. | Least privilege | ⏸️ **Deliberately open. Owner's decision 2026-09-02: close it only when a phase actually needs automated Neon branch or project management.** Not a leak — never committed, confirmed by the full-history blob scan. See §11. |
 
 > When a test fails, add it here with the failing output and the FR/invariant it guards.
 > Remove the row only when it passes — never by deleting the test.
@@ -510,7 +517,23 @@ broken until step 1 completes.
 - **Neon MCP breaks** in every agent until step 1 is complete and the editors restart.
   Nothing in this project depends on MCP; the CLI covers all documented workflows.
 
-### Why it is not done yet
+### When to do it
 
-Step 1 rewrites `~/.claude.json` while an agent is running inside Claude Code, and its
-sign-in flow cannot complete in a non-interactive session. It needs an interactive terminal.
+**Deliberately deferred, with a trigger rather than a date** (owner's decision, 2026-09-02):
+act on this when a phase genuinely needs *automated* Neon branch or project management —
+per-pull-request database branches for CI, for instance, or programmatic project setup.
+
+The reasoning: every Neon operation this project performs today goes through the `neon` CLI,
+which authenticates with its own OAuth credentials and does not use this key. The key exists
+only because `neon mcp -y` minted one. Nothing depends on it, so revoking it costs nothing
+and gains nothing until something does. When a phase needs scripted branch management, that
+is the moment to choose the credential deliberately — and `neon mcp --oauth`, which mints no
+key at all, is likely still the right answer.
+
+**Until then this stays open on purpose**, not by oversight. Two things keep it honest: the
+key has never been committed (verified by the full-history blob scan, §10), and it is not
+load-bearing for any workflow in CLAUDE.md §4.
+
+The procedure above also needs an interactive terminal — step 1 rewrites `~/.claude.json`
+while an agent is running inside Claude Code, and the sign-in flow cannot complete in a
+non-interactive session.

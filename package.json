@@ -27,7 +27,9 @@
     "db:validate": "dotenv -e .env.local -- prisma validate",
     "db:objects": "dotenv -e .env.local -- node scripts/db-objects.mjs",
     "db:studio": "dotenv -e .env.local -- prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "renderer:gallery": "tsx --tsconfig tsconfig.scripts.json scripts/renderer/gallery.tsx",
+    "renderer:shoot": "node scripts/renderer/shoot.mjs"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
@@ -45,6 +47,7 @@
     "@types/node": "24.10.1",
     "@types/react": "19.2.8",
     "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "^6.1.1",
     "dotenv-cli": "10.0.0",
     "eslint": "9.39.5",
     "eslint-plugin-react-hooks": "5.2.0",

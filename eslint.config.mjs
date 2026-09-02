@@ -159,10 +159,10 @@ export default tseslint.config(
   },
 
   {
-    // Spike browser drivers run code inside the page via page.evaluate, so they touch
-    // browser globals. Scoped narrowly to spikes/ rather than loosened project-wide.
-    name: 'vindeshi/spike-browser-scripts',
-    files: ['spikes/**/*.mjs'],
+    // Browser drivers run code inside the page via page.evaluate, so they touch browser
+    // globals. Scoped to the two tooling directories rather than loosened project-wide.
+    name: 'vindeshi/browser-driver-scripts',
+    files: ['spikes/**/*.mjs', 'scripts/**/*.mjs'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
 

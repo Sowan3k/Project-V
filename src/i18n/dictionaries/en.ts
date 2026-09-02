@@ -1,4 +1,9 @@
-import type { FieldCategory, SourceClass, RouteLifecycleState } from '@/domain/enums'
+import type {
+  FieldCategory,
+  SourceClass,
+  RouteLifecycleState,
+  StepCategory,
+} from '@/domain/enums'
 
 /**
  * English interface strings.
@@ -55,6 +60,23 @@ export const en = {
     publicGood: 'A public good, not a business.',
     notAnAgency:
       'Vindeshi Express is not an education agency, consultancy or application service.',
+  },
+
+  stepCategory: {
+    documents_preparation: 'Documents and preparation',
+    language_testing: 'Language and testing',
+    admission_university: 'Admission and university',
+    funding_scholarship: 'Funding and scholarship',
+    immigration_visa: 'Immigration and visa',
+    travel_departure: 'Travel and departure',
+  } satisfies Record<StepCategory, string>,
+
+  route: {
+    start: 'Start of the route',
+    destination: 'Departure',
+    stepAdded: 'New',
+    stepArchived: 'Archived',
+    stepDisrupted: 'Temporary disruption affects this step',
   },
 
   fieldCategory: {
