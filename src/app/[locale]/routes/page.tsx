@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { ROUTE_MECHANISMS, STUDY_LEVELS } from '@/domain/enums'
@@ -144,9 +145,16 @@ export default async function RouteSearchPage({
         </GridRegion>
 
         <GridRegion span={8}>
-      <p className="text-sm text-ink-500" role="status">
-        {t.search.resultCount(routes.length)}
-      </p>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <p className="text-sm text-ink-500" role="status">
+          {t.search.resultCount(routes.length)}
+        </p>
+        {/* FR-13, where a student actually notices the gap: at the moment their own route is
+            not in the results. Offered to everyone; signing in happens when they act. */}
+        <Link href={`/${locale}/routes/new`} className="text-sm text-brand-700 hover:underline">
+          {t.contribute.createRoute}
+        </Link>
+      </div>
 
       {routes.length === 0 ? (
         <div className="mt-3 rounded-xl border border-hairline bg-surface p-6">

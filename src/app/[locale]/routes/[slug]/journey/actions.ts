@@ -5,7 +5,9 @@ import { redirect } from 'next/navigation'
 
 import type { JourneyStepStatus } from '@/domain/enums'
 import { JOURNEY_STEP_STATUSES } from '@/domain/enums'
+import { optionalDate, optionalText, text } from '@/lib/form-fields'
 import { currentViewer } from '@/server/auth'
+import { confirmStepFields } from '@/server/revisions/service'
 import {
   addTask,
   deleteJourney,
@@ -43,45 +45,6 @@ async function requireViewer(): Promise<{ id: string }> {
 
 function isStatus(value: unknown): value is JourneyStepStatus {
   return typeof value === 'string' && (JOURNEY_STEP_STATUSES as readonly string[]).includes(value)
-}
-
-/**
- * Reads a text field — and refuses a file.
- *
- * `FormData` entries are `string | File`, so `String(entry)` on a file would quietly produce
- * `"[object Object]"`. That is the lint error; this is the reason it matters.
- *
- * **A file arriving at a journey action is an upload, and the journey flow has no uploads.**
- * The platform does not ask a student to prove they sat an exam before ticking a box, and it
- * is not a store for passports, transcripts or bank statements (FR-25, BR-06, D-09, §24.1,
- * invariants 6 and 7). There is no input that offers one and no column that could hold one —
- * this makes the boundary refuse one as well, so a hand-crafted multipart POST is answered
- * with an error rather than a coerced string.
- */
-class UploadRefusedError extends Error {
-  constructor(field: string) {
-    super(
-      `refusing a file in "${field}": the journey flow accepts no uploads. Marking personal ` +
-        `progress never requires evidence (FR-25, BR-06, D-09, CLAUDE.md invariant 6).`,
-    )
-    this.name = 'UploadRefusedError'
-  }
-}
-
-function text(form: FormData, field: string): string {
-  const value = form.get(field)
-  if (value === null) return ''
-  if (typeof value !== 'string') throw new UploadRefusedError(field)
-  return value
-}
-
-/** Dates arrive as `yyyy-mm-dd` from a date input, or empty when cleared. */
-function parseDate(form: FormData, field: string): Date | null | undefined {
-  if (form.get(field) === null) return undefined
-  const value = text(form, field).trim()
-  if (value === '') return null
-  const parsed = new Date(`${value}T00:00:00.000Z`)
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed
 }
 
 export async function followRouteAction(formData: FormData): Promise<void> {
@@ -122,10 +85,10 @@ export async function saveStepProgressAction(formData: FormData): Promise<void> 
     journeyId: text(formData, 'journeyId'),
     stepId: text(formData, 'stepId'),
     ...(isStatus(status) ? { status } : {}),
-    targetDate: parseDate(formData, 'targetDate'),
-    actualDate: parseDate(formData, 'actualDate'),
+    targetDate: optionalDate(formData, 'targetDate'),
+    actualDate: optionalDate(formData, 'actualDate'),
     // An empty note is a cleared note, not an absent one.
-    privateNote: text(formData, 'privateNote').trim() || null,
+    privateNote: optionalText(formData, 'privateNote'),
   })
 
   revalidatePath(`/en/routes/${slug}/journey`)
@@ -171,4 +134,29 @@ export async function removeTaskAction(formData: FormData): Promise<void> {
   const viewer = await requireViewer()
   await removeTask({ userId: viewer.id, taskId: text(formData, 'taskId') })
   revalidatePath(`/en/routes/${text(formData, 'slug')}/journey`)
+}
+
+/**
+ * "Was this step still accurate?" — FR-42, §16.5.
+ *
+ * Offered right after a follower marks a step complete, "because this is when firsthand
+ * knowledge is freshest". Answering yes confirms the live fields in that step.
+ *
+ * **This introduces no new contribution type.** The prompt is a moment, not an action: "yes"
+ * is CONFIRM (FR-17) and "something changed" sends the contributor to the step's fields where
+ * UPDATE and CHALLENGE already live. A fifth verb here would have meant a fifth set of
+ * semantics to keep straight, for no gain.
+ */
+export async function confirmStepAction(formData: FormData): Promise<void> {
+  const viewer = await requireViewer()
+  const slug = text(formData, 'slug')
+
+  await confirmStepFields({
+    actor: { id: viewer.id },
+    stepId: text(formData, 'stepId'),
+    reason: 'Confirmed after completing this step',
+  })
+
+  revalidatePath(`/en/routes/${slug}/journey`)
+  revalidatePath(`/en/routes/${slug}`)
 }

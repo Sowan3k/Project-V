@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { AddStepForm, ContributionInvitation } from '@/components/contribute'
 import { GridRegion, PageGrid } from '@/components/layout'
 import { RouteContext } from '@/components/route-context'
 import { rendererStrings } from '@/components/route-shared'
@@ -8,6 +9,7 @@ import { StepFields } from '@/components/step-fields'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { Road } from '@/renderer'
+import { currentViewer } from '@/server/auth'
 import { getRouteBySlug, getStepFields } from '@/server/routes/read'
 
 /**
@@ -39,6 +41,7 @@ export default async function RoutePage({
   const route = await getRouteBySlug(slug)
   if (!route) notFound()
 
+  const viewer = await currentViewer()
   const query = await searchParams
   const requested = Array.isArray(query.step) ? query.step[0] : query.step
   const openStep = route.steps.find((s) => s.id === requested) ?? null
@@ -105,6 +108,18 @@ export default async function RoutePage({
               })}
             </ol>
           )}
+
+          {/* FR-14, in place. VR-09's "Build Road" stage happens on the route itself rather
+              than in a wizard, so a contributor sees the road change as they add to it. */}
+          {viewer === null ? (
+            <ContributionInvitation
+              dictionary={t}
+              locale={locale}
+              next={`/${locale}/routes/${route.slug}`}
+            />
+          ) : (
+            <AddStepForm route={route} locale={locale} dictionary={t} />
+          )}
         </GridRegion>
 
         {/* The selected step's detail sits beside the list on desktop and stacks below it on
@@ -116,7 +131,14 @@ export default async function RoutePage({
             </div>
           ) : (
             <div className="rounded-xl border border-hairline bg-surface p-4 lg:sticky lg:top-6">
-              <StepFields step={openStep} fields={fields} dictionary={t} />
+              <StepFields
+                step={openStep}
+                fields={fields}
+                route={route}
+                locale={locale}
+                signedIn={viewer !== null}
+                dictionary={t}
+              />
             </div>
           )}
         </GridRegion>

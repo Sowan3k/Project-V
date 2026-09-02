@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 
-import { isRevisionedShared, isRevisionModel } from '@/domain/models'
+import { isCommunitySignal, isRevisionedShared, isRevisionModel } from '@/domain/models'
 
 /**
  * The runtime half of "the revision service is the only write path".
@@ -77,6 +77,25 @@ export function checkWrite(
 ): { allowed: true } | { allowed: false; reason: string } {
   if (model === undefined) return { allowed: true }
   if (!WRITE_OPERATIONS.has(operation)) return { allowed: true }
+  /**
+   * Community signals — confirmations and challenges — are not revisioned, so they do not go
+   * through the revision service. But they are shared knowledge, so a normal user must not be
+   * able to erase one: a deletable challenge is a deletable safety signal, and a reader
+   * already over-reads the absence of warnings (invariant 12).
+   *
+   * `update` stays permitted, because marking a challenge resolved is an update.
+   */
+  if (isCommunitySignal(model)) {
+    if (!DESTRUCTIVE_OPERATIONS.has(operation)) return { allowed: true }
+    return {
+      allowed: false,
+      reason:
+        `${operation} on ${model} is refused: confirmations and challenges are community ` +
+        `knowledge and are never erased. A challenge is answered by a revision, not deleted ` +
+        `(FR-18, FR-70, CLAUDE.md invariant 1).`,
+    }
+  }
+
   if (!isRevisionedShared(model)) return { allowed: true }
 
   // Hard delete of shared knowledge is refused for everyone, in or out of context. Obsolete

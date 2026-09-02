@@ -67,6 +67,27 @@ export const PRIVATE_USER_STATE_MODELS = [
 export type PrivateUserStateModel = (typeof PRIVATE_USER_STATE_MODELS)[number]
 
 /**
+ * Public, community-authored, and **not** revisioned — Phase 8.
+ *
+ * A confirmation is not edited into a different confirmation, and a challenge is answered
+ * rather than rewritten, so neither belongs in the revision engine. But both are shared
+ * community knowledge, and the rule that matters for shared knowledge is that a normal user
+ * never destroys it (FR-19, BR-02, invariant 1).
+ *
+ * Hence a fourth class rather than filing them under `supporting`. The write guard refuses
+ * `delete` here exactly as it does for revisioned models — a challenge that could be deleted
+ * is a safety signal that could be deleted, and "no reports" already means less than a reader
+ * assumes (invariant 12). `update` stays allowed, because that is how a challenge is marked
+ * resolved by the revision that answered it.
+ */
+export const COMMUNITY_SIGNAL_MODELS = ['Confirmation', 'Challenge'] as const
+export type CommunitySignalModel = (typeof COMMUNITY_SIGNAL_MODELS)[number]
+
+export function isCommunitySignal(model: string): model is CommunitySignalModel {
+  return (COMMUNITY_SIGNAL_MODELS as readonly string[]).includes(model)
+}
+
+/**
  * Neither shared knowledge nor private progress: identity and operational rows.
  *
  * `User` sits here rather than in shared knowledge because a handle is not a community
@@ -81,6 +102,7 @@ export type SupportingModel = (typeof SUPPORTING_MODELS)[number]
 
 export const MODEL_CLASSIFICATION = {
   revisionedShared: REVISIONED_SHARED_MODELS,
+  communitySignal: COMMUNITY_SIGNAL_MODELS,
   privateUserState: PRIVATE_USER_STATE_MODELS,
   supporting: SUPPORTING_MODELS,
 } as const

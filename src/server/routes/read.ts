@@ -1,4 +1,5 @@
 import type {
+  ChallengeReason,
   FieldApplicability,
   FieldCategory,
   LinkTrustClass,
@@ -120,6 +121,7 @@ async function fieldStandings(
         reviewDueAt: true,
         step: { select: { routeId: true } },
         currentRevision: { select: { sourceClass: true, expiresAt: true } },
+        _count: { select: { challenges: { where: { resolvedAt: null } } } },
       },
     }),
     prisma.fieldRevision.groupBy({
@@ -155,9 +157,13 @@ async function fieldStandings(
 
     const past = (date: Date | null): boolean => date !== null && date.getTime() <= now.getTime()
     const needsReview = past(field.reviewDueAt) || past(field.currentRevision.expiresAt)
+    // Three independent ways a field counts as disputed, and a reader should see any of
+    // them: somebody said so in the source class, two contributors disagreed structurally,
+    // or somebody raised a challenge nobody has answered (FR-18, FR-49, FR-70).
     const disputed =
       field.currentRevision.sourceClass === Source.disputed_under_review ||
-      forkedFieldIds.has(field.id)
+      forkedFieldIds.has(field.id) ||
+      field._count.challenges > 0
 
     byRoute.set(routeId, {
       informationCount: current.informationCount + 1,
@@ -259,6 +265,14 @@ export async function availableFilters(): Promise<{
 
 export interface FieldView {
   readonly id: string
+  /**
+   * What the contributor is correcting *from*.
+   *
+   * Carried into the update form and back, so that if somebody else revises the same field
+   * while the form is open, both corrections land on the same parent and are preserved as a
+   * fork rather than one silently overwriting the other (BR-21, FR-70, invariant 15).
+   */
+  readonly currentRevisionId: string | null
   readonly category: FieldCategory
   readonly valueText: string
   readonly valueAmount: string | null
@@ -299,6 +313,21 @@ export interface FieldView {
   readonly hasForkedHistory: boolean
   /** Only meaningful for links. `null` means never classified — treated as unverified. */
   readonly linkTrustClass: LinkTrustClass | null
+
+  // ── Phase 8 community signals ────────────────────────────────────────────────────────
+  /** Distinct people who have vouched that this is still current (FR-17, FR-55). */
+  readonly confirmationCount: number
+  /** Challenges no revision has answered yet — FR-18, FR-49. */
+  readonly openChallenges: readonly ChallengeView[]
+}
+
+/** One unanswered challenge, as a reader sees it. */
+export interface ChallengeView {
+  readonly id: string
+  readonly reason: ChallengeReason
+  readonly note: string | null
+  readonly authorHandle: string | null
+  readonly createdAt: Date
 }
 
 export interface StepView {
@@ -478,6 +507,14 @@ export async function getStepFields(stepId: string): Promise<readonly FieldView[
       // Revision metadata only — never the historical values, which the history tab owns.
       // One step's fields, so this stays a small read rather than a scan of the ledger.
       revisions: { select: { previousRevisionId: true, createdAt: true } },
+      _count: { select: { confirmations: true } },
+      // Only the unanswered ones. A resolved challenge stays in the record but is no longer
+      // something a reader must act on (FR-49).
+      challenges: {
+        where: { resolvedAt: null },
+        include: { author: { select: { handle: true } } },
+        orderBy: { createdAt: 'desc' },
+      },
     },
     orderBy: [{ category: 'asc' }, { createdAt: 'asc' }],
   })
@@ -499,6 +536,7 @@ export async function getStepFields(stepId: string): Promise<readonly FieldView[
     return [
       {
         id: field.id,
+        currentRevisionId: field.currentRevisionId,
         category: field.category,
         valueText: current.valueText,
         valueAmount: current.valueAmount?.toString() ?? null,
@@ -517,6 +555,14 @@ export async function getStepFields(stepId: string): Promise<readonly FieldView[
         lastRevisedAt,
         hasForkedHistory,
         linkTrustClass: field.linkTrustClass,
+        confirmationCount: field._count.confirmations,
+        openChallenges: field.challenges.map((challenge) => ({
+          id: challenge.id,
+          reason: challenge.reason,
+          note: challenge.note,
+          authorHandle: challenge.author?.handle ?? null,
+          createdAt: challenge.createdAt,
+        })),
       },
     ]
   })

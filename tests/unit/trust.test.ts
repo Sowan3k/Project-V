@@ -44,6 +44,7 @@ function baselineField(overrides: Partial<FieldTrustInput> = {}): FieldTrustInpu
     revisionCount: 1,
     lastRevisedAt: daysAgo(30),
     hasForkedHistory: false,
+    openChallengeCount: 0,
     ...overrides,
   }
 }

@@ -60,6 +60,12 @@ model User {
   accounts Account[]
   sessions Session[]
 
+  // Community signals. Kept on SetNull rather than Cascade: if somebody deletes their
+  // account their confirmations and challenges lose their author but stay in the record,
+  // because they are community knowledge about a field rather than personal data.
+  confirmations Confirmation[]
+  challenges    Challenge[]
+
   @@map("users")
 }
 
@@ -274,6 +280,11 @@ model Field {
 
   revisions FieldRevision[] @relation("FieldRevisions")
 
+  // Community signals (community.prisma). Restrict, so a field carrying somebody's
+  // confirmation or an open challenge cannot be deleted out from under it.
+  confirmations Confirmation[]
+  challenges    Challenge[]
+
   @@index([stepId])
   @@index([category])
   @@map("fields")
@@ -335,6 +346,10 @@ model FieldRevision {
 
   createdAt DateTime @default(now())
   currentOf Field?   @relation("FieldCurrentRevision")
+
+  /// Challenges this revision answered. A challenge is resolved by the change that addresses
+  /// it, never by a moderator — there is no approval queue anywhere in this schema.
+  resolvedChallenges Challenge[]
 
   @@index([fieldId, createdAt])
   @@index([previousRevisionId])

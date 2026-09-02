@@ -1,0 +1,89 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Community signals — Phase 8.
+//
+// CONFIRM and CHALLENGE are the two halves of "is this still true?", and they are stored as
+// events rather than as columns on a field, for reasons that are not bookkeeping:
+//
+//   * **Who said so, and when.** A `lastConfirmedAt` timestamp says a field was confirmed; it
+//     cannot say by how many different people, or whether the same person confirmed it fifty
+//     times. FR-10 asks for recent confirmations as an activity signal, and a signal that
+//     cannot distinguish fifty people from one person fifty times is not one (invariant 14).
+//
+//   * **A challenge outlives the value it challenged.** If a challenge were a flag on the
+//     field it would be cleared by the next edit and the disagreement would vanish from the
+//     record. As rows, both the challenge and its resolution stay readable (FR-70, §17.5).
+//
+// Neither model is revisioned: a confirmation is not edited into a different confirmation,
+// and a challenge is answered rather than rewritten. Both are nonetheless **shared community
+// knowledge**, so neither may be hard-deleted by a normal user — `src/domain/models.ts`
+// classifies them as `communitySignal`, and the write guard refuses `delete` on that class
+// exactly as it does for revisioned models (FR-19, BR-02, invariant 1).
+//
+// REPORT is deliberately absent. A challenge says "this may be wrong"; a report says "this may
+// be dangerous", and they are different actions with different consequences (CLAUDE.md §5).
+// Reporting is Phase 9.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A signed-in user vouching that a field is still current — FR-17, FR-55, §16.3.
+///
+/// Positive signal, deliberately first-class: "users shall be able to confirm that a
+/// route/field was still accurate, not only report problems". A platform that only collects
+/// complaints learns only about failures.
+///
+/// One row per person per field, replaced when they confirm again. Confirming twice is a
+/// refreshed date, not a second voice — which is what keeps a confirmation count a count of
+/// people (invariant 14, BR-32).
+model Confirmation {
+  id      String @id @default(cuid())
+  fieldId String
+  field   Field  @relation(fields: [fieldId], references: [id], onDelete: Restrict)
+
+  /// Null for a seed or system confirmation, which is honest: nobody vouched for it.
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@unique([fieldId, authorId])
+  @@index([fieldId, createdAt])
+  @@map("confirmations")
+}
+
+/// "This may be wrong" — FR-18, §16.4, §17.4.
+///
+/// A challenge carries a reason, because "challenges should capture reason where possible
+/// rather than acting as a generic dislike button" (§16.4). The reason vocabulary is the
+/// baseline's own list, in `src/domain/enums.ts`.
+///
+/// **A challenge is answered by a revision, never by a moderator.** There is no approval
+/// queue and no reviewer role: `resolvedByRevisionId` points at the revision that changed the
+/// value the challenge was about. Until one exists, the challenge is open and the field says
+/// so (FR-49).
+///
+/// **A confirmation does not resolve a challenge.** Somebody vouching that a field is fine is
+/// a competing signal, not an answer — and letting a confirmation clear a challenge is
+/// precisely how a dispute gets buried under reassurance, which FR-70 exists to prevent.
+model Challenge {
+  id      String @id @default(cuid())
+  fieldId String
+  field   Field  @relation(fields: [fieldId], references: [id], onDelete: Restrict)
+
+  reason ChallengeReason
+  /// The contributor's own words. Optional: FR-50 asks for minimal unnecessary form filling,
+  /// and a required essay is how a challenge goes unraised.
+  note   String?
+
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  /// Set when a later revision of the field answers this challenge. Both stay readable.
+  resolvedAt           DateTime?
+  resolvedByRevisionId String?
+  resolvedByRevision   FieldRevision? @relation(fields: [resolvedByRevisionId], references: [id], onDelete: Restrict)
+
+  @@index([fieldId, resolvedAt])
+  @@index([authorId])
+  @@map("challenges")
+}

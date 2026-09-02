@@ -1,4 +1,5 @@
 import type {
+  ChallengeReason,
   FieldApplicability,
   FieldCategory,
   JourneyStepStatus,
@@ -232,6 +233,7 @@ export const en = {
     fieldSignal: {
       source_disputed: 'Disputed — under review',
       history_forked: 'Contested — two contributors corrected this from the same starting point',
+      open_challenge: 'Challenged — somebody says this needs review, and no correction has been made yet',
       unverified_submission: 'Community submission — not corroborated by anyone else',
       past_expiry: 'Past the expiry date given for it',
       not_yet_effective: 'Not in effect yet',
@@ -405,6 +407,91 @@ export const en = {
     handleExplainer: 'This is how contributions appear to others. It is not your name.',
     notConfigured:
       'Sign-in is not configured on this deployment yet. Reading works without an account.',
+  },
+
+
+  /**
+   * Challenge reasons — §17.4, verbatim from the baseline's own list.
+   *
+   * A challenge captures a reason rather than acting as a generic dislike button (§16.4).
+   */
+  challengeReason: {
+    obsolete: 'No longer required or out of date',
+    incorrect: 'Incorrect',
+    broken_link: 'Broken link',
+    wrong_contact_or_address: 'Wrong contact or address',
+    duplicate_information: 'Duplicate information',
+    unsafe_or_scam: 'Unsafe, scam or phishing concern',
+    personal_information_or_harassment: 'Personal information or harassment concern',
+    other: 'Something else — explained below',
+  } satisfies Record<ChallengeReason, string>,
+
+  /**
+   * The contribution loop — Phase 8.
+   *
+   * Wording rules that carry requirements rather than tone:
+   *   - Nothing says "submit for review", "pending" or "awaiting approval". Updates go live
+   *     and the community corrects afterwards (FR-16, FR-69, §43.1, CLAUDE.md §8.6).
+   *   - CONFIRM, UPDATE and CHALLENGE are named as the different things they are (§16).
+   *   - No wording implies a community submission carries official standing (invariant 11).
+   */
+  contribute: {
+    signInToContribute: 'Sign in to correct or confirm this',
+    confirm: 'Still accurate',
+    update: 'Correct this',
+    challenge: 'Flag a problem',
+    updateExplainer:
+      'Your correction goes live immediately. The previous value is kept, and anyone can correct it again — including you.',
+    challengeExplainer:
+      'This leaves the information as it is and marks it as needing review. Use it when you know something is wrong but not what the right answer is.',
+    value: 'Information',
+    reason: 'Why are you changing it?',
+    reasonHint: 'Optional, but it helps the next reader',
+    note: 'What is wrong?',
+    noteHint: 'Optional',
+    challengeReason: 'Reason',
+    saveUpdate: 'Save correction',
+    raiseChallenge: 'Flag it',
+    sourceClass: 'Who says so?',
+    sourceClassHint:
+      'Choose “official” only for something an authority actually publishes. Your own experience is community experience, and it is valuable as that.',
+    applicability: 'Who does this apply to?',
+    applicabilityHint:
+      'Leave everything unticked if you are not sure. Silence is honest; a wrong scope is not.',
+    sourceUrl: 'Link to the source',
+    addField: 'Add information to this step',
+    addStep: 'Add a step',
+    fieldCategory: 'What kind of information?',
+    stepLabel: 'What is this step called?',
+    stepCategory: 'What kind of step?',
+    afterStep: 'Comes after',
+    afterStepNone: 'Not connected yet',
+    afterStepHint: 'You can connect it later if you are not sure.',
+    createRoute: 'Add a missing route',
+    createRouteLede:
+      'If the way you are going is not here, add it. New routes are published straight away and shown as experimental until the community has worked on them.',
+    createRouteNote:
+      'Creating a route does not make it yours. Anyone signed in can improve it, including changing what you wrote.',
+    routeTitle: 'What is this route called?',
+    routeTitleHint: 'Plain language, as a student would say it',
+    routeSummary: 'One or two sentences about it',
+    from: 'From (2-letter country code)',
+    to: 'To (2-letter country code)',
+    publish: 'Create this route',
+    stillAccurate: 'Was this step still accurate?',
+    stillAccurateLede:
+      'You have just been through it, so you know better than anyone. This is the most useful moment to say.',
+    yesAccurate: 'Yes — everything here was still accurate',
+    somethingChanged: 'Something changed',
+    somethingChangedHint: 'Opens the step so you can correct or flag the part that is wrong.',
+    confirmedCount: (n: number) =>
+      n === 0 ? 'Nobody has confirmed this yet' : n === 1 ? '1 person confirms this' : `${n} people confirm this`,
+    contributorSince: 'First contributed',
+    contributions: (n: number) => (n === 1 ? '1 contribution' : `${n} contributions`),
+    contributionsConfirmed: (n: number) => `${n} of them have since been confirmed by others`,
+    newContributor: 'New contributor',
+    newContributorNote:
+      'This account is new here. That is not a mark against it — everyone starts here — but it means the community has not had a chance to check its work yet.',
   },
 
   routeLifecycle: {

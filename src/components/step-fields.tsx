@@ -1,7 +1,13 @@
+import {
+  AddFieldForm,
+  ContributionInvitation,
+  FieldActions,
+  OpenChallenges,
+} from '@/components/contribute'
 import { ExternalSourceLink, FieldContext, FieldSignals } from '@/components/trust'
 import { fieldGroup, FIELD_GROUP_ORDER, type FieldGroupId, type FieldTrustInput } from '@/domain/trust'
 import type { Dictionary } from '@/i18n/dictionaries/en'
-import type { FieldView, StepView } from '@/server/routes/read'
+import type { FieldView, RouteDetail, StepView } from '@/server/routes/read'
 
 /**
  * The fields inside a step — VR-05, FR-51, and the Phase 6 trust surface.
@@ -25,16 +31,38 @@ import type { FieldView, StepView } from '@/server/routes/read'
 export function StepFields({
   step,
   fields,
+  route,
+  locale,
+  signedIn,
   dictionary: t,
   now = new Date(),
 }: {
   step: StepView
   fields: readonly FieldView[]
+  /** Present on the route page, so contribution controls can be rendered (Phase 8). */
+  route: RouteDetail
+  locale: string
+  signedIn: boolean
   dictionary: Dictionary
   now?: Date
 }) {
+  const contribute = signedIn ? (
+    <AddFieldForm step={step} route={route} locale={locale} dictionary={t} />
+  ) : (
+    <ContributionInvitation
+      dictionary={t}
+      locale={locale}
+      next={`/${locale}/routes/${route.slug}?step=${step.id}`}
+    />
+  )
+
   if (fields.length === 0) {
-    return <p className="text-sm text-ink-700">{t.route.noFields}</p>
+    return (
+      <div>
+        <p className="text-sm text-ink-700">{t.route.noFields}</p>
+        {contribute}
+      </div>
+    )
   }
 
   const grouped = new Map<FieldGroupId, FieldView[]>()
@@ -62,22 +90,41 @@ export function StepFields({
 
             <ul className="mt-2 space-y-3">
               {inGroup.map((field) => (
-                <FieldRow key={field.id} field={field} dictionary={t} now={now} />
+                <FieldRow
+                  key={field.id}
+                  field={field}
+                  step={step}
+                  route={route}
+                  locale={locale}
+                  signedIn={signedIn}
+                  dictionary={t}
+                  now={now}
+                />
               ))}
             </ul>
           </section>
         )
       })}
+
+      {contribute}
     </div>
   )
 }
 
 function FieldRow({
   field,
+  step,
+  route,
+  locale,
+  signedIn,
   dictionary: t,
   now,
 }: {
   field: FieldView
+  step: StepView
+  route: RouteDetail
+  locale: string
+  signedIn: boolean
   dictionary: Dictionary
   now: Date
 }) {
@@ -91,6 +138,9 @@ function FieldRow({
       <p className="mt-1 text-sm leading-6 text-ink-900">{field.valueText}</p>
 
       <FieldSignals input={trust} dictionary={t} now={now} />
+      {/* The challenges themselves, with their reasons — not just a count. A reader deciding
+          whether to rely on this needs to know what somebody objected to (FR-49, FR-70). */}
+      <OpenChallenges field={field} dictionary={t} />
       <FieldContext input={trust} dictionary={t} now={now} />
 
       {field.sourceUrl === null ? null : (
@@ -103,6 +153,10 @@ function FieldRow({
       {field.sourceNote === null ? null : (
         <p className="mt-1 text-xs text-ink-500">{field.sourceNote}</p>
       )}
+
+      {signedIn ? (
+        <FieldActions field={field} step={step} route={route} locale={locale} dictionary={t} />
+      ) : null}
     </li>
   )
 }
@@ -125,5 +179,6 @@ function toFieldTrustInput(field: FieldView): FieldTrustInput {
     revisionCount: field.revisionCount,
     lastRevisedAt: field.lastRevisedAt,
     hasForkedHistory: field.hasForkedHistory,
+    openChallengeCount: field.openChallenges.length,
   }
 }

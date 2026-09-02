@@ -101,6 +101,14 @@ export interface FieldTrustInput {
    * (invariant 15, FR-70, BR-21).
    */
   readonly hasForkedHistory: boolean
+  /**
+   * Unanswered challenges against this field — Phase 8, FR-18, FR-49, FR-70.
+   *
+   * A challenge is answered by a revision, not by a moderator, so an open one means the
+   * disagreement is still live. It is a caution rather than context: a reader who acts on a
+   * value somebody has flagged as obsolete, without being told, has been failed by the page.
+   */
+  readonly openChallengeCount: number
 }
 
 export type FieldSignalId =
@@ -108,6 +116,8 @@ export type FieldSignalId =
   | 'source_disputed'
   /** The revision chain forked: two corrections from one starting point. */
   | 'history_forked'
+  /** Somebody has challenged this and no revision has answered it yet (FR-18, FR-49). */
+  | 'open_challenge'
   /** A community submission nobody has corroborated (invariant 9). */
   | 'unverified_submission'
   /** Past a stored `expiresAt`. */
@@ -150,6 +160,10 @@ export function fieldSignals(input: FieldTrustInput, now: Date): readonly FieldS
   // ── caution: the reader would be misled without these ────────────────────────────────
   if (input.sourceClass === Source.disputed_under_review) {
     signals.push({ id: 'source_disputed', weight: 'caution' })
+  }
+
+  if (input.openChallengeCount > 0) {
+    signals.push({ id: 'open_challenge', weight: 'caution', count: input.openChallengeCount })
   }
 
   if (input.hasForkedHistory) {

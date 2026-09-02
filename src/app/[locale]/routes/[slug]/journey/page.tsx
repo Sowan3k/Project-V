@@ -15,6 +15,7 @@ import { getRouteBySlug, type RouteDetail } from '@/server/routes/read'
 
 import {
   addTaskAction,
+  confirmStepAction,
   deleteJourneyAction,
   followRouteAction,
   removeTaskAction,
@@ -83,7 +84,7 @@ export default async function JourneyPage({
           slug={slug}
         />
       ) : (
-        <JourneyBoard dictionary={t} route={route} journey={journey} slug={slug} />
+        <JourneyBoard dictionary={t} route={route} journey={journey} slug={slug} locale={locale} />
       )}
     </RouteContext>
   )
@@ -150,11 +151,13 @@ function JourneyBoard({
   route,
   journey,
   slug,
+  locale,
 }: {
   dictionary: Dictionary
   route: RouteDetail
   journey: JourneyView
   slug: string
+  locale: string
 }) {
   const byStep = new Map(journey.progress.map((row) => [row.stepId, row]))
   const done = journey.progress.filter((row) => row.status === JourneyStepStatus.completed).length
@@ -192,6 +195,7 @@ function JourneyBoard({
                 progress={byStep.get(step.id) ?? null}
                 journeyId={journey.id}
                 slug={slug}
+                locale={locale}
                 dictionary={t}
               />
             ))}
@@ -214,6 +218,7 @@ function StepProgressRow({
   progress,
   journeyId,
   slug,
+  locale,
   dictionary: t,
 }: {
   index: number
@@ -221,6 +226,7 @@ function StepProgressRow({
   progress: JourneyView['progress'][number] | null
   journeyId: string
   slug: string
+  locale: string
   dictionary: Dictionary
 }) {
   const isoDay = (date: Date | null): string => (date === null ? '' : date.toISOString().slice(0, 10))
@@ -296,6 +302,37 @@ function StepProgressRow({
           </button>
         </div>
       </form>
+
+      {/* FR-42, §16.5: the prompt appears only once the step is done, because that is the
+          moment the follower's knowledge is worth the most. It offers CONFIRM and a route to
+          UPDATE/CHALLENGE — no new contribution type is invented for it. */}
+      {progress?.status === JourneyStepStatus.completed ? (
+        <div className="mt-3 rounded-lg border border-brand-500/40 bg-brand-500/5 p-3">
+          <p className="text-sm font-medium text-ink-900">{t.contribute.stillAccurate}</p>
+          <p className="mt-0.5 text-xs leading-5 text-ink-700">{t.contribute.stillAccurateLede}</p>
+
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <form action={confirmStepAction}>
+              <input type="hidden" name="stepId" value={step.id} />
+              <input type="hidden" name="slug" value={slug} />
+              <button
+                type="submit"
+                className="rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-medium text-white"
+              >
+                {t.contribute.yesAccurate}
+              </button>
+            </form>
+
+            <Link
+              href={`/${locale}/routes/${slug}?step=${step.id}`}
+              className="text-xs text-brand-700 underline"
+            >
+              {t.contribute.somethingChanged}
+            </Link>
+          </div>
+          <p className="mt-1.5 text-xs text-ink-500">{t.contribute.somethingChangedHint}</p>
+        </div>
+      ) : null}
     </li>
   )
 }

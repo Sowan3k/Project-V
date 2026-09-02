@@ -231,6 +231,7 @@ describe.skipIf(!url)('field signals over real rows — invariants 9, 11, 15', (
           revisionCount: field.revisionCount,
           lastRevisedAt: field.lastRevisedAt,
           hasForkedHistory: field.hasForkedHistory,
+          openChallengeCount: field.openChallenges.length,
         },
         NOW,
       )

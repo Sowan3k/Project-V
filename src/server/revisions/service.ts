@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client'
 
 import type {
+  ChallengeReason as ChallengeReasonT,
   FieldApplicability as FieldApplicabilityT,
   FieldCategory as FieldCategoryT,
   RouteMechanism as RouteMechanismT,
@@ -427,6 +428,24 @@ export async function reviseField(input: ReviseFieldInput): Promise<ReviseFieldR
     // a forked field renders as contested, and the community resolves it (FR-53, FR-70).
     await tx.field.update({ where: { id: input.fieldId }, data: { currentRevisionId: revision.id } })
 
+    /**
+     * A revision answers the open challenges on this field — Phase 8, FR-18, FR-49.
+     *
+     * This is the whole resolution mechanism, and it is deliberately not a moderator. A
+     * challenge says "this may be wrong"; the answer to that is somebody changing the value,
+     * so the revision that changes it is what closes the challenge. Both rows survive: the
+     * challenge keeps its reason and author, and now points at the revision that addressed
+     * it, so the disagreement stays readable rather than disappearing (§17.5).
+     *
+     * A *confirmation* deliberately does not do this. Somebody vouching that a field is fine
+     * is a competing signal, not an answer, and letting it clear a challenge is exactly how
+     * a dispute gets buried under reassurance (FR-70).
+     */
+    await tx.challenge.updateMany({
+      where: { fieldId: input.fieldId, resolvedAt: null },
+      data: { resolvedAt: new Date(), resolvedByRevisionId: revision.id },
+    })
+
     return {
       revisionId: revision.id,
       previousRevisionId: basedOn,
@@ -436,18 +455,100 @@ export async function reviseField(input: ReviseFieldInput): Promise<ReviseFieldR
 }
 
 /**
- * Records that a field is still accurate.
+ * CONFIRM — records that a field is still accurate (FR-17, FR-55, §16.3).
  *
- * Confirming is not editing: it refreshes freshness without creating a revision, because no
- * value changed (FR-43, §39.4). Phase 8 adds the confirmation rows and the prompt; this is
- * the freshness half, which belongs with the write engine.
+ * Confirming is not editing: no value changed, so **no revision is created** (§39.4). What it
+ * writes is a `Confirmation` row plus the field's freshness date.
+ *
+ * The row matters as much as the date. A timestamp alone cannot distinguish fifty people
+ * agreeing from one person clicking fifty times, and a confirmation count that cannot tell
+ * those apart is not a signal (invariant 14, BR-32). One row per person per field, refreshed
+ * when they confirm again.
+ *
+ * Note what this does **not** do: it does not resolve an open challenge. See `reviseField`.
  */
-export async function confirmField(input: Change & { fieldId: string; reviewDueAt?: Date | null }): Promise<void> {
+export async function confirmField(
+  input: Change & { fieldId: string; reviewDueAt?: Date | null },
+): Promise<void> {
   await write(input, async (tx) => {
+    const now = new Date()
+
+    if (input.actor.id === null) {
+      // A seed or system confirmation. Nobody vouched for it, so no row is written — a
+      // confirmation count must never include the platform confirming its own content.
+      await tx.field.update({
+        where: { id: input.fieldId },
+        data: { lastConfirmedAt: now, reviewDueAt: input.reviewDueAt ?? null },
+      })
+      return
+    }
+
+    await tx.confirmation.upsert({
+      where: { fieldId_authorId: { fieldId: input.fieldId, authorId: input.actor.id } },
+      create: { fieldId: input.fieldId, authorId: input.actor.id },
+      update: { createdAt: now },
+    })
     await tx.field.update({
       where: { id: input.fieldId },
-      data: { lastConfirmedAt: new Date(), reviewDueAt: input.reviewDueAt ?? null },
+      data: { lastConfirmedAt: now, reviewDueAt: input.reviewDueAt ?? null },
     })
+  })
+}
+
+/**
+ * CONFIRM, for every live field in a step at once — FR-42, §16.5.
+ *
+ * The "Was this step still accurate?" prompt, which appears after a follower marks a step
+ * complete because that is when their knowledge is freshest. Confirming a step is confirming
+ * the claims inside it; there is no separate contribution type for this, and there must not
+ * be — the prompt is a moment, not a new kind of action.
+ *
+ * Returns how many fields were confirmed, so the interface can say so plainly rather than
+ * implying more happened than did.
+ */
+export async function confirmStepFields(
+  input: Change & { stepId: string },
+): Promise<{ confirmed: number }> {
+  const fields = await prisma.field.findMany({
+    where: { stepId: input.stepId, archivedAt: null },
+    select: { id: true },
+  })
+
+  for (const field of fields) {
+    await confirmField({ actor: input.actor, reason: input.reason, fieldId: field.id })
+  }
+
+  return { confirmed: fields.length }
+}
+
+/**
+ * CHALLENGE — "this may be wrong" (FR-18, §16.4).
+ *
+ * Distinct from CONFIRM, from UPDATE, and from REPORT. A challenge carries a **reason**,
+ * because §16.4 is explicit that it must not act as a generic dislike button — but the note
+ * is optional, because FR-50 asks for minimal unnecessary form filling and a required essay
+ * is how a concern goes unraised.
+ *
+ * It changes nothing about the field. The value stays, the source class stays, and the field
+ * renders with an open challenge against it (FR-49, FR-70) until a revision answers it.
+ * Nothing is hidden, nothing is queued for approval, and no moderator is involved.
+ *
+ * REPORT — "this may be dangerous" — is a different action with different consequences and
+ * is deliberately not here. It is Phase 9 (CLAUDE.md §5).
+ */
+export async function challengeField(
+  input: Change & { fieldId: string; reason: ChallengeReasonT; note?: string | null },
+): Promise<{ challengeId: string }> {
+  return write(input, async (tx) => {
+    const challenge = await tx.challenge.create({
+      data: {
+        fieldId: input.fieldId,
+        reason: input.reason,
+        note: input.note ?? null,
+        authorId: input.actor.id,
+      },
+    })
+    return { challengeId: challenge.id }
   })
 }
 

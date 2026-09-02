@@ -149,12 +149,19 @@ describe('invariant 6 / test 6 — there is no upload path in the journey flow',
    * journey actions read every field through a helper that throws on a file, so such a
    * request is answered with an error rather than a coerced `"[object Object]"`.
    */
-  it('refuses a file at the journey action boundary', () => {
-    const actions = read('src/app/[locale]/routes/[slug]/journey/actions.ts')
-    expect(actions).toMatch(/class UploadRefusedError/)
-    expect(actions).toMatch(/if \(typeof value !== 'string'\) throw new UploadRefusedError/)
-    // And nothing in there reaches a raw entry, which is how a file would sneak past.
-    expect(stripComments(actions)).not.toMatch(/String\(formData\.get/)
+  it('refuses a file at every server-action boundary', () => {
+    // Phase 8 moved the helper to a shared module, because public contributions need the
+    // same refusal that private progress does and a rule duplicated is a rule that drifts.
+    const helper = read('src/lib/form-fields.ts')
+    expect(helper).toMatch(/class UploadRefusedError/)
+    expect(helper).toMatch(/if \(typeof value !== 'string'\) throw new UploadRefusedError/)
+
+    // And no action file anywhere reaches a raw entry, which is how a file would sneak past.
+    const actionFiles = SOURCE_FILES.filter((file) => file.endsWith('actions.ts'))
+    expect(actionFiles.length).toBeGreaterThanOrEqual(3)
+    for (const file of actionFiles) {
+      expect(stripComments(read(file))).not.toMatch(/String\(\s*form(Data)?\.get/)
+    }
   })
 })
 
