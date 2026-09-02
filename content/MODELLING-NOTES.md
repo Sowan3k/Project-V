@@ -48,12 +48,50 @@ Each is a real risk, not a formality. A "no" is a finding.
 
 ## Findings
 
-*(Empty until research runs. Each finding: what was found, which question it answers, whether
-it is a genuine model gap or a content-shaping problem, and the proposed change if any.)*
+From research pass 1, 2026-09-02 (see `routes/bd-de-masters-direct.md`). One genuine model gap,
+four findings the model already handles, and one content-discipline finding.
 
 | # | Finding | Model gap? | Proposed response |
 |---|---|---|---|
-| — | — | — | — |
+| 1 | **A field cannot say whether it is Germany-wide or programme-specific.** The blocked-account amount applies to every applicant; a programme's language requirement or GRE demand applies to one programme. Both are `Field` rows on a `Step` today, indistinguishable. | **Yes — genuine gap.** | See below. Raised for review, not fixed. |
+| 2 | **The same real-world thing has two official values that are both true.** Embassy Dhaka states processing is "approx. 4 weeks" *and* that "current waiting times exceed 27 months". | No — the model handles it. | Two `duration` fields, not one averaged value. The gap between them is the most useful thing on the route and must not be smoothed away. |
+| 3 | **Visa language proof and programme admission language requirement are different facts.** The Embassy sets one, the university the other. | No. | Separate steps, separate fields. A naive seed would conflate them; the model does not force that. |
+| 4 | **Nationality-specific programme rules exist.** At least one programme requires GRE from Bangladeshi applicants and APS from Vietnamese ones. | Related to gap 1. | Same response. |
+| 5 | **Post-arrival formalities may be out of scope.** Anmeldung, residence permit and insurance activation are real parts of the journey, but CLAUDE.md §10 ends V1 at departure and the expected fly window. | No — a scope question, not a model gap. | Decide deliberately. Do not expand V1 silently. |
+| 6 | **APS was in the mockups and is not real for Bangladesh.** | No — a content-discipline finding. | Already covered by CLAUDE.md §8.6. Recorded because it is the first time that rule caught something real. |
+
+---
+
+## Gap 1, stated properly for review
+
+**What has nowhere to live:** whether a field is true of the destination country, of the
+application channel, or only of one programme.
+
+**Why it matters.** "Blocked account: €11,904" is true for every Bangladeshi applicant to Germany.
+"GRE required" is true for one programme. Rendered side by side with no distinction, a reader
+cannot tell which facts follow them to a different university. That is not cosmetic: it is the
+difference between a route that informs and one that misleads.
+
+**Why the obvious answers are not obviously right:**
+
+- *Make a route per programme.* Honest, but produces hundreds of near-duplicate routes and
+  contradicts §40.1 — routes should differ only where the real journey materially differs. It also
+  makes the duplicate-and-merge problem worse (§18.4).
+- *Add a scope column to `Field`.* Cheap and expressive, but Phase 2's migration is the shape
+  everything is built on, and CLAUDE.md is explicit that a schema change is a change request
+  (§2, BR-35), not a convenience.
+- *Model programme variation as branches.* The graph already supports alternatives that rejoin, so
+  "apply via uni-assist" versus "apply direct" fits naturally. Whether a *field* variation fits the
+  same mechanism is less clear.
+
+**Cost of leaving it out:** a Bangladesh → Germany route can still be published and would still be
+useful, because the country-level facts — financial proof, visa procedure, the 27-month queue,
+uni-assist's document list — are the ones that are hardest to find and most often wrong elsewhere.
+The gap bites when a route tries to cover several programmes at once.
+
+**Recommendation:** do not change the schema yet. Seed one route whose scope is explicitly
+country-and-channel level, see whether the gap actually hurts in practice, and raise it as a formal
+change request if it does. Deciding this from one worksheet would be deciding it too early.
 
 ---
 
