@@ -153,6 +153,9 @@ test.describe('the contribution loop', () => {
 
     await page.goto('/en/routes/e2e-test-route')
     await openFirstStep(page)
+    // Kept so each half of this test can start from a known page rather than from whatever
+    // state the previous server action left behind.
+    const stepUrl = page.url()
 
     // Three distinct affordances, and no fourth: reporting is Phase 9 (CLAUDE.md §5).
     await expect(page.getByText(/^still accurate$/i).first()).toBeVisible()
@@ -160,41 +163,36 @@ test.describe('the contribution loop', () => {
     await expect(page.getByText(/^flag a problem$/i).first()).toBeVisible()
     expect(await page.getByRole('button', { name: /^report/i }).count()).toBe(0)
 
-    // CONFIRM — one click, no form, because nothing changed.
-    //
-    // Scoped to the official group rather than the whole page: the route passport also has a
-    // "Last confirmed" row, inside a collapsed <details>, and an unscoped match picks that
-    // hidden one first. The field's own line is what this test is about.
-    const officialGroup = page
-      .locator('section')
-      .filter({ has: page.getByRole('heading', { name: /from official and institutional/i }) })
-      .first()
+    /**
+     * The first field row, whichever group it is in.
+     *
+     * Earlier versions scoped by group heading and then nested a page-rooted locator inside
+     * `filter({ has })`, which is not what `has` means and never matched. The step detail is
+     * the only place on this page with field rows, so `main li` is both simpler and correct.
+     */
+    const firstField = page.locator('main li').filter({ has: page.locator('select[name="reason"]') }).first()
 
-    await officialGroup.getByText(/^still accurate$/i).first().click()
+    // CONFIRM — one click, no form, because nothing changed.
+    const valueBefore = await firstField.locator('p.text-sm').first().innerText()
+    await firstField.getByText(/^still accurate$/i).click()
+
+    // Scoped to the field row: the route passport also has a "Last confirmed" line, inside a
+    // collapsed <details>, and an unscoped match finds that hidden one first.
     await expect(
       page
-        .locator('section')
-        .filter({ has: page.getByRole('heading', { name: /from official and institutional/i }) })
+        .locator('main li')
+        .filter({ has: page.locator('select[name="reason"]') })
         .first()
-        .getByText(/last confirmed/i)
-        .first(),
+        .getByText(/last confirmed/i),
     ).toBeVisible()
 
     // CHALLENGE — leaves the value alone and says so publicly, with its reason.
-    //
-    // No second `openFirstStep` here: confirming re-rendered the same URL, so the step is
-    // already open and the link now reads "Close". Clicking it again would shut the step and
-    // then wait forever for a form that is no longer on screen.
-    const valueBefore = await officialGroup.locator('li p.text-sm').first().innerText()
-
-    await officialGroup.getByText(/^flag a problem$/i).first().click()
-    const challengeForm = officialGroup
-      .locator('form')
-      .filter({ has: officialGroup.getByRole('button', { name: /^flag it$/i }) })
-      .first()
-    await challengeForm.locator('select[name="reason"]').selectOption('broken_link')
-    await challengeForm.locator('textarea[name="note"]').fill('That link goes nowhere now.')
-    await challengeForm.getByRole('button', { name: /^flag it$/i }).click()
+    await page.goto(stepUrl)
+    const row = page.locator('main li').filter({ has: page.locator('select[name="reason"]') }).first()
+    await row.getByText(/^flag a problem$/i).click()
+    await row.locator('select[name="reason"]').selectOption('broken_link')
+    await row.locator('textarea[name="note"]').fill('That link goes nowhere now.')
+    await row.getByRole('button', { name: /^flag it$/i }).click()
 
     await expect(page.getByText(/that link goes nowhere now/i)).toBeVisible()
     await expect(page.getByText(/broken link/i).first()).toBeVisible()
@@ -202,10 +200,10 @@ test.describe('the contribution loop', () => {
     // The value itself is untouched: a challenge says "this may be wrong", not "this is".
     await expect(
       page
-        .locator('section')
-        .filter({ has: page.getByRole('heading', { name: /from official and institutional/i }) })
+        .locator('main li')
+        .filter({ has: page.locator('select[name="reason"]') })
         .first()
-        .locator('li p.text-sm')
+        .locator('p.text-sm')
         .first(),
     ).toHaveText(valueBefore)
 
