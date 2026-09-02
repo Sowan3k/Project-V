@@ -27,9 +27,9 @@ Read alongside [CLAUDE.md](CLAUDE.md) §6 (the 25 invariants) and [Phases.md](Ph
 | Vitest (unit/architecture) | ✅ | Vitest 4.1.11, node environment. `tests/**`, `src/**/*.test.ts`. Playwright specs excluded. |
 | Playwright (E2E) | ✅ | Playwright 1.62.1, Chromium. Two projects: `mobile-360` and `desktop-1280`. |
 | E2E target selection | ✅ | Local production build by default; `E2E_BASE_URL` points the same specs at a deployed preview. |
-| Test database strategy | ✅ | Scratch branch via `neon branches create` — never run tests against `production`. No test yet connects to a database. |
+| Test database strategy | ✅ | Scratch branch via `neon branches create` — never run tests against `production`. No Vitest test connects to a database; the E2E health probe does, through the running app. Neon branches: `production`, `vercel-dev` (created by the integration, schema-identical), `phase-0-migration-rehearsal` (kept as evidence). |
 | CI pipeline | 🟡 | `.github/workflows/ci.yml`: lint → typecheck → test → build on push to `main` and every PR. Command chain verified locally from a real clone; **the GitHub Actions run itself has not been observed** (private repo, no token in this environment). |
-| Vercel deployment | ✅ | Project `vindeshi-express` linked to `Sowan3k/Project-V`; production branch `main`. Deployment Protection is on (repo is private) — the setup project in `e2e/deployment-access.setup.ts` handles it. |
+| Vercel deployment | ✅ | Project `vindeshi-express` linked to `Sowan3k/Project-V`; production branch `main`. Neon–Vercel integration supplies `DATABASE_URL`; the deployed `/api/health` returns 200. Deployment Protection is on (repo is private) — `e2e/deployment-access.setup.ts` handles it. |
 | Coverage reporting | ⬜ | Not set up. Deliberate: coverage of a shell is a meaningless number. Revisit at Phase 3. |
 
 **Command reference** (once Phase 0 lands):
@@ -49,6 +49,10 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-02 | **Deployed `/api/health` reaches Neon** | Authenticated fetch of `.../api/health` on `dpl_AvcFpWzgxKnK2wFyD5ZQnZThKGJG` | ✅ 200 `{"status":"ok","database":"reachable","latencyMs":300}` — closes OF-3 |
+| 2026-09-02 | Playwright smoke suite against the deployment, with the stricter probe assertion | `E2E_BASE_URL` + `E2E_BYPASS_URL` → `npm run test:e2e` | ✅ 11/11; same suite also 11/11 against a local build |
+| 2026-09-02 | The `vercel-dev` branch created by the Neon–Vercel integration carries the committed schema | `neon diff vercel-dev` + `scripts/db-objects.mjs` | ✅ No schema differences from `production`; 7 enum types, `platform_meta`, 1 migration applied |
+| 2026-09-02 | The health probe's `unconfigured` vs `unreachable` split is accurate | Vercel runtime logs during the outage | ✅ Logs showed `Environment variable not found: DATABASE_URL` while the old build could only report `unreachable`; the new build reports `ok` |
 | 2026-09-02 | The runtime client needs only `DATABASE_URL`, not `DATABASE_URL_UNPOOLED` | Ran a live query with `DATABASE_URL_UNPOOLED` deleted from the environment | ✅ Succeeded — `directUrl` is read by the Prisma CLI, never by the running app. Keeps the direct credential out of Vercel |
 | 2026-09-02 | **Playwright smoke suite against the deployed Vercel build** | `E2E_BASE_URL` + `E2E_BYPASS_URL` → `npm run test:e2e` | ✅ 11/11 passed at 360px and 1280px against `vindeshi-express-noor-mohammad-sowans-projects.vercel.app` |
 | 2026-09-02 | Vercel build succeeds with no database configured | Vercel build log for `dpl_BQ94Rr8b6RLHPqiarift3EmkdknY` | ✅ Built in 45s; 4 routes; confirms `next build` never touches the database |
@@ -209,7 +213,6 @@ Populated as phases land. One row per feature area.
 | # | What | Guards | Status |
 |---|---|---|---|
 | OF-2 | **CI has not been observed running on GitHub.** `.github/workflows/ci.yml` is committed and pushed, and its exact command chain was verified locally against a real clone, but no GitHub Actions run has been inspected — the repository is private and this environment has no GitHub token. | "lint + typecheck + unit on every commit" | 🟡 Open — check the Actions tab on the next push. |
-| OF-3 | **The deployed `/api/health` returns 503.** The page renders, but the Vercel project has no `DATABASE_URL`, so the probe correctly reports `degraded`. Local runs against Neon return 200. | Runtime database reachability in the deployed environment | 🟡 Open — set **`DATABASE_URL` only** (the pooled URL) in the Vercel project, or connect the Vercel–Neon integration. Verified 2026-09-02 that a runtime query succeeds with `DATABASE_URL_UNPOOLED` absent, so the direct credential must **not** be added to Vercel. Not a code defect. |
 
 > When a test fails, add it here with the failing output and the FR/invariant it guards.
 > Remove the row only when it passes — never by deleting the test.

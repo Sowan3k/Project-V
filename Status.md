@@ -96,16 +96,34 @@ unset — the local default — it does nothing. A share token lasts under a day
 CI against a protected deployment should later use Vercel's Protection Bypass for
 Automation secret as an `x-vercel-protection-bypass` header instead.
 
-**Two things left for you, neither blocking Phase 1:**
+**The Neon–Vercel integration was then connected, and the deployment reaches the database:**
 
-1. **The deployed `/api/health` returns 503** (`Test.md` OF-3). The page renders correctly;
-   the probe honestly reports `degraded` because the Vercel project has no `DATABASE_URL`
-   or `DATABASE_URL_UNPOOLED`. Add both in the Vercel project settings, or connect the
-   Vercel–Neon integration. There is no tool in this environment for writing Vercel
-   environment variables, and the credentials are yours to place.
-2. **No GitHub Actions run has been inspected** (`Test.md` OF-2). The workflow is pushed and
-   its exact command chain was verified against a real clone, but the repository is private
-   and this environment has no GitHub token. Check the Actions tab.
+```
+GET /api/health -> 200 {"status":"ok","database":"reachable","latencyMs":300}
+```
+
+The full smoke suite passes 11/11 against the deployment and 11/11 against a local build.
+`Test.md` OF-3 is closed.
+
+Two notes from that episode worth keeping:
+
+- **Environment variables are snapshotted per deployment**, so adding one changes nothing
+  until the next build. The first reading after the integration came from the previous
+  build and was misleading; the Vercel runtime logs were decisive
+  (`Environment variable not found: DATABASE_URL`). Read the logs, not the response body,
+  when a deployment disagrees with local.
+- **The integration created a second Neon branch, `vercel-dev`** (`br-lingering-brook-aeac0ycs`),
+  for Vercel's Development environment. It branched after the migration, so `neon diff`
+  reports no schema difference from `production` — verified, not assumed.
+
+**One thing left for you** (`Test.md` OF-2): no GitHub Actions run has been inspected. The
+workflow is pushed and its exact command chain was verified against a real clone, but the
+repository is private and this environment has no GitHub token. Check the Actions tab.
+
+**Worth confirming once in the Vercel dashboard:** that the Production environment's
+`DATABASE_URL` points at the Neon `production` branch rather than `vercel-dev`. Both
+branches currently have identical schemas and no data, so nothing is at risk today — but
+from Phase 2 onwards, writing to the wrong branch would be a silent and expensive mistake.
 
 ### Left in place for you to review
 

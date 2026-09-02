@@ -42,13 +42,27 @@ test('no horizontal overflow at the configured viewport', async ({ page }) => {
   expect(overflow, 'the page must not scroll horizontally (CLAUDE.md §7)').toBe(false)
 })
 
-test('the health probe answers and never leaks a connection string', async ({ request }) => {
+/**
+ * Requires a configured database, which is the point: the probe exists to prove Prisma
+ * reaches Neon. Both targets we run against have one — locally from .env.local, and in the
+ * deployment from the Vercel–Neon integration. It accepted a 503 until 2026-09-02, which
+ * meant it would have passed against a deployment that could not reach its database at all.
+ */
+test('the health probe reports a reachable database and never leaks a connection string', async ({
+  request,
+}) => {
   const response = await request.get('/api/health')
-  expect([200, 503]).toContain(response.status())
+  expect(
+    response.status(),
+    'a 503 here means DATABASE_URL is missing or the database is unreachable',
+  ).toBe(200)
 
-  const body: unknown = await response.json()
+  const body = (await response.json()) as { status?: string; database?: string }
+  expect(body.status).toBe('ok')
+  expect(body.database).toBe('reachable')
+
   const serialised = JSON.stringify(body)
   expect(serialised).not.toContain('postgres')
   expect(serialised).not.toContain('password')
-  expect(body).toHaveProperty('status')
+  expect(serialised).not.toContain('neon.tech')
 })
