@@ -92,6 +92,10 @@ test.describe('anonymous reading journey', () => {
   }) => {
     await page.goto('/en/routes')
     await page.locator('main ul li a').first().click()
+    // Wait for the navigation to settle before reading the heading. Without this, `innerText`
+    // resolves against whichever h1 is on screen at that instant — which was the search
+    // page's "Find a route", not the route's own title.
+    await expect(page).toHaveURL(/\/en\/routes\/[^/]+$/)
     const routeTitle = (await page.getByRole('heading', { level: 1 }).innerText()).trim()
 
     await page.getByRole('navigation', { name: /route views/i }).getByRole('link', { name: /^history$/i }).click()
