@@ -208,10 +208,23 @@ describe('invariant 23, FR-39, BR-10 — quiet is not a defect', () => {
     const dictionary = read('src/i18n/dictionaries/en.ts')
     expect(dictionary).toMatch(/quietExplainer/)
     expect(dictionary).toMatch(/That is not a sign of a problem/)
-    // No copy anywhere in the lifecycle vocabulary calls a route wrong for being quiet.
-    const start = dictionary.indexOf('lifecycle: {')
-    const block = dictionary.slice(start, dictionary.indexOf('\n  admin: {', start))
+    /**
+     * No copy in the lifecycle vocabulary calls a route wrong for being quiet — scanned with
+     * **comments stripped**, for the third time in this project. The schema prose in Phase 10
+     * (Test.md §19) and the "points readers" copy in Phase 11 were the first two.
+     *
+     * Without stripping, the note above `quietExplainer` explaining *why the word "abandoned"
+     * must never appear* makes this guard report that "abandoned" appears. An absence guard
+     * that reads prose reports the documentation of a rule as a violation of it.
+     *
+     * **Standing rule: an absence guard reads code, never comments.**
+     */
+    const code = stripComments(dictionary)
+    const start = code.indexOf('lifecycle: {')
+    const block = code.slice(start, code.indexOf('\n  admin: {', start))
     expect(block).not.toMatch(/out of date|no longer valid|unreliable|abandoned/i)
+    // Not vacuous: the block really is the lifecycle vocabulary.
+    expect(block).toMatch(/dormantExplainer/)
   })
 })
 

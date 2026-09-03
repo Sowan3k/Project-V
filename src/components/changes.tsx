@@ -57,7 +57,7 @@ function SeverityChip({
       className={`rounded-full border px-2 py-0.5 text-xs whitespace-nowrap ${
         loud
           ? 'border-caution-500/40 bg-caution-50 font-medium text-caution-900'
-          : 'border-hairline bg-canvas text-ink-700'
+          : 'border-hairline bg-surface-muted text-ink-700'
       }`}
     >
       {t.changes.severity[severity]}
@@ -117,7 +117,7 @@ export function AnnouncedChangeCard({
         <h3 className="text-sm font-semibold text-ink-900">{change.title}</h3>
         <div className="flex flex-wrap gap-1.5">
           <SeverityChip severity={change.severity} dictionary={t} />
-          <span className="rounded-full border border-hairline bg-canvas px-2 py-0.5 text-xs whitespace-nowrap text-ink-700">
+          <span className="rounded-full border border-hairline bg-surface-muted px-2 py-0.5 text-xs whitespace-nowrap text-ink-700">
             {t.changes.kind[change.kind]}
           </span>
         </div>

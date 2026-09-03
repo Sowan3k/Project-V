@@ -1,5 +1,6 @@
 import { classifyLink } from '@/domain/links'
 import type { LinkTrustClass } from '@/domain/enums'
+import { RouteLifecycleState as Lifecycle } from '@/domain/enums'
 import {
   fieldSignals,
   RECENT_ACTIVITY_WINDOW_DAYS,
@@ -256,6 +257,32 @@ export function RoutePassportPanel({
           {t.trust.passport.contributors(passport.contributorCount)}
         </span>
       </div>
+
+      {/*
+        FR-39, for the one state that needs it — Phase 12.
+
+        "Established routes shall not be treated as false merely because of 30 days without
+        activity; **they shall instead expose freshness/last-confirmed information**."
+
+        That date lives in the disclosure below for every other route, which is right: on a
+        busy route it is one fact among several and Phase 6's rule is that the ordinary case
+        renders quietly. But on a *quiet* route it is the whole answer to the question the
+        reader is actually asking, and behind a click is not "exposed".
+
+        Deliberately only here. Lifting it onto every route would put a date on all of them
+        and drown the one that meant something — the same reasoning that keeps `route_wide`
+        from having a chip.
+      */}
+      {passport.lifecycleState !== Lifecycle.quiet ? null : (
+        <p className="mt-3 text-xs text-ink-700">
+          {t.trust.passport.lastConfirmed}:{' '}
+          <span className="text-ink-900">
+            {passport.lastConfirmedAt === null
+              ? t.trust.passport.never
+              : isoDate(passport.lastConfirmedAt)}
+          </span>
+        </p>
+      )}
 
       {passport.cautions.length === 0 ? null : (
         <div className="mt-3 space-y-1 rounded-md border border-caution-500/40 bg-caution-50 px-2.5 py-2">

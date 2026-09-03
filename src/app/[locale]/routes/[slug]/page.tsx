@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -9,7 +10,7 @@ import { rendererStrings } from '@/components/route-shared'
 import { StepFields } from '@/components/step-fields'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
-import { Road } from '@/renderer'
+import { ResponsiveRoad } from '@/renderer'
 import { currentViewer } from '@/server/auth'
 import { getRouteBySlug, getStepFields, searchRoutes } from '@/server/routes/read'
 
@@ -29,6 +30,27 @@ import { flagDuplicateAction } from './actions'
  * Anonymous throughout. No session is read anywhere in this file.
  */
 export const dynamic = 'force-dynamic'
+
+/**
+ * The route's own name in the browser tab - Phase 12.
+ *
+ * A reader comparing three routes has three tabs; identical titles make that impossible to
+ * work with, and a bookmark or a shared link carries the same title into somebody else's
+ * history. `notPublished` rather than a blank for a route that does not exist, so a broken
+ * link is legible in a tab too.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; slug: string }>
+}): Promise<Metadata> {
+  const { locale, slug } = await params
+  if (!isLocale(locale)) return {}
+  const t = await getDictionary(locale)
+  const route = await getRouteBySlug(slug)
+  if (route === null) return { title: t.notPublished.title }
+  return { title: route.title, description: route.summary ?? t.meta.description }
+}
 
 export default async function RoutePage({
   params,
@@ -67,7 +89,7 @@ export default async function RoutePage({
         <h2 className="sr-only">{t.route.roadLabel}</h2>
         {/* Wide content scrolls in its own container; the page never scrolls sideways. */}
         <div className="overflow-x-auto rounded-xl border border-hairline bg-surface p-4">
-          <Road graph={route.graph} strings={rendererStrings(t)} />
+          <ResponsiveRoad graph={route.graph} strings={rendererStrings(t)} />
         </div>
       </section>
 

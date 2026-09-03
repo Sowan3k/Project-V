@@ -1,7 +1,7 @@
 import type { StepCategory } from '@/domain/enums'
 import type { RouteGraph } from '@/domain/graph/types'
 
-import { layout, RIBBON, ROAD, type Density } from './layout'
+import { layout, RIBBON, ROAD, ROAD_NARROW, type Density } from './layout'
 import {
   Connector,
   DestinationMarker,
@@ -34,6 +34,20 @@ import {
  */
 export interface RouteAnnotations {
   readonly addedStepIds?: readonly string[]
+  /**
+   * Steps to draw as departing — dashed, faded, labelled — even though this graph still
+   * contains them as live (Phase 12).
+   *
+   * Needed by the shadow comparison and by nothing else. In the *older* of two versions an
+   * archived step is not archived: it was live on that date, which is the whole point of
+   * reconstructing it. Without this the "before" road drew a departing step identically to a
+   * surviving one, so the two roads differed only by a block being absent from one of them —
+   * a difference a reader has to find by counting rather than by looking.
+   *
+   * Route-agnostic like every other annotation: a list of ids the caller worked out, never
+   * something this module decides (invariant 24).
+   */
+  readonly archivedStepIds?: readonly string[]
   readonly disruptedStepIds?: readonly string[]
   /** A previous version, drawn beneath as the shadow route (FR-77). */
   readonly shadow?: RouteGraph
@@ -73,6 +87,7 @@ function RouteVisual({
   const frame = layout(graph, density)
   const shadow = annotations.shadow ? layout(annotations.shadow, density) : null
   const added = new Set(annotations.addedStepIds ?? [])
+  const departing = new Set(annotations.archivedStepIds ?? [])
   const disrupted = new Set(annotations.disruptedStepIds ?? [])
 
   const first = frame.nodes.at(0)
@@ -109,7 +124,13 @@ function RouteVisual({
       {frame.nodes.map((node) => (
         <StepMarker
           key={node.step.id}
-          node={node}
+          node={
+            // An annotated departure is drawn exactly as a genuinely archived step is, by
+            // giving the marker the same input rather than a second code path.
+            departing.has(node.step.id)
+              ? { ...node, step: { ...node.step, archived: true } }
+              : node
+          }
           density={density}
           categoryLabel={strings.categories[node.step.category]}
           added={added.has(node.step.id)}
@@ -151,4 +172,46 @@ export function Road(props: RouteVisualProps & { density?: Density }) {
  */
 export function Ribbon(props: RouteVisualProps) {
   return <RouteVisual {...props} density={RIBBON} />
+}
+
+/**
+ * The road at whichever density the viewport can actually carry — Phase 12.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **The gap this closes.** `ROAD_NARROW` has existed since Phase 4, which proved a phone
+ * needs only a different constants object rather than a second renderer. Nothing ever
+ * selected it. Every phone was therefore served the 5-column, ~890px desktop road inside a
+ * horizontal scroller — which is precisely the "scaled desktop" CLAUDE.md §7 and VR-12
+ * forbid. A reader on a 360px screen saw a fifth of a road and had to drag.
+ *
+ * At `ROAD_NARROW` the same route wraps at 2 columns instead of 5, so a phone gets a
+ * genuinely different composition — more rows, shorter runs — rather than a shrunken one.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **Why both are rendered and toggled by CSS rather than chosen in JavaScript.**
+ *
+ * The application has **zero client components**, which is most of why it is fast, and a
+ * `useMediaQuery` here would be the first — on the read path, which is the one page a student
+ * on a slow connection must not wait for a bundle to see (Phase 5). A media query costs no
+ * JavaScript at all, works before hydration because there is none, and works with scripting
+ * disabled.
+ *
+ * The cost is one extra SVG in the markup. Both come from the *same* graph through the *same*
+ * layout pass, so they cannot disagree about what the route contains (invariant 25), they
+ * gzip together extremely well, and the hidden one is `display: none` so assistive technology
+ * reads exactly one road.
+ */
+export function ResponsiveRoad(props: RouteVisualProps) {
+  return (
+    <>
+      {/* Phone: 2 columns per row. A different composition, not a smaller one. */}
+      <div className="sm:hidden">
+        <RouteVisual {...props} density={ROAD_NARROW} />
+      </div>
+      {/* Tablet and up: the full 5-column road. */}
+      <div className="hidden sm:block">
+        <RouteVisual {...props} density={ROAD} />
+      </div>
+    </>
+  )
 }

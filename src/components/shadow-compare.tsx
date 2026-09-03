@@ -3,7 +3,7 @@ import { rendererStrings } from '@/components/route-shared'
 import type { ComparisonRow, ShadowComparison, StepChangeMark } from '@/domain/changes'
 import type { RouteGraph } from '@/domain/graph/types'
 import type { Dictionary } from '@/i18n/dictionaries/en'
-import { ROAD_NARROW, Road } from '@/renderer'
+import { ROAD_NARROW, Road, type RouteAnnotations } from '@/renderer'
 
 /**
  * The shadow route — Phase 10. FR-22, FR-77, §14.1, §14.2, VR-07.
@@ -51,8 +51,8 @@ import { ROAD_NARROW, Road } from '@/renderer'
  */
 
 const MARK_STYLE: Record<StepChangeMark, string> = {
-  step_added: 'border-brand-700/40 bg-brand-50 text-brand-900',
-  step_archived: 'border-hairline bg-canvas text-ink-700',
+  step_added: 'border-brand-700/40 bg-brand-500/10 text-brand-900',
+  step_archived: 'border-hairline bg-surface-muted text-ink-700',
   step_reordered: 'border-caution-500/40 bg-caution-50 text-caution-900',
   step_relabelled: 'border-caution-500/40 bg-caution-50 text-caution-900',
   step_retimed: 'border-caution-500/40 bg-caution-50 text-caution-900',
@@ -123,12 +123,14 @@ function RoadPanel({
   subheading,
   dictionary: t,
   muted = false,
+  annotations,
 }: {
   graph: RouteGraph
   heading: string
   subheading: string
   dictionary: Dictionary
   muted?: boolean
+  annotations?: RouteAnnotations
 }) {
   return (
     <section className="rounded-xl border border-hairline bg-surface p-4">
@@ -143,6 +145,7 @@ function RoadPanel({
             graph={graph}
             density={ROAD_NARROW}
             strings={rendererStrings(t)}
+            annotations={annotations}
             // The older side is drawn quieter, so a glance can tell which is which without
             // reading the headings. It is the same road, at the same density, not a
             // different rendering — only its opacity differs.
@@ -222,7 +225,7 @@ export function ComparisonRows({
               className="flex items-center gap-2 sm:order-2 sm:w-6 sm:flex-col sm:justify-center"
               aria-hidden="true"
             >
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-hairline bg-canvas text-xs text-ink-500">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-hairline bg-surface-muted text-xs text-ink-500">
                 {row.ordinal}
               </span>
             </div>
@@ -245,6 +248,11 @@ export function ComparisonRows({
       </ul>
     </section>
   )
+}
+
+/** Row keys carrying one mark — the bridge from the comparison to the renderer's annotations. */
+function marked(comparison: ShadowComparison, mark: StepChangeMark): string[] {
+  return comparison.rows.filter((row) => row.marks.includes(mark)).map((row) => row.key)
 }
 
 /**
@@ -282,6 +290,10 @@ export function ShadowCompare({
             subheading={t.changes.asOf(beforeDate)}
             dictionary={t}
             muted
+            // Steps that leave are drawn as departing on the older road — dashed, faded,
+            // labelled. Without this the two roads differed only by a block being missing
+            // from one of them, which a reader has to find by counting.
+            annotations={{ archivedStepIds: marked(comparison, 'step_archived') }}
           />
         </GridRegion>
         <GridRegion span={4}>
@@ -290,6 +302,8 @@ export function ShadowCompare({
             heading={t.changes.currentRoute}
             subheading={t.changes.asOf(t.changes.today)}
             dictionary={t}
+            // And steps that arrive are outlined and labelled on the current one.
+            annotations={{ addedStepIds: marked(comparison, 'step_added') }}
           />
         </GridRegion>
         <GridRegion span={4}>

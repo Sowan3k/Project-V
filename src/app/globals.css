@@ -15,11 +15,26 @@
 @theme {
   --color-ink-900: oklch(0.24 0.03 258);
   --color-ink-700: oklch(0.42 0.02 258);
-  --color-ink-500: oklch(0.58 0.015 258);
+  /*
+   * Darkened from L=0.58 to L=0.55 in Phase 12, and the reason is measured rather than felt.
+   *
+   * At 0.58 this token was **4.28:1 against white** — below WCAG AA's 4.5:1 for normal text.
+   * It carries almost every explanatory line in the product, and those lines are `text-xs`,
+   * so the 3:1 large-text allowance never applied to them. It was failing on the copy that
+   * explains the things a reader most needs explained: what a source class means, why a
+   * route is quiet, that their progress is untouched.
+   *
+   * 0.55 gives 4.85:1 on `surface` and 4.51:1 on `caution-50`, the worst background it is
+   * ever placed on. `scripts/contrast.mjs` recomputes every pair and a test fails the build
+   * if any text token drops below AA.
+   */
+  --color-ink-500: oklch(0.55 0.015 258);
 
   --color-brand-900: oklch(0.31 0.08 258);
   --color-brand-700: oklch(0.44 0.11 256);
-  --color-brand-500: oklch(0.58 0.13 254);
+  /* Same correction, same reason. Used for borders and tints today; a token that only
+     passes AA by not being used as text is a trap for the next person who uses it. */
+  --color-brand-500: oklch(0.55 0.13 254);
 
   --color-surface: oklch(1 0 0);
   --color-surface-muted: oklch(0.985 0.003 258);

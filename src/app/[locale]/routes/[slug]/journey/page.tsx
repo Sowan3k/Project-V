@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -8,7 +9,7 @@ import { JourneyStepStatus, JOURNEY_STEP_STATUSES } from '@/domain/enums'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
 import type { Dictionary } from '@/i18n/dictionaries/en'
-import { Road } from '@/renderer'
+import { ResponsiveRoad } from '@/renderer'
 import { currentViewer } from '@/server/auth'
 import { shadowSince } from '@/server/changes/read'
 import { followerChangeReport } from '@/server/journeys/changes'
@@ -55,6 +56,27 @@ import {
  * JavaScript disabled — the same guarantee Phase 5 gave the read path, kept.
  */
 export const dynamic = 'force-dynamic'
+
+/**
+ * The route's own name in the browser tab - Phase 12.
+ *
+ * A reader comparing three routes has three tabs; identical titles make that impossible to
+ * work with, and a bookmark or a shared link carries the same title into somebody else's
+ * history. `notPublished` rather than a blank for a route that does not exist, so a broken
+ * link is legible in a tab too.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; slug: string }>
+}): Promise<Metadata> {
+  const { locale, slug } = await params
+  if (!isLocale(locale)) return {}
+  const t = await getDictionary(locale)
+  const route = await getRouteBySlug(slug)
+  if (route === null) return { title: t.notPublished.title }
+  return { title: t.meta.routeJourney(route.title), description: route.summary ?? t.meta.description }
+}
 
 export default async function JourneyPage({
   params,
@@ -190,7 +212,7 @@ function JourneyBoard({
         {/* The same road, from the same renderer. A journey is a view of the route, and it
             must look like the route the follower opened (invariant 25). */}
         <div className="mt-4 overflow-x-auto rounded-xl border border-hairline bg-surface p-4">
-          <Road graph={route.graph} strings={rendererStrings(t)} />
+          <ResponsiveRoad graph={route.graph} strings={rendererStrings(t)} />
         </div>
         <p className="mt-2 text-xs text-ink-500">{t.journey.routeChangedNote}</p>
       </section>

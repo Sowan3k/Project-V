@@ -52,6 +52,25 @@ export const en = {
     loading: 'Loading',
   },
 
+  /**
+   * What a browser tab, a shared link and a search result say — Phase 12.
+   *
+   * The description is the product's own one-line answer, not the Phase 0 placeholder that
+   * stood here until now ("This platform is being built"), which was still being served to
+   * every link preview months after the platform stopped being under construction.
+   */
+  meta: {
+    description:
+      'Compare the ways to reach an overseas study destination, open a route to understand every step, and privately follow it as your own journey. Community maintained, free, and no document upload.',
+    searchTitle: 'Find a route',
+    journeysTitle: 'My journeys',
+    signInTitle: 'Sign in',
+    newRouteTitle: 'Create a route',
+    routeChanges: (route: string) => `What has changed — ${route}`,
+    routeHistory: (route: string) => `History — ${route}`,
+    routeJourney: (route: string) => `My journey — ${route}`,
+  },
+
   shell: {
     /**
      * Phase 0 is a foundation spine, not a product surface. The landing page, search and
@@ -79,6 +98,18 @@ export const en = {
     publicGood: 'A public good, not a business.',
     notAnAgency:
       'Vindeshi Express is not an education agency, consultancy or application service.',
+    /**
+     * The voluntary support link — CLAUDE.md §10.1.
+     *
+     * "Support", never "Donate": §10.1 avoids tax-deductible charitable framing, and this is
+     * not a purchase prompt either. The sentence after it is not decoration — a reader who
+     * suspects that paying buys standing has been told something false about the entire
+     * platform, and invariant 13 is the reason the sentence can be made without qualification.
+     */
+    support: 'Support Vindeshi Express',
+    supportOpensExternal: '(opens gumroad.com in a new tab)',
+    supportChangesNothing:
+      'Optional, external, and it changes nothing: the platform is free, and supporting it affects no route’s ranking, standing or moderation. We never see your payment details.',
   },
 
   studyLevel: {
@@ -832,8 +863,19 @@ export const en = {
    * when it was last confirmed and stops.
    */
   lifecycle: {
+    /**
+     * Reviewed in Phase 12 against the question that actually decides whether FR-39 worked:
+     * does a reader seeing this conclude "settled" or "abandoned"?
+     *
+     * The first draft opened "Nothing has changed on this route recently", which a skimmer
+     * reads as neglect and stops. Three changes: it now leads with **agency** ("no one has
+     * needed to change it") rather than absence, it names the two ordinary reasons so the
+     * benign reading is offered rather than merely permitted, and it ends by pointing at the
+     * last-confirmed date — which is FR-39's own remedy, and which the passport now shows
+     * outside its disclosure for exactly this state.
+     */
     quietExplainer:
-      'Nothing has changed on this route recently. That is not a sign of a problem — a route can be quiet because its process is settled, or because its intake is seasonal. Its last confirmation date is shown so you can judge for yourself.',
+      'No one has needed to change this route recently. That is not a sign of a problem — a settled process and a seasonal intake both look like this. Its last confirmation date is shown with its standing, so you can judge for yourself.',
     dormantExplainer:
       'This route was created and then nothing happened to it — no followers, no confirmations and no edits. It has been set aside so it does not crowd routes people are using. Nothing has been deleted, and it comes back if anyone uses it.',
     staleExplainer:

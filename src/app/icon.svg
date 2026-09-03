@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Vindeshi Express">
+  <!--
+    The road, at favicon size — Phase 12.
+
+    The product's one metaphor reduced to what survives 16 pixels: a path that bends and
+    arrives somewhere. Not a letterform, because the public brand name is not frozen (D-32,
+    CLAUDE.md §11) and an icon built from a letter would have to be redrawn if the name
+    changes. A road would not.
+
+    Drawn by hand, which invariant 24 permits: it is a fixed piece of brand furniture, not a
+    route. No route data reaches it and it renders identically for every destination.
+  -->
+  <rect width="32" height="32" rx="7" fill="#1d3a6b" />
+  <path
+    d="M8 24 C 8 17, 14 17, 14 12 C 14 8, 19 8, 22 9"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="2.4"
+    stroke-linecap="round"
+    opacity="0.92"
+  />
+  <circle cx="8" cy="24" r="2.6" fill="#ffffff" />
+  <circle cx="23" cy="9" r="3.2" fill="#7fb0ff" />
+</svg>

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 
 import { ContentColumn } from '@/components/layout'
@@ -16,6 +17,24 @@ import { currentViewer, signIn } from '@/server/auth'
  * and nothing else (FR-01, FR-12, D-03).
  */
 export const dynamic = 'force-dynamic'
+
+/**
+ * A title of this page's own - Phase 12.
+ *
+ * Before Phase 12 every page in the application shared one title, so a reader with three
+ * routes open had three identical tabs and a useless history. The layout supplies the
+ * "<subject> - Vindeshi Express" template; this supplies the subject.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  if (!isLocale(locale)) return {}
+  const t = await getDictionary(locale)
+  return { title: t.meta.signInTitle }
+}
 
 export default async function SignInPage({
   params,

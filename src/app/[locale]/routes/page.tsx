@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -24,6 +25,24 @@ type SearchParams = Record<string, string | string[] | undefined>
 
 const one = (value: string | string[] | undefined): string | undefined =>
   (Array.isArray(value) ? value[0] : value) || undefined
+
+/**
+ * A title of this page's own - Phase 12.
+ *
+ * Before Phase 12 every page in the application shared one title, so a reader with three
+ * routes open had three identical tabs and a useless history. The layout supplies the
+ * "<subject> - Vindeshi Express" template; this supplies the subject.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  if (!isLocale(locale)) return {}
+  const t = await getDictionary(locale)
+  return { title: t.meta.searchTitle }
+}
 
 export default async function RouteSearchPage({
   params,

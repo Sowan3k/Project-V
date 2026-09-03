@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 import { ContentColumn } from '@/components/layout'
@@ -23,6 +24,27 @@ import { getRouteBySlug, getRouteHistory } from '@/server/routes/read'
  * *whether it affects you* is Phase 10.
  */
 export const dynamic = 'force-dynamic'
+
+/**
+ * The route's own name in the browser tab - Phase 12.
+ *
+ * A reader comparing three routes has three tabs; identical titles make that impossible to
+ * work with, and a bookmark or a shared link carries the same title into somebody else's
+ * history. `notPublished` rather than a blank for a route that does not exist, so a broken
+ * link is legible in a tab too.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; slug: string }>
+}): Promise<Metadata> {
+  const { locale, slug } = await params
+  if (!isLocale(locale)) return {}
+  const t = await getDictionary(locale)
+  const route = await getRouteBySlug(slug)
+  if (route === null) return { title: t.notPublished.title }
+  return { title: t.meta.routeHistory(route.title), description: route.summary ?? t.meta.description }
+}
 
 export default async function RouteHistoryPage({
   params,
