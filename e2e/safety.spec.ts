@@ -56,9 +56,9 @@ test.describe('reporting and quarantine', () => {
 
     // It explains when NOT to use it. A report that should have been a challenge wastes an
     // administrator's attention and delays a correction the community could have made.
-    await expect(page.getByText(/use “flag a problem” instead/i)).toBeVisible()
+    await expect(page.getByText(/use “flag a problem” instead/i).first()).toBeVisible()
     // And that reports are not a public accusation board.
-    await expect(page.getByText(/reports are not shown publicly/i)).toBeVisible()
+    await expect(page.getByText(/reports are not shown publicly/i).first()).toBeVisible()
 
     // Text only — nowhere to attach anything (§8.6, invariants 6 and 7).
     expect(await page.locator('input[type="file"]').count()).toBe(0)
@@ -129,12 +129,12 @@ test.describe('reporting and quarantine', () => {
     await page.goto('/en/admin/reports')
     // Quarantine directly — the queue only lists reported fields, and this test is about the
     // effect of quarantine rather than about the queue.
+    // A note unique to this run. The seeded route accumulates quarantined fields across CI
+    // runs — the database is append-only by design — so asserting on shared copy hits several
+    // elements at once. The note is this test's own handle on its own subject.
+    const note = `Shortened link impersonating an embassy ${secret}`
     const { quarantineField } = await import('../src/server/safety/service')
-    await quarantineField({
-      adminId: admin.userId,
-      fieldId: added.id,
-      note: 'Shortened link impersonating an embassy.',
-    })
+    await quarantineField({ adminId: admin.userId, fieldId: added.id, note })
 
     await page.goto('/en/routes/e2e-test-route')
     await page.getByRole('link', { name: /open this step/i }).first().click()
@@ -144,11 +144,11 @@ test.describe('reporting and quarantine', () => {
     expect(html).not.toContain(secret)
     expect(html).not.toContain('bit.ly/definitely-not-real')
 
-    // And the reader is told, and told why.
-    await expect(page.getByText(/withheld pending review/i)).toBeVisible()
-    await expect(page.getByText(/impersonating an embassy/i)).toBeVisible()
+    // And the reader is told, and told why — located by this run's own note.
+    await expect(page.getByText(note, { exact: false })).toBeVisible()
+    await expect(page.getByText(/withheld pending review/i).first()).toBeVisible()
     // Withholding one thing is not a safety claim about everything else (§42.5).
-    await expect(page.getByText(/containment, not a safety check/i)).toBeVisible()
+    await expect(page.getByText(/containment, not a safety check/i).first()).toBeVisible()
 
     // Still in the record: the history tab has it (invariants 1 and 4).
     await page.goto('/en/routes/e2e-test-route/history')

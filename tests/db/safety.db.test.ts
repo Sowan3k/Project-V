@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import {
@@ -110,22 +112,36 @@ describe.skipIf(!url)('FR-35 — reporting changes nothing on its own', () => {
    */
   it('does not hide anything however many people report it', async () => {
     const { slug, stepId, fieldId } = await fieldWithLink()
+    const reporterIds: string[] = []
+    const detail = `burst-detail-${randomUUID().slice(0, 8)}`
 
     for (let i = 0; i < 10; i += 1) {
       const reporter = await prisma.user.create({
-        data: { handle: generateHandle(), email: `burst-${i}-${Date.now()}@example.test` },
+        data: { handle: generateHandle(), email: `burst-${i}-${randomUUID()}@example.test` },
       })
-      await reportField({ reporterId: reporter.id, fieldId, reason: ReportReason.phishing_or_scam })
+      reporterIds.push(reporter.id)
+      await reportField({
+        reporterId: reporter.id,
+        fieldId,
+        reason: ReportReason.phishing_or_scam,
+        detail,
+      })
     }
 
     const fields = await getStepFields(stepId)
     expect(fields[0]?.quarantined).toBe(false)
     expect(fields[0]?.valueText).toBe(PHISHING)
 
-    // And the route says nothing about it either — reports are not public (§23.1).
+    // And the route projection carries nothing about the reports — they are not public
+    // (§23.1). Asserted against the actual reporter ids and detail text rather than the word
+    // "report": an earlier version matched this fixture's own title and failed for no reason.
     const route = await getRouteBySlug(slug)
     expect(route?.trust.quarantinedCount).toBe(0)
-    expect(JSON.stringify(route)).not.toMatch(/phishing|report/i)
+
+    const serialised = JSON.stringify(route)
+    expect(serialised).not.toContain(detail)
+    for (const id of reporterIds) expect(serialised).not.toContain(id)
+    expect(Object.keys(route?.trust ?? {})).not.toContain('reportCount')
   })
 })
 
