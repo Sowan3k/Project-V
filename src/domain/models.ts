@@ -78,9 +78,16 @@ export type PrivateUserStateModel = (typeof PRIVATE_USER_STATE_MODELS)[number]
  * `delete` here exactly as it does for revisioned models — a challenge that could be deleted
  * is a safety signal that could be deleted, and "no reports" already means less than a reader
  * assumes (invariant 12). `update` stays allowed, because that is how a challenge is marked
- * resolved by the revision that answered it.
+ * resolved by the revision that answered it, and how a report is marked handled.
+ *
+ * **Classification is not visibility.** Phase 9 files `Report` here because the *write* rules
+ * are identical — community-authored, never deleted by a normal user. What a reader sees is a
+ * separate question, and the answer differs: confirmations and challenges are public, reports
+ * are not. A report is an accusation about conduct, and a public accusation board would be a
+ * defamation surface and a brigading target (§23.1, §23.3). The public sees the *outcome* — 
+ * whether content is quarantined — not who reported it or what they wrote.
  */
-export const COMMUNITY_SIGNAL_MODELS = ['Confirmation', 'Challenge'] as const
+export const COMMUNITY_SIGNAL_MODELS = ['Confirmation', 'Challenge', 'Report'] as const
 export type CommunitySignalModel = (typeof COMMUNITY_SIGNAL_MODELS)[number]
 
 export function isCommunitySignal(model: string): model is CommunitySignalModel {

@@ -109,6 +109,15 @@ export interface FieldTrustInput {
    * value somebody has flagged as obsolete, without being told, has been failed by the page.
    */
   readonly openChallengeCount: number
+  /**
+   * Withheld by an administrator — FR-36, §23.2.
+   *
+   * The loudest signal a field can carry, and the only one where the *value itself* is
+   * missing from the page. A reader who is not told would think the field was empty rather
+   * than withheld, which is the difference between containment and the platform quietly
+   * editing what it shows.
+   */
+  readonly quarantined: boolean
 }
 
 export type FieldSignalId =
@@ -118,6 +127,14 @@ export type FieldSignalId =
   | 'history_forked'
   /** Somebody has challenged this and no revision has answered it yet (FR-18, FR-49). */
   | 'open_challenge'
+  /**
+   * Withheld by an administrator pending review (FR-36, §23.2).
+   *
+   * Named `withheld` rather than `quarantined` because `quarantined` is a `LinkTrustClass`
+   * value and the enum single-source rule keeps the two vocabularies apart — which is right:
+   * a quarantined *link* and a withheld *field* are different states with different effects.
+   */
+  | 'withheld'
   /** A community submission nobody has corroborated (invariant 9). */
   | 'unverified_submission'
   /** Past a stored `expiresAt`. */
@@ -158,6 +175,12 @@ export function fieldSignals(input: FieldTrustInput, now: Date): readonly FieldS
   const signals: FieldSignal[] = []
 
   // ── caution: the reader would be misled without these ────────────────────────────────
+  // First, always: its value is not on the page at all, and nothing else matters until the
+  // reader knows that.
+  if (input.quarantined) {
+    signals.push({ id: 'withheld', weight: 'caution' })
+  }
+
   if (input.sourceClass === Source.disputed_under_review) {
     signals.push({ id: 'source_disputed', weight: 'caution' })
   }
@@ -256,6 +279,15 @@ export interface RouteTrustSnapshot {
   readonly needsReviewCount: number
   /** Items whose source class is disputed, or whose revision history has forked. */
   readonly disputedCount: number
+  /**
+   * Items withheld by an administrator — FR-36, FR-74.
+   *
+   * A count of **administrator actions**, not of reports. `RouteTrustInput` still cannot
+   * observe a report, which is what keeps invariant 12 structural: no positive signal can be
+   * derived from the absence of reports, because reports are not visible to this type at all.
+   * Phase 9 added quarantine here and deliberately did not add reporting.
+   */
+  readonly quarantinedCount: number
 }
 
 /**
@@ -302,6 +334,8 @@ export type RouteCautionId =
   | 'disputed_information'
   /** At least one item is past its stored review or expiry date. */
   | 'information_needs_review'
+  /** At least one item has been withheld by an administrator. */
+  | 'content_quarantined'
   /** Nobody has confirmed anything on this route yet. */
   | 'no_confirmations'
   /** One contributor means nobody has independently corroborated it. */
@@ -318,6 +352,7 @@ export function snapshotCautions(input: RouteTrustSnapshot): readonly RouteCauti
   // `established` is the one stored state that is not, by itself, a reason for caution.
   if (input.lifecycleState !== Lifecycle.established) cautions.push('lifecycle_not_established')
   if (input.informationCount === 0) cautions.push('no_information')
+  if (input.quarantinedCount > 0) cautions.push('content_quarantined')
   if (input.disputedCount > 0) cautions.push('disputed_information')
   if (input.needsReviewCount > 0) cautions.push('information_needs_review')
   if (input.informationCount > 0 && input.confirmedCount === 0) cautions.push('no_confirmations')

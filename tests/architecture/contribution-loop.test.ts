@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { DOMAIN_ENUMS } from '../../src/domain/enums'
 import { COMMUNITY_SIGNAL_MODELS, isCommunitySignal } from '../../src/domain/models'
 import { checkWrite } from '../../src/server/write-guard'
 import { read, stripComments, walk } from '../support/source-files'
@@ -13,6 +14,7 @@ import { read, stripComments, walk } from '../support/source-files'
 
 const SOURCE_FILES = walk('src', ['.ts', '.tsx'])
 const CODE = SOURCE_FILES.map((file) => ({ file, code: stripComments(read(file)) }))
+const DOMAIN_ENUM_NAMES = Object.keys(DOMAIN_ENUMS)
 
 function findAll(pattern: RegExp): string[] {
   const hits: string[] = []
@@ -62,11 +64,27 @@ describe('no approval gate has appeared', () => {
     expect(schema).toMatch(/model FieldRevision \{/)
   })
 
+  /**
+   * Scoped to the CONTRIBUTION copy, not the whole dictionary.
+   *
+   * Phase 9 introduced "Withheld pending review", which trips a dictionary-wide scan — and
+   * should not, because a quarantine genuinely *is* pending review. The rule was always about
+   * contributions not being gated, so it now reads the block it is about. Widening a guard
+   * until it catches honest copy is how a guard ends up deleted.
+   */
   it('never tells a contributor their change is waiting for anything', () => {
     const dictionary = stripComments(read('src/i18n/dictionaries/en.ts'))
-    expect(dictionary).not.toMatch(/awaiting approval|pending review|submitted for review|once approved/i)
+    const contributeBlock = dictionary.slice(
+      dictionary.indexOf('  contribute: {'),
+      dictionary.indexOf('  safety: {'),
+    )
+    expect(contributeBlock.length).toBeGreaterThan(500)
+
+    expect(contributeBlock).not.toMatch(
+      /awaiting approval|pending review|submitted for review|once approved|will be reviewed/i,
+    )
     // And says the opposite, in the contributor's own reading.
-    expect(dictionary).toMatch(/goes live immediately/i)
+    expect(contributeBlock).toMatch(/goes live immediately/i)
   })
 })
 
@@ -86,12 +104,29 @@ describe('the four actions stay four actions', () => {
     expect(exported).toContain('challengeFieldAction')
   })
 
-  it('has no report action, model or endpoint anywhere yet', () => {
-    // Phase 9's, deliberately. A challenge says "this may be wrong"; a report says "this may
-    // be dangerous", and they carry different consequences (CLAUDE.md §5).
-    const REPORT = /\breportAction\b|\bcreateReport\b|model Report\b|prisma\.report\b/i
-    expect(findAll(REPORT)).toEqual([])
-    expect(REPORT.test('export async function reportAction(formData: FormData) {}')).toBe(true)
+  /**
+   * Phase 9 added REPORT, so this no longer asserts its absence — it asserts its
+   * **separation**, which is the property that actually mattered all along (§23.1, §5).
+   *
+   * A challenge says "this may be wrong" and is answered by anyone's revision. A report says
+   * "this may be dangerous" and is answered by an administrator. If the two ever share a
+   * module, a model or a reason vocabulary, one of two failures follows: a moderator standing
+   * in front of ordinary corrections, or phishing left to be resolved by consensus.
+   */
+  it('keeps REPORT in its own module, model and vocabulary, apart from CHALLENGE', () => {
+    // The contribution loop knows nothing about reporting.
+    const contribution = stripComments(read('src/app/[locale]/routes/[slug]/actions.ts'))
+    expect(contribution).not.toMatch(/report/i)
+
+    // And the safety module raises no challenges.
+    const safety = stripComments(read('src/server/safety/service.ts'))
+    expect(safety).not.toMatch(/challengeField|prisma\.challenge\b/)
+
+    // Separate models, separate reason vocabularies.
+    expect(read('prisma/schema/safety.prisma')).toMatch(/model Report \{/)
+    expect(read('prisma/schema/community.prisma')).toMatch(/model Challenge \{/)
+    expect(DOMAIN_ENUM_NAMES).toContain('ReportReason')
+    expect(DOMAIN_ENUM_NAMES).toContain('ChallengeReason')
   })
 
   /**

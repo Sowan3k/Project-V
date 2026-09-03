@@ -45,6 +45,7 @@ function baselineField(overrides: Partial<FieldTrustInput> = {}): FieldTrustInpu
     lastRevisedAt: daysAgo(30),
     hasForkedHistory: false,
     openChallengeCount: 0,
+    quarantined: false,
     ...overrides,
   }
 }
@@ -271,6 +272,7 @@ function baselineRoute(overrides: Partial<RouteTrustInput> = {}): RouteTrustInpu
     confirmedCount: 15,
     needsReviewCount: 0,
     disputedCount: 0,
+    quarantinedCount: 0,
     recentChangeCount: 3,
     lastChangedAt: daysAgo(20),
     lastConfirmedAt: daysAgo(5),

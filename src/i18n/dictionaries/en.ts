@@ -4,6 +4,8 @@ import type {
   FieldCategory,
   JourneyStepStatus,
   LinkTrustClass,
+  ReportOutcome,
+  ReportReason,
   SourceClass,
   RouteLifecycleState,
   RouteMechanism,
@@ -234,6 +236,7 @@ export const en = {
       source_disputed: 'Disputed — under review',
       history_forked: 'Contested — two contributors corrected this from the same starting point',
       open_challenge: 'Challenged — somebody says this needs review, and no correction has been made yet',
+      withheld: 'Withheld — this was reported and an administrator has hidden it while it is reviewed',
       unverified_submission: 'Community submission — not corroborated by anyone else',
       past_expiry: 'Past the expiry date given for it',
       not_yet_effective: 'Not in effect yet',
@@ -269,6 +272,7 @@ export const en = {
       no_information: 'This route has steps but no information inside them yet',
       disputed_information: 'Some information on this route is disputed or contested',
       information_needs_review: 'Some information is past the review date given for it',
+      content_quarantined: 'Something on this route has been reported and withheld while it is reviewed',
       no_confirmations: 'Nobody has confirmed any of this information yet',
       single_contributor: 'Only one person has worked on this route, so nothing here has been checked by anyone else',
     } satisfies Record<RouteCautionId, string>,
@@ -411,6 +415,28 @@ export const en = {
 
 
   /**
+   * Report reasons — §23.1, verbatim from the baseline's own list.
+   *
+   * "Reports should therefore support reasons such as phishing/scam, adult content,
+   * malware/download, impersonation, harassment/personal information, malicious contact, spam
+   * or other serious concern."
+   *
+   * Deliberately a different vocabulary from `challengeReason`. A reader choosing between them
+   * is choosing between two different claims, and identical wording would make that choice
+   * meaningless.
+   */
+  reportReason: {
+    phishing_or_scam: 'Phishing or a scam',
+    adult_content: 'Adult content',
+    malware_or_download: 'Malware or an unexpected download',
+    impersonation: 'Impersonating an official office or person',
+    harassment_or_personal_information: 'Harassment, or someone’s private information',
+    malicious_contact: 'A contact that is being misused',
+    spam: 'Spam',
+    other_serious_concern: 'Another serious concern',
+  } satisfies Record<ReportReason, string>,
+
+  /**
    * Challenge reasons — §17.4, verbatim from the baseline's own list.
    *
    * A challenge captures a reason rather than acting as a generic dislike button (§16.4).
@@ -494,6 +520,87 @@ export const en = {
     newContributor: 'New contributor',
     newContributorNote:
       'This account is new here. That is not a mark against it — everyone starts here — but it means the community has not had a chance to check its work yet.',
+  },
+
+
+  /**
+   * Safety — Phase 9. FR-35, FR-36, FR-37, §23.
+   *
+   * Wording rules that carry requirements:
+   *   - REPORT and CHALLENGE are named as the different things they are. "Flag a problem"
+   *     means the information may be wrong; "Report" means it may be dangerous (§23.1).
+   *   - A quarantine notice says what happened and why. Withholding without explanation is
+   *     indistinguishable from a platform quietly editing what it shows.
+   *   - Nothing claims content has been checked and found safe. An absence of reports means
+   *     nothing (invariant 12, BR-04, D-19).
+   */
+  safety: {
+    report: 'Report as unsafe',
+    reportExplainer:
+      'Use this if something here looks dangerous rather than merely wrong — a phishing link, someone impersonating an office, a private person’s number, adult content or a scam. A person will look at it.',
+    reportVsChallenge:
+      'If the information is simply out of date or incorrect, use “Flag a problem” instead — it reaches the community faster than a report reaches an administrator.',
+    reportReason: 'What is the concern?',
+    reportDetail: 'What did you see?',
+    reportDetailHint: 'Optional. Text only — please do not paste anything private.',
+    submitReport: 'Send this report',
+    reportSent: 'Reported. An administrator will look at this.',
+    reportPrivate:
+      'Reports are not shown publicly. What appears on the route is only the outcome — whether the content is withheld.',
+    quarantinedTitle: 'Withheld pending review',
+    quarantinedBody:
+      'This information was reported and an administrator has hidden it while it is checked. It has not been deleted: it is still in this route’s history, and it can be restored.',
+    quarantinedNoReason: 'No reason was recorded.',
+    quarantineNote: 'Reason given',
+    /** §42.5: containment, not a guarantee. Never claim the rest of the page has been vetted. */
+    quarantineNotAGuarantee:
+      'Withholding one item is containment, not a safety check of everything else on this route. Nothing on this route has been checked by Vindeshi Express.',
+  },
+
+
+  reportOutcome: {
+    no_action_needed: 'Looked at — nothing needed changing',
+    content_corrected: 'Corrected',
+    content_archived: 'Archived — removed from view, kept in history',
+    content_removed: 'Removed permanently',
+    quarantine_upheld: 'Left withheld',
+  } satisfies Record<ReportOutcome, string>,
+
+  /**
+   * The administrator's queue — §23.2, §23.3.
+   *
+   * Wording rules that carry requirements:
+   *   - Nothing here recommends an action or ranks by severity. Raw counts must never decide
+   *     (FR-71, invariant 14), and the thresholds that would be needed are open (§11).
+   *   - "Archived" and "removed" are named as the different things they are: one is
+   *     reversible and stays in history, the other is permanent and reserved for abuse,
+   *     legal and safety cases (FR-45, BR-15, invariant 4).
+   */
+  admin: {
+    title: 'Reported content',
+    lede: 'Content that people have reported as unsafe, and what is known about each report.',
+    noRecommendation:
+      'This list is not ranked and suggests nothing. It shows what was reported, by how many different people, and when — the judgement is yours.',
+    empty: 'Nothing has been reported.',
+    evidence: 'What is known',
+    actions: 'What you can do',
+    openReports: (n: number) => (n === 1 ? '1 open report' : `${n} open reports`),
+    distinctReporters: (n: number) =>
+      n === 1 ? 'from 1 person' : `from ${n} different people`,
+    firstReported: 'First reported',
+    lastReported: 'Most recent report',
+    quarantine: 'Withhold this while it is reviewed',
+    quarantineReason: 'Reason to show readers',
+    quarantineReasonHint:
+      'A reader will see this. Withholding something without saying why reads as censorship.',
+    release: 'Restore it',
+    quarantineIsNotDeletion:
+      'Withholding hides a value from current views. It deletes nothing — the field, its revisions and its history are untouched, and restoring it is one action.',
+    outcome: 'What did you decide?',
+    outcomeNote: 'Why (kept with the decision)',
+    recordDecision: 'Record this decision',
+    roleScope:
+      'This role exists for safety, disputes, abuse and exceptional cases. Ordinary contributions are not reviewed here and never need approval — they go live when they are made, and the community corrects them.',
   },
 
   routeLifecycle: {

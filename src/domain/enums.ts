@@ -154,6 +154,40 @@ export const REPORT_REASONS = [
 export type ReportReason = (typeof REPORT_REASONS)[number]
 
 /**
+ * What a signed-in person may do — §22, §23.3.
+ *
+ * Two roles, and the baseline is explicit about the shape: "The administrator should not be
+ * expected to approve every normal contribution. Manual intervention is primarily for safety,
+ * disputes, abuse, annual maintenance and exceptional cases."
+ *
+ * So `admin` is a **safety** role, not an editorial one. It gates quarantine and report
+ * handling and nothing else — there is no approval queue for it to sit at the head of, and
+ * ordinary contribution is deliberately outside its reach (FR-16, FR-69, §43.1).
+ */
+export const USER_ROLES = ['member', 'admin'] as const
+export type UserRole = (typeof USER_ROLES)[number]
+
+/**
+ * How an administrator answered a report — §23.2.
+ *
+ * "The administrator can then restore, correct, archive or remove the item." These are those
+ * four, plus the case the baseline implies but does not name: a report that was looked at and
+ * found to need nothing.
+ *
+ * `removed` is the only permanent deletion anywhere in this product, and it is reserved for
+ * abuse, legal and safety cases (FR-45, BR-15, invariant 4). It is a recorded decision by a
+ * named person, not a cleanup.
+ */
+export const REPORT_OUTCOMES = [
+  'no_action_needed',
+  'content_corrected',
+  'content_archived',
+  'content_removed',
+  'quarantine_upheld',
+] as const
+export type ReportOutcome = (typeof REPORT_OUTCOMES)[number]
+
+/**
  * Study levels — FR-01, REQUIREMENTS.md §9.
  * The baseline names three explicitly and allows "another supported higher-education
  * level". `other` is that escape hatch; inventing `diploma`/`foundation` would be
@@ -224,6 +258,8 @@ export const ChangeSeverity = valueMap(CHANGE_SEVERITIES)
 export const LinkTrustClass = valueMap(LINK_TRUST_CLASSES)
 export const FieldApplicability = valueMap(FIELD_APPLICABILITIES)
 export const JourneyStepStatus = valueMap(JOURNEY_STEP_STATUSES)
+export const UserRole = valueMap(USER_ROLES)
+export const ReportOutcome = valueMap(REPORT_OUTCOMES)
 export const ChallengeReason = valueMap(CHALLENGE_REASONS)
 export const ReportReason = valueMap(REPORT_REASONS)
 
@@ -243,6 +279,8 @@ export const DOMAIN_ENUMS = {
   LinkTrustClass: LINK_TRUST_CLASSES,
   FieldApplicability: FIELD_APPLICABILITIES,
   JourneyStepStatus: JOURNEY_STEP_STATUSES,
+  UserRole: USER_ROLES,
+  ReportOutcome: REPORT_OUTCOMES,
   ChallengeReason: CHALLENGE_REASONS,
   ReportReason: REPORT_REASONS,
 } as const satisfies Record<string, readonly string[]>

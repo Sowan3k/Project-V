@@ -120,6 +120,7 @@ async function fieldStandings(
         lastConfirmedAt: true,
         reviewDueAt: true,
         step: { select: { routeId: true } },
+        quarantinedAt: true,
         currentRevision: { select: { sourceClass: true, expiresAt: true } },
         _count: { select: { challenges: { where: { resolvedAt: null } } } },
       },
@@ -146,6 +147,7 @@ async function fieldStandings(
       confirmedCount: 0,
       needsReviewCount: 0,
       disputedCount: 0,
+      quarantinedCount: 0,
       lastConfirmedAt: null,
     })
   }
@@ -170,6 +172,7 @@ async function fieldStandings(
       confirmedCount: current.confirmedCount + (field.lastConfirmedAt === null ? 0 : 1),
       needsReviewCount: current.needsReviewCount + (needsReview ? 1 : 0),
       disputedCount: current.disputedCount + (disputed ? 1 : 0),
+      quarantinedCount: current.quarantinedCount + (field.quarantinedAt === null ? 0 : 1),
       lastConfirmedAt: laterOf(current.lastConfirmedAt, field.lastConfirmedAt),
     })
   }
@@ -240,6 +243,7 @@ export async function searchRoutes(
         confirmedCount: standing?.confirmedCount ?? 0,
         needsReviewCount: standing?.needsReviewCount ?? 0,
         disputedCount: standing?.disputedCount ?? 0,
+        quarantinedCount: standing?.quarantinedCount ?? 0,
       },
     }
   })
@@ -319,6 +323,23 @@ export interface FieldView {
   readonly confirmationCount: number
   /** Challenges no revision has answered yet — FR-18, FR-49. */
   readonly openChallenges: readonly ChallengeView[]
+
+  // ── Phase 9 safety ───────────────────────────────────────────────────────────────────
+  /**
+   * Quarantined by an administrator — FR-36, §23.2.
+   *
+   * When true, **`valueText` and `sourceUrl` have been withheld by this function**, not
+   * merely flagged for a component to hide. A phishing URL that reaches the page has already
+   * done most of its work: it is in the HTML, in the browser's history heuristics, and one
+   * careless copy away from being followed. Withholding server-side is the difference between
+   * containment and a `display: none`.
+   *
+   * Nothing is deleted. The real value is intact in the field's revisions and is returned by
+   * the history view, which is what makes this reversible and reviewable (invariants 1, 4).
+   */
+  readonly quarantined: boolean
+  /** Why it was withheld. Containment without explanation reads as censorship. */
+  readonly quarantineNote: string | null
 }
 
 /** One unanswered challenge, as a reader sees it. */
@@ -482,6 +503,7 @@ export async function getRouteBySlug(
       confirmedCount: standing?.confirmedCount ?? 0,
       needsReviewCount: standing?.needsReviewCount ?? 0,
       disputedCount: standing?.disputedCount ?? 0,
+      quarantinedCount: standing?.quarantinedCount ?? 0,
       lastConfirmedAt: standing?.lastConfirmedAt ?? null,
       ...activity,
       ...followers,
@@ -504,6 +526,7 @@ export async function getStepFields(stepId: string): Promise<readonly FieldView[
     where: { stepId, archivedAt: null },
     include: {
       currentRevision: true,
+      quarantinedBy: { select: { handle: true } },
       // Revision metadata only — never the historical values, which the history tab owns.
       // One step's fields, so this stays a small read rather than a scan of the ledger.
       revisions: { select: { previousRevisionId: true, createdAt: true } },
@@ -533,20 +556,28 @@ export async function getStepFields(stepId: string): Promise<readonly FieldView[
       null,
     )
 
+    /**
+     * A quarantined field's value never leaves the server (FR-36, §23.2, §42.5).
+     *
+     * The reader is told that something was withheld and why — silence would be worse than
+     * the content, because a reader cannot distinguish a hidden field from a missing one.
+     */
+    const quarantined = field.quarantinedAt !== null
+
     return [
       {
         id: field.id,
         currentRevisionId: field.currentRevisionId,
         category: field.category,
-        valueText: current.valueText,
+        valueText: quarantined ? '' : current.valueText,
         valueAmount: current.valueAmount?.toString() ?? null,
         valueCurrency: current.valueCurrency,
         valueDate: current.valueDate,
         valueDurationDays: current.valueDurationDays,
         sourceClass: current.sourceClass,
         applicability: current.applicability,
-        sourceUrl: current.sourceUrl,
-        sourceNote: current.sourceNote,
+        sourceUrl: quarantined ? null : current.sourceUrl,
+        sourceNote: quarantined ? null : current.sourceNote,
         lastConfirmedAt: field.lastConfirmedAt,
         revisionCount: field.revisions.length,
         reviewDueAt: field.reviewDueAt,
@@ -555,6 +586,8 @@ export async function getStepFields(stepId: string): Promise<readonly FieldView[
         lastRevisedAt,
         hasForkedHistory,
         linkTrustClass: field.linkTrustClass,
+        quarantined,
+        quarantineNote: field.quarantineNote,
         confirmationCount: field._count.confirmations,
         openChallenges: field.challenges.map((challenge) => ({
           id: challenge.id,

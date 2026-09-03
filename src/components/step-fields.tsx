@@ -4,6 +4,7 @@ import {
   FieldActions,
   OpenChallenges,
 } from '@/components/contribute'
+import { QuarantineNotice, ReportAction } from '@/components/safety'
 import { ExternalSourceLink, FieldContext, FieldSignals } from '@/components/trust'
 import { fieldGroup, FIELD_GROUP_ORDER, type FieldGroupId, type FieldTrustInput } from '@/domain/trust'
 import type { Dictionary } from '@/i18n/dictionaries/en'
@@ -135,9 +136,13 @@ function FieldRow({
       <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">
         {t.fieldCategory[field.category]}
       </p>
-      <p className="mt-1 text-sm leading-6 text-ink-900">{field.valueText}</p>
+      {/* A withheld value is absent, not hidden: the read layer never sent it (FR-36). */}
+      {field.quarantined ? null : (
+        <p className="mt-1 text-sm leading-6 text-ink-900">{field.valueText}</p>
+      )}
 
       <FieldSignals input={trust} dictionary={t} now={now} />
+      <QuarantineNotice field={field} dictionary={t} />
       {/* The challenges themselves, with their reasons — not just a count. A reader deciding
           whether to rely on this needs to know what somebody objected to (FR-49, FR-70). */}
       <OpenChallenges field={field} dictionary={t} />
@@ -155,7 +160,12 @@ function FieldRow({
       )}
 
       {signedIn ? (
-        <FieldActions field={field} step={step} route={route} locale={locale} dictionary={t} />
+        <>
+          <FieldActions field={field} step={step} route={route} locale={locale} dictionary={t} />
+          {/* Apart from the other four, and worded to send a reader to the faster action when
+              the information is merely wrong rather than dangerous (§23.1). */}
+          <ReportAction field={field} step={step} route={route} locale={locale} dictionary={t} />
+        </>
       ) : null}
     </li>
   )
@@ -180,5 +190,6 @@ function toFieldTrustInput(field: FieldView): FieldTrustInput {
     lastRevisedAt: field.lastRevisedAt,
     hasForkedHistory: field.hasForkedHistory,
     openChallengeCount: field.openChallenges.length,
+    quarantined: field.quarantined,
   }
 }

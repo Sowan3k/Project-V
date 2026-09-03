@@ -43,6 +43,12 @@ model User {
   /// name would publish the real identity §24.3 says a contributor need not expose, and it
   /// would do so by default, which is the worst way to make that choice for someone.
   handle    String   @unique
+  /// A SAFETY role, not an editorial one (§22, §23.3).
+  ///
+  /// It gates quarantine and report handling and nothing else. An administrator is explicitly
+  /// "not expected to approve every normal contribution" — there is no approval queue for
+  /// this role to sit at the head of, and ordinary contribution is outside its reach.
+  role      UserRole @default(member)
   /// The only thing kept from the provider, and only to recognise a returning account
   /// (§24.2). Never displayed, never used as an identifier in any URL or public surface.
   email     String?  @unique
@@ -65,6 +71,9 @@ model User {
   // because they are community knowledge about a field rather than personal data.
   confirmations Confirmation[]
   challenges    Challenge[]
+  reportsFiled      Report[] @relation("ReportsFiled")
+  reportsHandled    Report[] @relation("ReportsHandled")
+  fieldsQuarantined Field[]  @relation("FieldsQuarantined")
 
   @@map("users")
 }
@@ -275,6 +284,23 @@ model Field {
   /// revision column.
   linkTrustClass LinkTrustClass?
 
+  /// Quarantine — FR-36, §23.2, §42.5. A safety action, never a revision.
+  ///
+  /// Set by an administrator, never by a report count: FR-71 and invariant 14 forbid a raw
+  /// count being the sole automatic determinant of a state change, which is also why no
+  /// threshold appears anywhere in this schema.
+  ///
+  /// Quarantining **hides the value from current views and makes a link unclickable. It does
+  /// not delete anything** — the field, its revisions and its history are untouched, which is
+  /// the difference between containment and destruction (FR-45, BR-15, invariants 1 and 4).
+  /// Lifting it is a matter of setting this back to null.
+  quarantinedAt   DateTime?
+  quarantinedById String?
+  quarantinedBy   User?     @relation("FieldsQuarantined", fields: [quarantinedById], references: [id], onDelete: SetNull)
+  /// Why, in the administrator's words. Shown to readers: containment without explanation
+  /// reads as censorship, and a reader deserves to know something was withheld and why.
+  quarantineNote  String?
+
   currentRevisionId String?        @unique
   currentRevision   FieldRevision? @relation("FieldCurrentRevision", fields: [currentRevisionId], references: [id], onDelete: SetNull)
 
@@ -284,8 +310,10 @@ model Field {
   // confirmation or an open challenge cannot be deleted out from under it.
   confirmations Confirmation[]
   challenges    Challenge[]
+  reports       Report[]
 
   @@index([stepId])
+  @@index([quarantinedAt])
   @@index([category])
   @@map("fields")
 }

@@ -232,6 +232,7 @@ describe.skipIf(!url)('field signals over real rows — invariants 9, 11, 15', (
           lastRevisedAt: field.lastRevisedAt,
           hasForkedHistory: field.hasForkedHistory,
           openChallengeCount: field.openChallenges.length,
+          quarantined: field.quarantined,
         },
         NOW,
       )
@@ -332,6 +333,7 @@ describe.skipIf(!url)('the route passport over real rows — FR-10, FR-11, FR-62
       confirmedCount: route.trust.confirmedCount,
       needsReviewCount: route.trust.needsReviewCount,
       disputedCount: route.trust.disputedCount,
+      quarantinedCount: route.trust.quarantinedCount,
     })
 
     for (const caution of snapshotCautions(ribbon.trust)) {

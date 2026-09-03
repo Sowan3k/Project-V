@@ -552,6 +552,43 @@ export async function challengeField(
   })
 }
 
+/**
+ * Set or lift a field's quarantine — FR-36, §23.2. Phase 9.
+ *
+ * Lives here, with `confirmField` and `archiveField`, because `Field` is a revisioned model
+ * and the Phase 3 boundary is absolute: only `src/server/revisions` writes those. Authorising
+ * the action is `src/server/safety`'s job; performing it is this module's. The first draft put
+ * both in the safety service and the architecture test caught it, which is the boundary
+ * working rather than an inconvenience.
+ *
+ * **This creates no revision, and must not.** Quarantine is a safety state of the field, not a
+ * change to what the field says — exactly like `lastConfirmedAt`. Writing a revision would put
+ * a moderation action into the contribution history and misattribute it as an edit.
+ *
+ * **It deletes nothing.** The value, every revision and the whole history are untouched;
+ * `src/server/routes/read.ts` simply stops returning the value while this is set. Lifting it
+ * is `quarantinedAt: null` (FR-45, BR-15, invariants 1 and 4).
+ */
+export async function setFieldQuarantine(input: {
+  fieldId: string
+  quarantinedById: string | null
+  note?: string | null
+  quarantined: boolean
+}): Promise<void> {
+  await write({ actor: { id: input.quarantinedById } }, async (tx) => {
+    await tx.field.update({
+      where: { id: input.fieldId },
+      data: input.quarantined
+        ? {
+            quarantinedAt: new Date(),
+            quarantinedById: input.quarantinedById,
+            quarantineNote: input.note ?? null,
+          }
+        : { quarantinedAt: null, quarantinedById: null, quarantineNote: null },
+    })
+  })
+}
+
 // ── Archival ─────────────────────────────────────────────────────────────────
 
 /**

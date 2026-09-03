@@ -102,6 +102,19 @@ enum JourneyStepStatus {
   not_applicable
 }
 
+enum UserRole {
+  member
+  admin
+}
+
+enum ReportOutcome {
+  no_action_needed
+  content_corrected
+  content_archived
+  content_removed
+  quarantine_upheld
+}
+
 enum ChallengeReason {
   obsolete
   incorrect

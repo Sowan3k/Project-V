@@ -1,0 +1,66 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Safety — Phase 9. FR-35, FR-36, FR-37, FR-71, §23, §42.5.
+//
+// REPORT is not CHALLENGE. §23.1 is explicit: "A routine challenge means 'this information is
+// no longer correct.' A report means 'this may be abusive or unsafe.'" They are stored
+// separately because they are answered differently — a challenge is answered by a revision
+// from anyone, a report is answered by an administrator, and conflating them would either put
+// a moderator in front of ordinary corrections or leave phishing to be fixed by consensus.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// **Reports are not public, and that is a deliberate difference from confirmations and
+// challenges.**
+//
+// A challenge is a claim about information and belongs beside it. A report is an accusation
+// about *conduct* — phishing, impersonation, harassment — and a public accusation board would
+// be a defamation surface and a brigading target, neither of which serves a student. What the
+// public sees is the **outcome**: whether the content is quarantined. Who reported it, how
+// many did, and what they wrote stay with the administrator (§23.3).
+//
+// Classification and visibility are separate questions. `src/domain/models.ts` files Report
+// under `communitySignal` because that governs *write* rules — community-authored, never
+// deleted by a normal user — while the read layer governs who sees it.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// **No numeric threshold appears in this file, and none appears in the code either.**
+//
+// §23.2 leaves thresholds as "an operational decision ... not fixed in this concept baseline",
+// and CLAUDE.md §11 lists them as open. More decisively, FR-71 and invariant 14 forbid a raw
+// count being the *sole automatic determinant* of any state change — so automatic quarantine
+// on a report count is not merely unspecified, it is prohibited. Quarantine is therefore an
+// explicit administrator action, and the question of "how many reports" never has to be
+// answered by guessing.
+//
+// **There is no attachment column and there must never be one.** Reports are structured and
+// textual: a category, free text, and a pointer to the field (§8.6, decided 2026-09-02).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// "This may be dangerous" — FR-35, FR-37, §23.1.
+model Report {
+  id      String @id @default(cuid())
+  fieldId String
+  field   Field  @relation(fields: [fieldId], references: [id], onDelete: Restrict)
+
+  reason ReportReason
+  /// What the reporter saw, in their words. Text only — there is nowhere to attach a file.
+  detail String?
+
+  /// Null only for a system report. A report from nobody is not evidence of anything.
+  reporterId String?
+  reporter   User?   @relation("ReportsFiled", fields: [reporterId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  // ── Administrator handling (§23.2, §23.3) ──────────────────────────────────
+  /// Set when an administrator has decided. Until then the report is open.
+  handledAt   DateTime?
+  handledById String?
+  handledBy   User?          @relation("ReportsHandled", fields: [handledById], references: [id], onDelete: SetNull)
+  outcome     ReportOutcome?
+  /// The administrator's reasoning, kept so a decision can be reviewed later.
+  outcomeNote String?
+
+  @@index([fieldId, handledAt])
+  @@index([reporterId])
+  @@map("reports")
+}
