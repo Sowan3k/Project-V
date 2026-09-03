@@ -10,7 +10,7 @@ Read `../README.md` before changing anything.
 | Study level | `masters` |
 | Mechanism | `direct_admission` |
 | Target intake (test) | Winter Semester 2027/28 |
-| Worksheet status | **PARTIALLY SOURCED** — country-level facts researched 2026-09-02; programme-level facts not started |
+| Worksheet status | **PARTIALLY SOURCED** — country-level facts 2026-09-02; one real programme 2026-09-02; application cost and visa-stage insurance 2026-09-03. Shortlisting, degree-recognition mechanics, admission handling and enrolment remain UNVERIFIED |
 | Last reviewed | 2026-09-02 (research pass 1) |
 | Reviewed by | — *(no human review yet — nothing may be published on this basis)* |
 | Community confirmations | **0** — and it stays 0 until real students confirm |
@@ -204,3 +204,80 @@ already fixes the origin.
 - The English requirement is stated qualitatively ("able to speak and write fluently"), with the
   numeric threshold on a separate RWTH language page not yet fetched. **No IELTS or TOEFL number
   should be seeded for this programme until that page is read.**
+
+---
+
+## Research pass 3 — 2026-09-03 — application cost, and what the mission does not say
+
+Filling two of the gaps named under "Not yet researched": **application fees** (step 5/6) and
+**insurance** (step 11). Both turned out to matter more than expected, and the second changes a
+scope question rather than only answering one.
+
+### Sources added
+
+| # | Source | Retrieved | Used for |
+|---|---|---|---|
+| S8 | [uni-assist — Handling fees](https://www.uni-assist.de/en/how-to-apply/pay-all-fees/handling-fees/) | 2026-09-03 | Application cost via the uni-assist channel |
+| S1 | (re-read) [German Embassy Dhaka — Study Visa](https://dhaka.diplo.de/bd-en/service/2685884-2685884) | 2026-09-03 | Visa fee currency, insurance, admission proof, negative findings |
+
+### Verified facts
+
+| Fact | Value | Source | Applies to | Status |
+|---|---|---|---|---|
+| uni-assist handling fee, first course | **EUR 75.00** — "Cost for the first chosen course of study: EUR 75.00" | S8 | **Application channel** (uni-assist only) | SOURCED |
+| uni-assist handling fee, each additional course | **EUR 30.00** — "For each additional chosen course of study: EUR 30.00" | S8 | Application channel | SOURCED |
+| The fee resets every semester | "the fee is again EUR 75.00 for your first chosen study course and EUR 30.00 for each additional" on reapplying for a new semester | S8 | Application channel × intake | SOURCED |
+| The fee buys processing, not a place | "The fees cover the processing and evaluation of your documents and educational certificates, **regardless of the result**." | S8 | Application channel | SOURCED |
+| Travel health insurance at the **visa** stage | "Travel health insurance valid on arrival in Germany to the date of enrolment at the University (minimum 3 months)" | S1 | Bangladesh (mission) | SOURCED |
+| Visa fee currency | "Visa fees are payable in BDT. The fees are fixed in Euro" | S1 | Bangladesh | SOURCED |
+| Proof of admission | "Proof of admission to the relevant University or Institution" is on the checklist | S1 | Bangladesh | SOURCED |
+
+### The fee is the first verified `application_channel` fact
+
+Amendment 001 added `application_channel` to `FieldApplicability` on the strength of a
+*hypothesis* — that some facts vary by how you apply rather than by who you are or where you
+are going. Research pass 2 found no instance of it, only programme-, institution- and
+intake-specific facts.
+
+This is the instance. **€75 + €30 is true if you apply through uni-assist and false if you do
+not.** RWTH's M.Sc. Data Science uses its own portal and "uni-assist is not used" (S6, S7), so a
+student following the RWTH route pays this fee **zero times**, while a student applying to three
+uni-assist universities pays €135 for the same semester.
+
+Presented without its scope, "application fee €75" would be wrong for one of those students and
+misleading for the other. That is exactly the failure FR-81 exists to prevent, now demonstrated
+on a second dimension rather than argued.
+
+### Insurance is a departure-stage requirement, not a post-arrival one
+
+The worksheet previously grouped insurance with "post-arrival formalities" and raised whether
+those fall outside V1 (CLAUDE.md §10 ends the first release at departure and the fly window).
+
+That grouping was wrong. **Travel health insurance is required at the visa application**, before
+departure, and the mission specifies its coverage window: valid from arrival until enrolment,
+minimum three months. It belongs in the visa step, inside V1 scope.
+
+The *statutory* German health insurance a student enrols in afterwards is a different thing and
+does sit past departure. Two requirements, two stages, and only the first is ours.
+
+### Three negative findings, recorded because absence is also information
+
+1. **The Embassy Dhaka study-visa page does not mention anabin, ZAB or degree recognition at
+   all.** A Bangladeshi applicant's degree recognition is handled by the university at
+   admission, not by the mission at the visa stage — at least as far as this page states. Not
+   evidence that recognition never matters; evidence that the mission does not ask for it.
+2. **The visa fee amount is not published on that page.** It says only that fees are payable in
+   BDT and fixed in Euro. **Do not seed an amount.** A fee figure taken from a blog and shown
+   next to an official source is precisely the impersonation invariant 11 forbids.
+3. **The page does not distinguish conditional from unconditional admission**, nor state how
+   many document sets are required. Both are real questions a student has, and neither has an
+   answer from this source.
+
+### Still not researched
+
+Programme shortlisting sources, degree recognition mechanics (anabin's `H+`/`H-` institution
+status could not be retrieved — the FAQ path returns 404 and needs a different entry point),
+admission-decision handling, enrolment, and post-arrival formalities.
+
+**Nothing from this pass has been loaded into production**, and none of it may be until a person
+reviews it (content/README.md).

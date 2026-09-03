@@ -104,3 +104,44 @@ A genuine model gap is a **change request** against the frozen baseline process
 2. Say what it would cost to leave it out — is it a nuisance, or does it make a route wrong?
 3. Only then propose a schema change, and price it: Phase 2's migration is the shape
    everything else is built on, and it is deliberately expensive to alter.
+
+
+---
+
+## 7. `application_channel` has a real instance now (2026-09-03)
+
+Amendment 001 added `application_channel` to `FieldApplicability` on the strength of a
+hypothesis. Research pass 2 found no example of it — every scoped fact was programme-,
+institution- or intake-specific — which left one sixth of the enum unvalidated by data.
+
+Research pass 3 found one, and it is a good one: **the uni-assist handling fee of €75 for the
+first course plus €30 for each additional course in the same semester is true if you apply
+through uni-assist and false if you do not.** RWTH's M.Sc. Data Science uses its own portal, so
+a student on that route pays it zero times, while a student applying to three uni-assist
+universities pays €135 for the same intake.
+
+Shown without its scope, "application fee €75" is wrong for the first student and misleading
+for the second. The dimension earns its place.
+
+**Five of six applicability values now have verified instances** from Bangladesh → Germany:
+`route_wide`, `origin_specific` (blocked account, mission procedure), `institution` and
+`programme` (RWTH GRE, prerequisites), `intake` (the 1 March deadline), and now
+`application_channel`. None has yet turned out to be unnecessary.
+
+## 8. A scope correction: insurance is a departure-stage requirement
+
+The Germany worksheet grouped health insurance with "post-arrival formalities" and asked
+whether those fall outside V1, since CLAUDE.md §10 ends the first release at departure and the
+expected fly window.
+
+The grouping was wrong. The German Embassy Dhaka checklist requires **travel health insurance
+at the visa application** — "valid on arrival in Germany to the date of enrolment at the
+University (minimum 3 months)". That is before departure and squarely inside V1.
+
+The statutory German health insurance a student enrols in *after* arriving is a different
+requirement at a different stage, and that one does sit outside V1.
+
+**The general lesson for the content model:** a word like "insurance" is not a step. The same
+word covers two requirements with different owners, different timing and different scope, and
+only one of them is ours. Grouping by topic rather than by stage would have put a post-arrival
+task in front of a student who needed the pre-departure one.
