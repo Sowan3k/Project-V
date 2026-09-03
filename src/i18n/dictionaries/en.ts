@@ -728,6 +728,14 @@ export const en = {
     stanceSaved: 'Saved. Only you can see this.',
     stanceClear: 'Change my answer',
 
+    exactlyWhatChanged: 'Exactly what this change did',
+    exactlyWhatChangedHint:
+      'Reconstructed from the edit this announcement is linked to, not from dates. It reads the same today and in five years, because the stored history cannot be altered.',
+    noLinkedEdit: 'This announcement is not linked to a specific edit, so there is no before and after to show.',
+    valueBefore: 'Before',
+    valueAfter: 'After',
+    valueAdded: 'Added — there was nothing here before',
+
     disruptionsTitle: 'Temporary disruptions',
     disruptionsLede:
       'Short-term interruptions — a closure, a strike, a suspended service. These sit on top of the route and expire on their own. They never change the route itself.',
@@ -767,6 +775,16 @@ export const en = {
     fieldKind: 'What kind of change',
     fieldStep: 'Which step (optional)',
     fieldEffective: 'When does it start to apply? (optional)',
+    fieldDescribes: 'Which edit does this describe? (optional)',
+    fieldDescribesHint:
+      'Linking the edit lets anyone see exactly what changed, now and years from now. Left blank, the announcement still appears — it just cannot show a before and after.',
+    describesNone: 'Not linked to a specific edit',
+    describesKind: {
+      step: 'Step',
+      edge: 'Connection',
+      field: 'Information',
+      route: 'Route details',
+    },
     fieldStarts: 'Starts',
     fieldEnds: 'Ends (optional)',
     fieldLocation: 'Where it applies (optional)',

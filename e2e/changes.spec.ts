@@ -167,6 +167,9 @@ test.describe('change propagation', () => {
       detail: 'A new step was added before the language test.',
       effectiveAt: ago(2),
       stepId: aps.stepId,
+      // The durable link: this announcement names the revision that created the step, so the
+      // page can show exactly what it did without matching anything by date.
+      describes: { stepRevisionIds: [aps.revisionId] },
     })
     await announceChange({
       authorId: userId,
@@ -222,6 +225,16 @@ test.describe('change propagation', () => {
     // FR-59, §41.1 — both dates are shown, never collapsed into one.
     await expect(page.getByText(/^recorded$/i).first()).toBeVisible()
     await expect(page.getByText(/^takes effect$/i).first()).toBeVisible()
+
+    // The announcement's own before/after, reconstructed from the revision it names rather
+    // than from any timestamp.
+    const exact = page.getByText(/exactly what this change did/i).first()
+    await expect(exact).toBeVisible()
+    await exact.click()
+    await expect(page.getByText(/not from dates/i).first()).toBeVisible()
+
+    // The change with no linked edit says so rather than showing an invented comparison.
+    await expect(page.getByText(/not linked to a specific edit/i).first()).toBeVisible()
 
     // And nothing anywhere claims their progress is now wrong.
     const body = (await page.locator('body').innerText()).toLowerCase()

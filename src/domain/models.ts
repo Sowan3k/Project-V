@@ -106,6 +106,10 @@ export const COMMUNITY_SIGNAL_MODELS = [
   // through the revision engine and must not appear in the route's revision history.
   'RouteChange',
   'TemporaryDisruption',
+  // The link from an announcement to the revision rows it describes. Community-authored and
+  // part of the announcement, so it follows the announcement's rules: never deleted by a
+  // normal user, and cascading only from the change it belongs to.
+  'RouteChangeRevision',
 ] as const
 export type CommunitySignalModel = (typeof COMMUNITY_SIGNAL_MODELS)[number]
 

@@ -255,3 +255,295 @@ export async function lastChangePoint(routeId: string): Promise<Date | null> {
   const previous = distinct[1]
   return previous === undefined ? null : new Date(previous)
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   The comparison an announcement names explicitly — no dates anywhere
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+export interface FieldValueChange {
+  readonly fieldId: string
+  readonly revisionId: string
+  readonly before: string | null
+  readonly after: string
+}
+
+export interface ChangeShadow {
+  readonly changeId: string
+  readonly before: RouteGraph
+  readonly after: RouteGraph
+  readonly comparison: ShadowComparison
+  readonly fieldChanges: readonly FieldValueChange[]
+  /** How many revisions the announcement names. Zero means it offers no precise comparison. */
+  readonly namedRevisions: number
+}
+
+/**
+ * The before/after an announcement points at — FR-22, FR-31, FR-77.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **This function contains no timestamp comparison, and that is the point.**
+ *
+ * `shadowSince` answers a temporal question — "what did this route look like on the day I
+ * started following it?" — and a date is the right key for it. This answers a different one:
+ * "what did *this change* do?" A date cannot key that reliably, because
+ *
+ *   - revisions written in one transaction share a `createdAt` to the millisecond, so a cut
+ *     taken between two of them is arbitrary;
+ *   - `previousRevisionId` is deliberately non-unique, so a chain forks and two revisions can
+ *     both be "the newest" at a given moment (FR-70, invariant 15); and
+ *   - announcements cluster, so two changes minutes apart describe edits made together.
+ *
+ * So the announcement names the revision rows, and this reads them.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **How the two sides are built.**
+ *
+ *   `after`   the current graph, with every named entity set to the content of the revision
+ *             the announcement names.
+ *   `before`  the same graph, with every named entity set to that revision's
+ *             `previousRevisionId` — or removed entirely when there is no predecessor,
+ *             which is how "this change added a step" reads.
+ *
+ * Note that `after` uses the *named* revision rather than today's current one. If somebody
+ * revised the same step again afterwards, this still shows what this change did, which is
+ * the question being asked. Both sides therefore come from immutable rows: the database
+ * refuses UPDATE and DELETE on every revision table, so a comparison rendered today and the
+ * same comparison rendered next year are the same comparison.
+ *
+ * Returns `null` when the change names nothing — an honest absence, not an invented diff.
+ */
+export async function shadowForChange(changeId: string): Promise<ChangeShadow | null> {
+  const change = await prisma.routeChange.findUnique({
+    where: { id: changeId },
+    select: {
+      id: true,
+      routeId: true,
+      revisions: {
+        select: {
+          stepRevision: {
+            select: {
+              id: true,
+              stepId: true,
+              label: true,
+              category: true,
+              earliestStartOffsetDays: true,
+              typicalDurationDays: true,
+              previous: {
+                select: {
+                  label: true,
+                  category: true,
+                  earliestStartOffsetDays: true,
+                  typicalDurationDays: true,
+                },
+              },
+            },
+          },
+          stepEdgeRevision: {
+            select: {
+              id: true,
+              stepEdgeId: true,
+              kind: true,
+              previous: { select: { kind: true } },
+            },
+          },
+          fieldRevision: {
+            select: {
+              id: true,
+              fieldId: true,
+              valueText: true,
+              previous: { select: { valueText: true } },
+            },
+          },
+          routeRevisionId: true,
+        },
+      },
+    },
+  })
+  if (change === null) return null
+
+  const named = change.revisions
+  if (named.length === 0) return null
+
+  const current = await loadRouteGraph(change.routeId, { includeArchived: true })
+
+  const stepsById = new Map(current.steps.map((step) => [step.id, step]))
+  const edgesById = new Map(current.edges.map((edge) => [edge.id, edge]))
+
+  const afterSteps = new Map(stepsById)
+  const beforeSteps = new Map(stepsById)
+  const afterEdges = new Map(edgesById)
+  const beforeEdges = new Map(edgesById)
+  const fieldChanges: FieldValueChange[] = []
+
+  for (const link of named) {
+    const stepRevision = link.stepRevision
+    if (stepRevision !== null) {
+      const base = stepsById.get(stepRevision.stepId)
+      if (base !== undefined) {
+        afterSteps.set(stepRevision.stepId, {
+          ...base,
+          label: stepRevision.label,
+          category: stepRevision.category,
+          earliestStartOffsetDays: stepRevision.earliestStartOffsetDays,
+          typicalDurationDays: stepRevision.typicalDurationDays,
+          archived: false,
+        })
+
+        const was = stepRevision.previous
+        if (was === null) {
+          // No predecessor: the step did not exist before this change.
+          beforeSteps.delete(stepRevision.stepId)
+        } else {
+          beforeSteps.set(stepRevision.stepId, {
+            ...base,
+            label: was.label,
+            category: was.category,
+            earliestStartOffsetDays: was.earliestStartOffsetDays,
+            typicalDurationDays: was.typicalDurationDays,
+            archived: false,
+          })
+        }
+      }
+    }
+
+    const edgeRevision = link.stepEdgeRevision
+    if (edgeRevision !== null) {
+      const base = edgesById.get(edgeRevision.stepEdgeId)
+      if (base !== undefined) {
+        afterEdges.set(edgeRevision.stepEdgeId, {
+          ...base,
+          kind: edgeRevision.kind,
+          archived: false,
+        })
+        const was = edgeRevision.previous
+        if (was === null) beforeEdges.delete(edgeRevision.stepEdgeId)
+        else beforeEdges.set(edgeRevision.stepEdgeId, { ...base, kind: was.kind, archived: false })
+      }
+    }
+
+    const fieldRevision = link.fieldRevision
+    if (fieldRevision !== null) {
+      fieldChanges.push({
+        fieldId: fieldRevision.fieldId,
+        revisionId: fieldRevision.id,
+        before: fieldRevision.previous?.valueText ?? null,
+        after: fieldRevision.valueText,
+      })
+    }
+  }
+
+  // An edge whose endpoints did not both exist yet cannot be drawn, and leaving it would hand
+  // the layout pass a connector to nowhere.
+  const beforeStepIds = new Set(beforeSteps.keys())
+  const before: RouteGraph = {
+    steps: [...beforeSteps.values()],
+    edges: [...beforeEdges.values()].filter(
+      (edge) => beforeStepIds.has(edge.fromStepId) && beforeStepIds.has(edge.toStepId),
+    ),
+  }
+  const afterStepIds = new Set(afterSteps.keys())
+  const after: RouteGraph = {
+    steps: [...afterSteps.values()],
+    edges: [...afterEdges.values()].filter(
+      (edge) => afterStepIds.has(edge.fromStepId) && afterStepIds.has(edge.toStepId),
+    ),
+  }
+
+  return {
+    changeId: change.id,
+    before,
+    after,
+    comparison: compareVersions(before, after),
+    fieldChanges,
+    namedRevisions: named.length,
+  }
+}
+
+/** What kind of revision a picker entry points at. Prefixes the form value, e.g. `step:abc`. */
+export const REVISION_REF_KINDS = ['step', 'edge', 'field', 'route'] as const
+export type RevisionRefKind = (typeof REVISION_REF_KINDS)[number]
+
+export interface RevisionOption {
+  readonly kind: RevisionRefKind
+  readonly revisionId: string
+  /** What a contributor needs to recognise the edit: what changed, and when. */
+  readonly label: string
+  readonly createdAt: Date
+  readonly authorHandle: string | null
+}
+
+/**
+ * Recent edits on a route, so a contributor can say which one they are announcing.
+ *
+ * This is what makes the explicit link a real product feature rather than a schema
+ * capability nothing populates. The alternative — quietly attaching whichever revision is
+ * newest — would look like the same thing and be a guess, which is exactly what the link
+ * exists to stop.
+ *
+ * Ordered newest first with a deterministic tie-break, for the same reason as everywhere
+ * else here: revisions written together share a timestamp.
+ */
+export async function recentRevisionsForRoute(
+  routeId: string,
+  limit = 20,
+): Promise<readonly RevisionOption[]> {
+  const order = [{ createdAt: 'desc' as const }, { id: 'desc' as const }]
+
+  const [steps, edges, fields] = await Promise.all([
+    prisma.stepRevision.findMany({
+      where: { step: { routeId } },
+      select: { id: true, label: true, createdAt: true, author: { select: { handle: true } } },
+      orderBy: order,
+      take: limit,
+    }),
+    prisma.stepEdgeRevision.findMany({
+      where: { stepEdge: { routeId } },
+      select: { id: true, kind: true, createdAt: true, author: { select: { handle: true } } },
+      orderBy: order,
+      take: limit,
+    }),
+    prisma.fieldRevision.findMany({
+      where: { field: { step: { routeId } } },
+      select: {
+        id: true,
+        valueText: true,
+        createdAt: true,
+        author: { select: { handle: true } },
+        field: { select: { step: { select: { currentRevision: { select: { label: true } } } } } },
+      },
+      orderBy: order,
+      take: limit,
+    }),
+  ])
+
+  const excerpt = (text: string): string =>
+    text.length <= 60 ? text : `${text.slice(0, 57)}…`
+
+  const options: RevisionOption[] = [
+    ...steps.map((row) => ({
+      kind: 'step' as const,
+      revisionId: row.id,
+      label: row.label,
+      createdAt: row.createdAt,
+      authorHandle: row.author?.handle ?? null,
+    })),
+    ...edges.map((row) => ({
+      kind: 'edge' as const,
+      revisionId: row.id,
+      label: row.kind,
+      createdAt: row.createdAt,
+      authorHandle: row.author?.handle ?? null,
+    })),
+    ...fields.map((row) => ({
+      kind: 'field' as const,
+      revisionId: row.id,
+      label: `${row.field.step.currentRevision?.label ?? ''} — ${excerpt(row.valueText)}`,
+      createdAt: row.createdAt,
+      authorHandle: row.author?.handle ?? null,
+    })),
+  ]
+
+  return options
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.revisionId.localeCompare(a.revisionId))
+    .slice(0, limit)
+}

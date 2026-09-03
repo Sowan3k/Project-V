@@ -51,6 +51,32 @@ surfacing on the journey tab. Full write-up in [Phases.md](Phases.md).
    API instead; the migration was generated offline by diffing the committed schema against the
    working tree, which needs no database at all.
 
+### Phase 10 review follow-up (same session)
+
+Phase 10 was provisionally approved with one model gap to close: **a change announcement could
+only be associated with the history it described by date.** Closed with `RouteChangeRevision` —
+see [Phases.md](Phases.md) and CLAUDE.md §5. Two decisions recorded durably at the owner's
+request:
+
+| Decision | Recorded in |
+|---|---|
+| **Severity is contributor-assigned metadata, never a system-derived score, and is never described as objectively determined.** Three guards: no derivation, no effect on relevance, no claim of measurement in the copy. | CLAUDE.md §5, `tests/architecture/change-propagation.test.ts` |
+| **Change announcements point at revisions, never at dates.** Only the "to" side is stored; "from" is the ledger's own immutable `previousRevisionId`. Not a second versioning system — no snapshot, no version number, no sequence. | CLAUDE.md §5, `prisma/schema/changes.prisma` |
+
+### Requirements-traceability follow-up (open, no action taken)
+
+**§13.3 "User control over applicability" has no FR id.** It is normative baseline prose —
+"the follower should be shown the change and allowed to mark it as applicable, already handled,
+or not applicable to their case" — but it does not appear in the FR-01…FR-81 catalogue. Phase
+10 implements it (`JourneyChangeNote`), so that behaviour currently traces to a **section
+reference rather than an FR**, and `tests/architecture/fr-coverage.test.ts` only checks FR ids
+and therefore did not flag it.
+
+**No FR has been invented or renumbered.** Assigning an id is a change to the frozen baseline
+and belongs to the formal change process (CLAUDE.md §2, BR-35, §46.3): amend the DOCX,
+regenerate `REQUIREMENTS.md` *and* the MHT in the same commit, and record it here. Logged as an
+open traceability item for the owner to decide, not a defect in the implementation.
+
 ### Next step
 
 Phase 11 — lifecycle, dormancy, merge and admin — **awaiting approval.** It inherits invariant

@@ -151,6 +151,9 @@ model RouteRevision {
   previous           RouteRevision?  @relation("RouteRevisionChain", fields: [previousRevisionId], references: [id], onDelete: Restrict)
   successors         RouteRevision[] @relation("RouteRevisionChain")
 
+  // Phase 10 — announcements naming this exact revision (changes.prisma).
+  namedByChanges RouteChangeRevision[]
+
   createdAt DateTime @default(now())
   currentOf Route?   @relation("RouteCurrentRevision")
 
@@ -212,6 +215,8 @@ model StepRevision {
   previous           StepRevision?  @relation("StepRevisionChain", fields: [previousRevisionId], references: [id], onDelete: Restrict)
   successors         StepRevision[] @relation("StepRevisionChain")
 
+  namedByChanges RouteChangeRevision[]
+
   createdAt DateTime @default(now())
   currentOf Step?    @relation("StepCurrentRevision")
 
@@ -264,6 +269,8 @@ model StepEdgeRevision {
   previousRevisionId String?
   previous           StepEdgeRevision?  @relation("EdgeRevisionChain", fields: [previousRevisionId], references: [id], onDelete: Restrict)
   successors         StepEdgeRevision[] @relation("EdgeRevisionChain")
+
+  namedByChanges RouteChangeRevision[]
 
   createdAt DateTime  @default(now())
   currentOf StepEdge? @relation("EdgeCurrentRevision")
@@ -384,6 +391,8 @@ model FieldRevision {
   previousRevisionId String?
   previous           FieldRevision?  @relation("FieldRevisionChain", fields: [previousRevisionId], references: [id], onDelete: Restrict)
   successors         FieldRevision[] @relation("FieldRevisionChain")
+
+  namedByChanges RouteChangeRevision[]
 
   createdAt DateTime @default(now())
   currentOf Field?   @relation("FieldCurrentRevision")

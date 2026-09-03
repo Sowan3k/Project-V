@@ -14,6 +14,7 @@ import {
 } from '@/domain/enums'
 import { optionalDate, optionalText, text } from '@/lib/form-fields'
 import { currentViewer } from '@/server/auth'
+import { REVISION_REF_KINDS, type RevisionRefKind } from '@/server/changes/read'
 import { announceChange, recordDisruption, resolveDisruption } from '@/server/changes/service'
 import { clearChangeStance, setChangeStance } from '@/server/journeys/changes'
 
@@ -43,12 +44,46 @@ function oneOf<T extends string>(values: readonly T[], raw: string, fallback: T)
 }
 
 /**
+ * Reads the picker value `"<kind>:<revisionId>"` into the shape `announceChange` expects.
+ *
+ * Malformed or empty input yields no link rather than a guessed one. An announcement with no
+ * revision is a perfectly good announcement — it simply cannot offer a precise before/after,
+ * and the page says so instead of inventing one.
+ */
+function describedRevision(raw: string): {
+  routeRevisionIds?: string[]
+  stepRevisionIds?: string[]
+  stepEdgeRevisionIds?: string[]
+  fieldRevisionIds?: string[]
+} {
+  const separator = raw.indexOf(':')
+  if (separator < 1) return {}
+  const kind = raw.slice(0, separator)
+  const id = raw.slice(separator + 1)
+  if (id === '' || !(REVISION_REF_KINDS as readonly string[]).includes(kind)) return {}
+
+  switch (kind as RevisionRefKind) {
+    case 'step':
+      return { stepRevisionIds: [id] }
+    case 'edge':
+      return { stepEdgeRevisionIds: [id] }
+    case 'field':
+      return { fieldRevisionIds: [id] }
+    case 'route':
+      return { routeRevisionIds: [id] }
+  }
+}
+
+/**
  * FR-59, FR-60 — announce that the public route changed.
  *
- * Severity comes from the form because §41.2 defines it by consequence to the follower, which
- * is a judgement no diff contains. The fallback is `informational`: where a submission is
- * malformed the quiet answer is the safe one, because over-claiming severity trains readers
- * to ignore the level that matters.
+ * **Severity comes from the form because it is contributor-assigned metadata, not a
+ * system-derived score** (CLAUDE.md §5, decided at the Phase 10 review). §41.2 defines each
+ * level by consequence to the follower, which is a judgement about the world; nothing here
+ * derives, adjusts or second-guesses it.
+ *
+ * The fallback is `informational`: where a submission is malformed the quiet answer is the
+ * safe one, because over-claiming severity trains readers to ignore the level that matters.
  */
 export async function announceChangeAction(formData: FormData): Promise<void> {
   const locale = text(formData, 'locale')
@@ -74,6 +109,8 @@ export async function announceChangeAction(formData: FormData): Promise<void> {
     // no effective date is known, which §41.1 treats as a legitimate answer.
     effectiveAt: optionalDate(formData, 'effectiveAt') ?? null,
     stepId: optionalText(formData, 'changeStepId'),
+    // The durable link. A revision id, never a date — see `shadowForChange`.
+    describes: describedRevision(text(formData, 'describesRevision')),
   })
 
   revalidatePath(`/${locale}/routes/${slug}/changes`)

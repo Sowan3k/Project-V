@@ -163,6 +163,19 @@ export async function loadRouteGraph(
  *
  * Rows the caller has no business seeing are not a concern here: this is public revision
  * history, readable anonymously like the rest of the read path (FR-31, FR-45, invariant 4).
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **What this function is, and is not, the right tool for.**
+ *
+ * It answers a genuinely temporal question — "what did this route look like on the day I
+ * started following it?" — where a date is the correct key and the only one available, since
+ * a journey records when it began and not which revisions were current.
+ *
+ * It is **not** the way to find out what a particular change did. Timestamps tie, and
+ * `previousRevisionId` is deliberately non-unique so a chain can fork, which means "the
+ * revision current at time T" may have two correct answers. A change announcement therefore
+ * names its revisions outright and `shadowForChange` reads those; see
+ * `src/server/changes/read.ts`.
  */
 export async function loadRouteGraphAt(routeId: string, at: Date): Promise<RouteGraph> {
   const [steps, edges] = await Promise.all([
@@ -173,7 +186,16 @@ export async function loadRouteGraphAt(routeId: string, at: Date): Promise<Route
         archivedAt: true,
         revisions: {
           where: { createdAt: { lte: at } },
-          orderBy: { createdAt: 'desc' },
+          // Tie-broken by id, so the result is a total order rather than whichever row the
+          // planner returned first. Revisions written in one transaction share a `createdAt`
+          // to the millisecond; without a second key this query is non-deterministic in
+          // exactly the case Phase 10 hit in CI (Test.md §18).
+          //
+          // The tie-break makes the answer *stable*, not *meaningful* — there is no sense in
+          // which a larger cuid is "later". Where the answer has to be meaningful, an
+          // announcement names the revision explicitly and `shadowForChange` reads that
+          // instead of any date at all.
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
           take: 1,
           select: {
             label: true,
@@ -194,7 +216,7 @@ export async function loadRouteGraphAt(routeId: string, at: Date): Promise<Route
         archivedAt: true,
         revisions: {
           where: { createdAt: { lte: at } },
-          orderBy: { createdAt: 'desc' },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
           take: 1,
           select: { kind: true },
         },

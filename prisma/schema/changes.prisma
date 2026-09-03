@@ -65,12 +65,76 @@ model RouteChange {
 
   createdAt DateTime @default(now())
 
+  /// The revision rows this announcement describes — the durable relation, see below.
+  revisions RouteChangeRevision[]
+
   followerNotes JourneyChangeNote[]
 
   @@index([routeId, announcedAt])
   @@index([routeId, effectiveAt])
   @@index([stepId])
   @@map("route_changes")
+}
+
+/// **The durable link between an announcement and the revision state it describes.**
+///
+/// Added after Phase 10's first review, which found the original model could only associate a
+/// change with history *by date*. That is not good enough for this product, for three reasons
+/// the ledger itself makes plain:
+///
+///   **Timestamps tie.** Several revisions are written in one transaction and share a
+///   `createdAt` to the millisecond. Phase 10 hit exactly this in CI (Test.md §18).
+///
+///   **Revision chains fork.** `previousRevisionId` is deliberately non-unique (FR-70,
+///   invariant 15): two contributors may revise the same field from the same base, and both
+///   revisions survive. "The revision current at time T" is then genuinely ambiguous, while a
+///   specific revision id never is.
+///
+///   **Changes cluster.** Two announcements minutes apart cannot be told apart by date at all
+///   if the edits they describe were made together.
+///
+/// ─────────────────────────────────────────────────────────────────────────────────────────
+/// **Only the "to" side is stored. The "from" side is `previousRevisionId`.**
+///
+/// That is the whole reason this is one small join table rather than paired from/to columns.
+/// Every revision already carries an immutable pointer to the state it replaced, so storing a
+/// "from" as well would be duplicating a fact the ledger owns — and a duplicated fact is one
+/// that can disagree with the original. A named revision whose `previousRevisionId` is null
+/// says something meaningful too: the entity did not exist before.
+///
+/// This is not a second versioning system. It stores no version, no snapshot and no sequence
+/// number; it is a foreign key into the revisions Phase 3 already writes, and those rows are
+/// refused UPDATE and DELETE by database trigger, so what an announcement points at cannot be
+/// altered underneath it.
+///
+/// One row references exactly one revision, of one kind. A database CHECK constraint enforces
+/// that — see the migration — because a row with two references or none would be a silently
+/// meaningless link rather than a loud error.
+model RouteChangeRevision {
+  id       String      @id @default(cuid())
+  changeId String
+  change   RouteChange @relation(fields: [changeId], references: [id], onDelete: Cascade)
+
+  /// Exactly one of these four is non-null.
+  routeRevisionId    String?
+  routeRevision      RouteRevision?    @relation(fields: [routeRevisionId], references: [id], onDelete: Restrict)
+  stepRevisionId     String?
+  stepRevision       StepRevision?     @relation(fields: [stepRevisionId], references: [id], onDelete: Restrict)
+  stepEdgeRevisionId String?
+  stepEdgeRevision   StepEdgeRevision? @relation(fields: [stepEdgeRevisionId], references: [id], onDelete: Restrict)
+  fieldRevisionId    String?
+  fieldRevision      FieldRevision?    @relation(fields: [fieldRevisionId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  /// One announcement never names the same revision twice.
+  @@unique([changeId, routeRevisionId])
+  @@unique([changeId, stepRevisionId])
+  @@unique([changeId, stepEdgeRevisionId])
+  @@unique([changeId, fieldRevisionId])
+  @@index([stepRevisionId])
+  @@index([fieldRevisionId])
+  @@map("route_change_revisions")
 }
 
 /// A time-, location- and process-scoped overlay — FR-32, FR-63, BR-08, BR-27, §41.5,

@@ -57,6 +57,67 @@ export interface AnnounceChangeInput extends Contributor {
   readonly announcedAt?: Date
   readonly stepId?: string | null
   readonly fieldId?: string | null
+  /**
+   * **The revision rows this announcement describes.**
+   *
+   * The durable alternative to matching history by date. A revision id is unambiguous where a
+   * timestamp is not: revisions written in one transaction share a `createdAt`, and a chain
+   * may fork, so "the revision current at time T" can have two correct answers while "revision
+   * X" always has one.
+   *
+   * Only the "to" side is given. The state each replaced is that revision's own
+   * `previousRevisionId`, which the ledger holds immutably — see `shadowForChange`.
+   *
+   * Optional, because a contributor may want to say something about a route without pointing
+   * at a specific edit. An announcement with no revisions is still shown; it simply cannot
+   * offer a precise before/after, and the interface says so rather than guessing one.
+   */
+  readonly describes?: {
+    readonly routeRevisionIds?: readonly string[]
+    readonly stepRevisionIds?: readonly string[]
+    readonly stepEdgeRevisionIds?: readonly string[]
+    readonly fieldRevisionIds?: readonly string[]
+  }
+}
+
+/**
+ * A named revision must belong to the route being announced about.
+ *
+ * Without this an announcement on one route could name a revision from another, and the
+ * shadow reconstruction would then produce a confident, wrong "before" — the exact failure
+ * the explicit link exists to prevent. Checked at write time, once, rather than defended
+ * against at every read.
+ */
+async function assertRevisionsBelongToRoute(
+  routeId: string,
+  describes: NonNullable<AnnounceChangeInput['describes']>,
+): Promise<void> {
+  const [routeRevs, stepRevs, edgeRevs, fieldRevs] = await Promise.all([
+    prisma.routeRevision.count({
+      where: { id: { in: [...(describes.routeRevisionIds ?? [])] }, routeId },
+    }),
+    prisma.stepRevision.count({
+      where: { id: { in: [...(describes.stepRevisionIds ?? [])] }, step: { routeId } },
+    }),
+    prisma.stepEdgeRevision.count({
+      where: { id: { in: [...(describes.stepEdgeRevisionIds ?? [])] }, stepEdge: { routeId } },
+    }),
+    prisma.fieldRevision.count({
+      where: { id: { in: [...(describes.fieldRevisionIds ?? [])] }, field: { step: { routeId } } },
+    }),
+  ])
+
+  const expected =
+    (describes.routeRevisionIds?.length ?? 0) +
+    (describes.stepRevisionIds?.length ?? 0) +
+    (describes.stepEdgeRevisionIds?.length ?? 0) +
+    (describes.fieldRevisionIds?.length ?? 0)
+
+  if (routeRevs + stepRevs + edgeRevs + fieldRevs !== expected) {
+    throw new ChangeInputError(
+      'A change announcement may only name revisions belonging to its own route',
+    )
+  }
 }
 
 /**
@@ -70,6 +131,19 @@ export async function announceChange(input: AnnounceChangeInput): Promise<{ chan
   const title = input.title.trim()
   if (title.length === 0) throw new ChangeInputError('A change needs a title')
 
+  const describes = input.describes ?? {}
+  await assertRevisionsBelongToRoute(input.routeId, describes)
+
+  // One row per named revision, exactly one reference each — a shape the database also
+  // enforces with a CHECK constraint, because a link that resolves to nothing would make the
+  // shadow reconstruction quietly wrong rather than loudly broken.
+  const links = [
+    ...(describes.routeRevisionIds ?? []).map((id) => ({ routeRevisionId: id })),
+    ...(describes.stepRevisionIds ?? []).map((id) => ({ stepRevisionId: id })),
+    ...(describes.stepEdgeRevisionIds ?? []).map((id) => ({ stepEdgeRevisionId: id })),
+    ...(describes.fieldRevisionIds ?? []).map((id) => ({ fieldRevisionId: id })),
+  ]
+
   const created = await prisma.routeChange.create({
     data: {
       routeId: input.routeId,
@@ -82,6 +156,7 @@ export async function announceChange(input: AnnounceChangeInput): Promise<{ chan
       stepId: input.stepId ?? null,
       fieldId: input.fieldId ?? null,
       authorId: input.authorId,
+      ...(links.length === 0 ? {} : { revisions: { create: links } }),
     },
     select: { id: true },
   })

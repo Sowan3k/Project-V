@@ -1,10 +1,11 @@
+import { ComparisonRows } from '@/components/shadow-compare'
 import { Caution } from '@/components/trust'
 import type { ChangeRelevance, DisruptionRelevance } from '@/domain/changes'
 import { daysRemaining } from '@/domain/changes'
 import type { ChangeSeverity } from '@/domain/enums'
 import { ChangeSeverity as Severity, FOLLOWER_CHANGE_STANCES } from '@/domain/enums'
 import type { Dictionary } from '@/i18n/dictionaries/en'
-import type { ChangeView, DisruptionView } from '@/server/changes/read'
+import type { ChangeShadow, ChangeView, DisruptionView } from '@/server/changes/read'
 import type { RelevantChange, RelevantDisruption } from '@/server/journeys/changes'
 
 /**
@@ -264,6 +265,7 @@ export function FollowerChangeList({
   stanceAction,
   clearStanceAction,
   dictionary: t,
+  exactChange,
 }: {
   entries: readonly RelevantChange[]
   locale: string
@@ -272,6 +274,8 @@ export function FollowerChangeList({
   stanceAction: (formData: FormData) => void | Promise<void>
   clearStanceAction: (formData: FormData) => void | Promise<void>
   dictionary: Dictionary
+  /** Renders the announcement's own before/after. Supplied by the page, which can await. */
+  exactChange?: (changeId: string) => React.ReactNode
 }) {
   if (entries.length === 0) {
     return <p className="mt-3 text-sm text-ink-700">{t.changes.noAnnouncements}</p>
@@ -281,6 +285,7 @@ export function FollowerChangeList({
     <ul className="mt-3 space-y-3">
       {entries.map((entry) => (
         <AnnouncedChangeCard key={entry.change.id} change={entry.change} dictionary={t}>
+          {exactChange?.(entry.change.id)}
           <RelevanceNote relevance={entry.relevance} dictionary={t} />
           <StanceControl
             entry={entry}
@@ -498,5 +503,66 @@ export function DisruptionList({
         </DisruptionCard>
       ))}
     </ul>
+  )
+}
+
+/**
+ * The precise before/after an announcement points at — FR-22, FR-31, FR-77.
+ *
+ * Rendered only when the announcement actually names a revision. When it names none, the
+ * disclosure says so plainly rather than showing a comparison assembled from dates, which is
+ * the thing this whole relation exists to stop being possible.
+ *
+ * Both sides come from rows the database refuses to update or delete, so this reads the same
+ * today and in five years. It is not a re-derivation that could drift.
+ */
+export function ExactChange({
+  shadow,
+  dictionary: t,
+}: {
+  shadow: ChangeShadow | null
+  dictionary: Dictionary
+}) {
+  if (shadow === null) {
+    return <p className="mt-3 text-xs leading-5 text-ink-500">{t.changes.noLinkedEdit}</p>
+  }
+
+  return (
+    <details className="mt-3 border-t border-hairline pt-2">
+      <summary className="cursor-pointer text-xs text-brand-700">
+        {t.changes.exactlyWhatChanged}
+      </summary>
+
+      <p className="mt-2 text-xs leading-5 text-ink-500">{t.changes.exactlyWhatChangedHint}</p>
+
+      {shadow.fieldChanges.length === 0 ? null : (
+        <ul className="mt-2 space-y-2">
+          {shadow.fieldChanges.map((entry) => (
+            <li key={entry.revisionId} className="rounded-lg border border-hairline p-2.5">
+              {entry.before === null ? (
+                <p className="text-xs text-ink-500">{t.changes.valueAdded}</p>
+              ) : (
+                <p className="text-xs leading-5 text-ink-500">
+                  {t.changes.valueBefore}:{' '}
+                  <span className="text-ink-700 line-through">{entry.before}</span>
+                </p>
+              )}
+              <p className="mt-0.5 text-xs leading-5 text-ink-500">
+                {t.changes.valueAfter}: <span className="text-ink-900">{entry.after}</span>
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {shadow.comparison.structureChanged ? (
+        <ComparisonRows
+          comparison={shadow.comparison}
+          beforeHeading={t.changes.valueBefore}
+          afterHeading={t.changes.valueAfter}
+          dictionary={t}
+        />
+      ) : null}
+    </details>
   )
 }

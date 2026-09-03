@@ -680,10 +680,53 @@ second "Impact: High/Medium/Low" axis was also dropped — §41.2 defines exactl
 two scales for one judgement is one too many. A cross-route Updates feed is not in this phase's
 scope and was not added.
 
-**Schema:** three additive models — `RouteChange`, `TemporaryDisruption` (both
-`communitySignal`: editable, never deletable) and `JourneyChangeNote` (`privateUserState`).
-Migration `20260903210000_change_propagation_and_disruptions` is `CREATE`-only; no `DROP`, no
-`ALTER` of an existing column, nothing touching a revision table.
+**Schema:** four additive models — `RouteChange`, `TemporaryDisruption`,
+`RouteChangeRevision` (all `communitySignal`: editable, never deletable) and
+`JourneyChangeNote` (`privateUserState`). Migrations
+`20260903210000_change_propagation_and_disruptions` and `20260903223000_change_revision_link`
+are `CREATE`-only; no `DROP`, no `ALTER` of an existing column, nothing touching a revision
+table.
+
+### Phase 10 review follow-up (2026-09-03) — the change→revision link
+
+The review found one real gap: a change announcement could only be associated with the history
+it described **by date**. That is not good enough here, and the reasons are properties Phase 3
+chose on purpose — revisions written in one transaction share a `createdAt` to the millisecond;
+`previousRevisionId` is non-unique so a chain forks and "the revision current at time T" can
+have two correct answers (FR-70, invariant 15); and announcements cluster around edits made
+together. Phase 10 had already hit the first of these in CI.
+
+**`RouteChangeRevision` names the revision rows an announcement describes.** Chosen over
+paired from/to columns because **only the "to" side needs storing** — every revision already
+carries an immutable `previousRevisionId`, so a stored "from" would be duplicating a fact the
+ledger owns, and a duplicate can disagree. A named revision with no predecessor is meaningful
+in itself: the entity did not exist before.
+
+It is **not a second versioning system**. No snapshot, no version number, no sequence — four
+nullable foreign keys into revision tables that already exist, with a database CHECK constraint
+requiring exactly one per row, because a link resolving to nothing would make the
+reconstruction quietly wrong rather than loudly broken. A guard asserts the schema contains no
+snapshot or version concept anywhere.
+
+**`shadowForChange` contains no date comparison**, asserted on the function's own source. It
+builds `after` from the named revision and `before` from that revision's predecessor, so it
+answers "what did *this* change do" even after later edits superseded it — and both sides come
+from rows the database refuses to UPDATE or DELETE, which is what makes the comparison read the
+same in five years.
+
+`loadRouteGraphAt` stays date-keyed, correctly: "what did this look like the day I started
+following it?" is a temporal question and a journey stores a date, not a set of revisions. Its
+ordering gained an `id` tie-break so the query has a total order rather than returning whichever
+row the planner reached first.
+
+**The link is populated by a person, not inferred.** The announce form offers the route's recent
+edits and the contributor picks the one they are announcing. Attaching "whichever revision is
+newest" would have looked identical and been a guess — which is the thing the link exists to
+stop.
+
+**Severity recorded explicitly** (CLAUDE.md §5): contributor-assigned metadata, never a
+system-derived score, and never described as objectively determined. Three guards — no
+derivation, no effect on relevance, and no claim of measurement in the copy.
 
 ---
 

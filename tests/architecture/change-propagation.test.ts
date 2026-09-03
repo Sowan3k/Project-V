@@ -422,3 +422,166 @@ describe('the public and private reads stay on their own sides of the line', () 
     expect(service).toMatch(/readonly authorId: string/)
   })
 })
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+describe('the change→revision link is durable, and is not a second versioning system', () => {
+  /**
+   * Added after Phase 10's review, which found that a change announcement could only be
+   * associated with history *by date*. Three properties of the existing ledger make that
+   * unusable, and all three are things Phase 3 chose deliberately:
+   *
+   *   revisions written in one transaction share a `createdAt` to the millisecond;
+   *   `previousRevisionId` is non-unique, so a chain forks and "current at time T" is plural;
+   *   announcements cluster around edits made together.
+   *
+   * The fix names revision rows. These guards keep it that way.
+   */
+  const LINK = 'src/server/changes/read.ts'
+
+  it('stores the link as foreign keys into the existing revision tables', () => {
+    const start = SCHEMA.indexOf('model RouteChangeRevision {')
+    expect(start).toBeGreaterThan(-1)
+    const block = SCHEMA.slice(start, SCHEMA.indexOf('\n}', start))
+
+    for (const column of [
+      'routeRevisionId',
+      'stepRevisionId',
+      'stepEdgeRevisionId',
+      'fieldRevisionId',
+    ]) {
+      expect(block, column).toContain(column)
+    }
+    // Restrict, so a revision an announcement points at cannot be removed underneath it.
+    expect(block).toMatch(/onDelete: Restrict/)
+  })
+
+  /**
+   * **Not a second versioning system**, which was the explicit constraint. No snapshot of
+   * route state, no version number, no monotonic sequence — only foreign keys into rows the
+   * revision ledger already writes.
+   */
+  it('introduces no snapshot, version number or sequence anywhere in the schema', () => {
+    /**
+     * Scanned with *all* comment forms removed, `//` as well as `///`.
+     *
+     * `SCHEMA` keeps `//` notes, which is fine for asserting a column exists but wrong for
+     * asserting a concept is absent: the schema's own prose explains at length why there is
+     * no snapshot table, so a guard reading that prose reports the very thing the prose was
+     * written to rule out. Same reasoning as the enum single-source guard — prose cannot
+     * drift into behaviour, so it must not be scanned as if it could.
+     */
+    const code = walk('prisma/schema', ['.prisma'])
+      .map((file) =>
+        read(file)
+          .split('\n')
+          .filter((line) => !/^\s*\/\//.test(line))
+          .join('\n'),
+      )
+      .join('\n')
+
+    expect(code).not.toMatch(
+      /\b(snapshot|versionNumber|routeVersion|revisionSeq|sequenceNumber|stateHash)\b/i,
+    )
+    expect(code).not.toMatch(/model \w*(Snapshot|Version)\b/)
+    // Not vacuous: the change models really are inside what is being scanned.
+    expect(code).toMatch(/model RouteChangeRevision \{/)
+  })
+
+  /**
+   * Only the "to" side is stored. The "from" side is each revision's own
+   * `previousRevisionId`, which the ledger holds immutably — storing it twice would let the
+   * two disagree, and one of them would then be silently wrong.
+   */
+  it('stores no duplicate "from" pointer beside the revision it names', () => {
+    const start = SCHEMA.indexOf('model RouteChangeRevision {')
+    const block = SCHEMA.slice(start, SCHEMA.indexOf('\n}', start))
+    expect(block).not.toMatch(/\b(from\w*RevisionId|previousRevisionId|beforeRevisionId)\b/)
+  })
+
+  /**
+   * **The reconstruction reads revisions, not clocks.**
+   *
+   * This is the property the whole change was made for, so it is asserted directly on the
+   * function's source: `shadowForChange` performs no date comparison of any kind.
+   */
+  it('reconstructs the comparison without comparing a single date', () => {
+    const code = stripComments(read(LINK))
+    const start = code.indexOf('export async function shadowForChange')
+    expect(start).toBeGreaterThan(-1)
+    const body = code.slice(start, code.indexOf('\nexport ', start + 10))
+
+    expect(body).not.toMatch(/createdAt/)
+    expect(body).not.toMatch(/announcedAt|effectiveAt/)
+    expect(body).not.toMatch(/\b(lte|gte|lt|gt)\b/)
+    expect(body).not.toMatch(/getTime\(\)/)
+    // It reads the link and the immutable predecessor pointer instead.
+    expect(body).toMatch(/change\.revisions/)
+    expect(body).toMatch(/previous/)
+  })
+
+  /**
+   * And the one place that *is* legitimately temporal says so, and is deterministic.
+   *
+   * `loadRouteGraphAt` answers "what did this look like on the day I started following it?",
+   * where a date is the only key available. Ties are broken by id so the query has a total
+   * order rather than returning whichever row the planner reached first.
+   */
+  it('gives the time-based reconstruction a deterministic tie-break', () => {
+    const code = stripComments(read('src/server/revisions/read.ts'))
+    const matches = code.match(/orderBy: \[\{ createdAt: 'desc' \}, \{ id: 'desc' \}\]/g) ?? []
+    expect(matches.length).toBe(2)
+    expect(code).not.toMatch(/orderBy: \{ createdAt: 'desc' \},\s*\n\s*take: 1/)
+  })
+
+  it('enforces exactly one reference per link row in the database', () => {
+    const migration = read(
+      'prisma/migrations/20260903223000_change_revision_link/migration.sql',
+    )
+    expect(migration).toMatch(/ADD CONSTRAINT "route_change_revisions_exactly_one_reference"/)
+    expect(migration).toMatch(/CHECK/)
+    // Additive only, like every migration in this project.
+    expect(migration).not.toMatch(/^\s*(DROP|TRUNCATE|DELETE FROM)/m)
+  })
+
+  it('refuses to delete a link, as it refuses to delete the announcement', () => {
+    expect(COMMUNITY_SIGNAL_MODELS).toContain('RouteChangeRevision')
+    for (const operation of ['delete', 'deleteMany']) {
+      expect(checkWrite('RouteChangeRevision', operation, false).allowed).toBe(false)
+    }
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+describe('§41.2 — severity is contributor-assigned metadata, and says so to the reader', () => {
+  /**
+   * Recorded explicitly at the owner's request after Phase 10's review.
+   *
+   * **Severity is metadata a contributor assigns. It is not a system-derived score, and the
+   * product must not present it as objectively determined.** §41.2 defines each level by what
+   * it means to somebody following the route — a judgement about consequence in the world —
+   * and no diff of the revision ledger contains one.
+   *
+   * Two failure modes, and a guard for each: deriving it (a threshold), and *describing* it as
+   * if it were derived (a claim of objectivity in the copy).
+   */
+  it('never derives a severity anywhere in src/', () => {
+    expect(
+      findAll(/\b(deriveSeverity|inferSeverity|computeSeverity|autoSeverity|severityFor)\b/i),
+    ).toEqual([])
+  })
+
+  it('tells the reader whose judgement it is, and that it is a judgement', () => {
+    const dictionary = read('src/i18n/dictionaries/en.ts')
+    expect(dictionary).toMatch(/Set by the contributor who recorded the change/)
+    expect(dictionary).toMatch(/It is a judgement, not a measurement/)
+  })
+
+  it('makes no claim that severity is measured, calculated or objective', () => {
+    const dictionary = stripComments(read('src/i18n/dictionaries/en.ts'))
+    const start = dictionary.indexOf('changes: {')
+    const block = dictionary.slice(start, dictionary.indexOf('\n  routeLifecycle', start))
+    expect(block).not.toMatch(/calculated|computed|automatically|objectively|score|rating/i)
+  })
+})

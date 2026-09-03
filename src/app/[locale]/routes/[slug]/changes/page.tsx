@@ -5,6 +5,7 @@ import {
   AnnouncedChangeCard,
   DisruptionCard,
   DisruptionList,
+  ExactChange,
   FollowerChangeList,
   ResolveDisruptionControl,
 } from '@/components/changes'
@@ -20,6 +21,8 @@ import {
   changesForRoute,
   disruptionsForRoute,
   lastChangePoint,
+  recentRevisionsForRoute,
+  shadowForChange,
   shadowSince,
 } from '@/server/changes/read'
 import { followerChangeReport } from '@/server/journeys/changes'
@@ -126,6 +129,7 @@ export default async function RouteChangesPage({
               stanceAction={setChangeStanceAction}
               clearStanceAction={clearChangeStanceAction}
               dictionary={t}
+              exactChange={(changeId) => <ExactChangeFor changeId={changeId} dictionary={t} />}
             />
           )}
         </section>
@@ -281,10 +285,28 @@ async function AnonymousChangeList({
   return (
     <ul className="mt-3 space-y-3">
       {changes.map((change) => (
-        <AnnouncedChangeCard key={change.id} change={change} dictionary={t} />
+        <AnnouncedChangeCard key={change.id} change={change} dictionary={t}>
+          <ExactChangeFor changeId={change.id} dictionary={t} />
+        </AnnouncedChangeCard>
       ))}
     </ul>
   )
+}
+
+/**
+ * Resolves the announcement's own link and renders what it names.
+ *
+ * A separate component so the reconstruction is fetched per change rather than eagerly for
+ * every change on the page, and so the same disclosure serves the follower list too.
+ */
+async function ExactChangeFor({
+  changeId,
+  dictionary: t,
+}: {
+  changeId: string
+  dictionary: Dictionary
+}) {
+  return <ExactChange shadow={await shadowForChange(changeId)} dictionary={t} />
 }
 
 /**
@@ -345,7 +367,7 @@ async function PublicDisruptions({
  * Every control is a plain form posting to a server action — no JavaScript required, the same
  * guarantee the read path and the contribution loop already give.
  */
-function RecordSection({
+async function RecordSection({
   route,
   locale,
   slug,
@@ -375,6 +397,8 @@ function RecordSection({
       </section>
     )
   }
+
+  const recentRevisions = await recentRevisionsForRoute(route.id)
 
   const hidden = (
     <>
@@ -448,6 +472,23 @@ function RecordSection({
             <label className={`${LABEL} mt-2`}>
               {t.changes.fieldEffective}
               <input type="date" name="effectiveAt" className={INPUT} />
+            </label>
+
+            {/* The durable link. A revision id, chosen by the person who knows which edit
+                they are announcing — never guessed from "whichever revision is newest",
+                which would look identical and be wrong whenever it mattered. */}
+            <label className={`${LABEL} mt-2`}>
+              {t.changes.fieldDescribes}
+              <select name="describesRevision" className={INPUT}>
+                <option value="">{t.changes.describesNone}</option>
+                {recentRevisions.map((option) => (
+                  <option key={option.revisionId} value={`${option.kind}:${option.revisionId}`}>
+                    {t.changes.describesKind[option.kind]}: {option.label} (
+                    {option.createdAt.toISOString().slice(0, 10)})
+                  </option>
+                ))}
+              </select>
+              <span className="mt-0.5 block text-ink-500">{t.changes.fieldDescribesHint}</span>
             </label>
 
             <button

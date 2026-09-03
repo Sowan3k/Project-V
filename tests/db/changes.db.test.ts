@@ -19,6 +19,7 @@ import {
   changesForRoute,
   disruptionsForRoute,
   lastChangePoint,
+  shadowForChange,
   shadowSince,
 } from '../../src/server/changes/read'
 import {
@@ -33,7 +34,7 @@ import {
   setChangeStance,
 } from '../../src/server/journeys/changes'
 import { followRoute, setStepProgress } from '../../src/server/journeys/service'
-import { loadRouteGraphAt } from '../../src/server/revisions/read'
+import { loadRouteGraph, loadRouteGraphAt } from '../../src/server/revisions/read'
 import {
   addEdge,
   addField,
@@ -885,5 +886,387 @@ describe.skipIf(!url)('invariant 1 — neither record can be destroyed', () => {
     expect(
       await prisma.temporaryDisruption.findUnique({ where: { id: disruptionId } }),
     ).not.toBeNull()
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   The durable change→revision link — Phase 10 follow-up
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+describe.skipIf(!url)('an announcement names the revision it describes, never a date', () => {
+  /**
+   * **Two announcements at timestamps a date cannot separate.**
+   *
+   * Both are written in the same millisecond and both describe edits to the same route made
+   * together. Any date-based association would have to guess which announcement goes with
+   * which edit, and would be right about half the time. The explicit link is right every time.
+   */
+  it('separates two changes recorded at the same instant', async () => {
+    const route = await makeRoute()
+
+    const fee = await addField({
+      actor: system,
+      stepId: route.steps.visa ?? '',
+      category: FieldCategory.cost,
+      valueText: 'Visa fee 75',
+      sourceClass: SourceClass.official,
+    })
+    const wait = await addField({
+      actor: system,
+      stepId: route.steps.visa ?? '',
+      category: FieldCategory.duration,
+      valueText: 'Processing 6 weeks',
+      sourceClass: SourceClass.official,
+    })
+
+    const feeEdit = await reviseField({
+      actor: { id: author },
+      fieldId: fee.fieldId,
+      valueText: 'Visa fee 90',
+      sourceClass: SourceClass.official,
+    })
+    const waitEdit = await reviseField({
+      actor: { id: author },
+      fieldId: wait.fieldId,
+      valueText: 'Processing 12 weeks',
+      sourceClass: SourceClass.official,
+    })
+
+    // Both announcements share one timestamp, to the millisecond, by construction.
+    const sameInstant = new Date()
+    const feeChange = await announceChange({
+      authorId: author,
+      routeId: route.routeId,
+      kind: RouteChangeKind.field_correction,
+      severity: ChangeSeverity.relevant,
+      title: 'Fee raised',
+      announcedAt: sameInstant,
+      describes: { fieldRevisionIds: [feeEdit.revisionId] },
+    })
+    const waitChange = await announceChange({
+      authorId: author,
+      routeId: route.routeId,
+      kind: RouteChangeKind.field_correction,
+      severity: ChangeSeverity.important,
+      title: 'Processing time doubled',
+      announcedAt: sameInstant,
+      describes: { fieldRevisionIds: [waitEdit.revisionId] },
+    })
+
+    const stored = await prisma.routeChange.findMany({
+      where: { id: { in: [feeChange.changeId, waitChange.changeId] } },
+      select: { announcedAt: true },
+    })
+    // The premise: a date genuinely cannot tell these two apart.
+    expect(new Set(stored.map((row) => row.announcedAt.getTime())).size).toBe(1)
+
+    const feeShadow = await shadowForChange(feeChange.changeId)
+    const waitShadow = await shadowForChange(waitChange.changeId)
+
+    expect(feeShadow?.fieldChanges).toEqual([
+      {
+        fieldId: fee.fieldId,
+        revisionId: feeEdit.revisionId,
+        before: 'Visa fee 75',
+        after: 'Visa fee 90',
+      },
+    ])
+    expect(waitShadow?.fieldChanges).toEqual([
+      {
+        fieldId: wait.fieldId,
+        revisionId: waitEdit.revisionId,
+        before: 'Processing 6 weeks',
+        after: 'Processing 12 weeks',
+      },
+    ])
+  })
+
+  /**
+   * **A forked revision chain.**
+   *
+   * Two contributors revise the same field from the same base, so `previousRevisionId` points
+   * at one row from two rows and both survive (FR-70, invariant 15). "The revision current at
+   * time T" now has two defensible answers; "revision X" still has one.
+   */
+  it('stays unambiguous when the revision chain forks', async () => {
+    const route = await makeRoute()
+    const field = await addField({
+      actor: system,
+      stepId: route.steps.visa ?? '',
+      category: FieldCategory.requirement,
+      valueText: 'Blocked account required',
+      sourceClass: SourceClass.official,
+    })
+    const base = await prisma.field.findUniqueOrThrow({
+      where: { id: field.fieldId },
+      select: { currentRevisionId: true },
+    })
+
+    // Both edits declare the same base, which is what makes the second one a fork.
+    const first = await reviseField({
+      actor: { id: author },
+      fieldId: field.fieldId,
+      valueText: 'Blocked account of 11904 required',
+      sourceClass: SourceClass.official,
+      basedOnRevisionId: base.currentRevisionId,
+    })
+    const second = await reviseField({
+      actor: { id: other },
+      fieldId: field.fieldId,
+      valueText: 'Blocked account of 11208 required',
+      sourceClass: SourceClass.official,
+      basedOnRevisionId: base.currentRevisionId,
+    })
+    expect(second.forked).toBe(true)
+
+    // The fork is real: two revisions share one predecessor.
+    const siblings = await prisma.fieldRevision.findMany({
+      where: { previousRevisionId: base.currentRevisionId },
+      select: { id: true },
+    })
+    expect(siblings).toHaveLength(2)
+
+    const firstChange = await announceChange({
+      authorId: author,
+      routeId: route.routeId,
+      kind: RouteChangeKind.field_correction,
+      severity: ChangeSeverity.important,
+      title: 'One reading of the amount',
+      describes: { fieldRevisionIds: [first.revisionId] },
+    })
+    const secondChange = await announceChange({
+      authorId: other,
+      routeId: route.routeId,
+      kind: RouteChangeKind.field_correction,
+      severity: ChangeSeverity.important,
+      title: 'The other reading of the amount',
+      describes: { fieldRevisionIds: [second.revisionId] },
+    })
+
+    // Each announcement resolves to its own branch, not to whichever won.
+    expect((await shadowForChange(firstChange.changeId))?.fieldChanges[0]?.after).toBe(
+      'Blocked account of 11904 required',
+    )
+    expect((await shadowForChange(secondChange.changeId))?.fieldChanges[0]?.after).toBe(
+      'Blocked account of 11208 required',
+    )
+    // And both report the same shared predecessor as their "before".
+    for (const changeId of [firstChange.changeId, secondChange.changeId]) {
+      expect((await shadowForChange(changeId))?.fieldChanges[0]?.before).toBe(
+        'Blocked account required',
+      )
+    }
+  })
+
+  /**
+   * **Resolving to exactly the intended historical state**, even after it has been superseded.
+   *
+   * A step is revised three times and one announcement names the middle revision. The
+   * reconstruction must show that revision and its own predecessor — not the current state,
+   * and not whichever revision was newest at the announcement's timestamp.
+   */
+  it('resolves to the named revision even after later edits supersede it', async () => {
+    const route = await makeRoute()
+    const stepId = route.steps.test ?? ''
+
+    const v2 = await reviseStep({
+      actor: { id: author },
+      stepId,
+      label: 'IELTS or TOEFL',
+      category: StepCategory.language_testing,
+    })
+    const v3 = await reviseStep({
+      actor: { id: author },
+      stepId,
+      label: 'IELTS, TOEFL or PTE',
+      category: StepCategory.language_testing,
+    })
+    const v4 = await reviseStep({
+      actor: { id: author },
+      stepId,
+      label: 'Any accepted English test',
+      category: StepCategory.language_testing,
+    })
+    expect(v2.revisionId).not.toBe(v4.revisionId)
+
+    // The announcement is about the *middle* edit.
+    const change = await announceChange({
+      authorId: author,
+      routeId: route.routeId,
+      kind: RouteChangeKind.structural,
+      severity: ChangeSeverity.relevant,
+      title: 'PTE accepted',
+      stepId,
+      describes: { stepRevisionIds: [v3.revisionId] },
+    })
+
+    const shadow = await shadowForChange(change.changeId)
+    if (!shadow) throw new Error('expected a reconstruction')
+
+    expect(shadow.after.steps.find((s) => s.id === stepId)?.label).toBe('IELTS, TOEFL or PTE')
+    expect(shadow.before.steps.find((s) => s.id === stepId)?.label).toBe('IELTS or TOEFL')
+
+    // Emphatically not the current state, which has moved on twice since.
+    const live = await loadRouteGraph(route.routeId)
+    expect(live.steps.find((s) => s.id === stepId)?.label).toBe('Any accepted English test')
+    expect(shadow.after.steps.find((s) => s.id === stepId)?.label).not.toBe(
+      'Any accepted English test',
+    )
+  })
+
+  /**
+   * A change that *added* a step: the named revision has no predecessor, so the step is simply
+   * absent from the before-side. That is the structural case, and where the comparison and the
+   * link have to agree.
+   */
+  it('shows an added step as absent before, without consulting any date', async () => {
+    const route = await makeRoute()
+    const aps = await addStep({
+      actor: { id: author },
+      routeId: route.routeId,
+      label: 'APS certificate',
+      category: StepCategory.documents_preparation,
+    })
+    await addEdge({
+      actor: { id: author },
+      routeId: route.routeId,
+      fromStepId: route.steps.docs ?? '',
+      toStepId: aps.stepId,
+      kind: StepEdgeKind.sequential,
+    })
+
+    const change = await announceChange({
+      authorId: author,
+      routeId: route.routeId,
+      kind: RouteChangeKind.structural,
+      severity: ChangeSeverity.critical,
+      title: 'APS certificate now required',
+      stepId: aps.stepId,
+      describes: { stepRevisionIds: [aps.revisionId] },
+    })
+
+    const shadow = await shadowForChange(change.changeId)
+    if (!shadow) throw new Error('expected a reconstruction')
+
+    expect(shadow.before.steps.some((s) => s.id === aps.stepId)).toBe(false)
+    expect(shadow.after.steps.some((s) => s.id === aps.stepId)).toBe(true)
+    expect(shadow.comparison.scale.added).toBe(1)
+    expect(shadow.comparison.structureChanged).toBe(true)
+
+    // No edge is left dangling on the before-side, which would hand the renderer a connector
+    // to a step that is not there.
+    const beforeIds = new Set(shadow.before.steps.map((s) => s.id))
+    for (const edge of shadow.before.edges) {
+      expect(beforeIds.has(edge.fromStepId)).toBe(true)
+      expect(beforeIds.has(edge.toStepId)).toBe(true)
+    }
+  })
+
+  it('offers no comparison at all when an announcement names nothing', async () => {
+    const route = await makeRoute()
+    const change = await announceChange({
+      authorId: author,
+      routeId: route.routeId,
+      kind: RouteChangeKind.field_correction,
+      severity: ChangeSeverity.informational,
+      title: 'A general remark about this route',
+    })
+    // An honest absence, rather than a diff assembled from timestamps.
+    expect(await shadowForChange(change.changeId)).toBeNull()
+  })
+
+  it('refuses to name a revision belonging to another route', async () => {
+    const mine = await makeRoute()
+    const theirs = await makeRoute()
+    const elsewhere = await reviseStep({
+      actor: { id: author },
+      stepId: theirs.steps.docs ?? '',
+      label: 'Their documents step',
+      category: StepCategory.documents_preparation,
+    })
+
+    await expect(
+      announceChange({
+        authorId: author,
+        routeId: mine.routeId,
+        kind: RouteChangeKind.structural,
+        severity: ChangeSeverity.relevant,
+        title: 'Pointing at another route history',
+        describes: { stepRevisionIds: [elsewhere.revisionId] },
+      }),
+    ).rejects.toThrow()
+
+    expect(await prisma.routeChange.count({ where: { routeId: mine.routeId } })).toBe(0)
+  })
+
+  /**
+   * The database refuses a link row that resolves to nothing, or to two things. Enforced by a
+   * CHECK constraint rather than by the service alone, because a meaningless link would make
+   * the reconstruction quietly wrong rather than loudly broken.
+   */
+  it('refuses a link row with no reference, or with two', async () => {
+    const route = await makeRoute()
+    const { changeId } = await announceChange({
+      authorId: author,
+      routeId: route.routeId,
+      kind: RouteChangeKind.field_correction,
+      severity: ChangeSeverity.informational,
+      title: 'A change to hang bad links off',
+    })
+    const revision = await prisma.stepRevision.findFirstOrThrow({
+      where: { step: { routeId: route.routeId } },
+      select: { id: true },
+    })
+    const edgeRevision = await prisma.stepEdgeRevision.findFirstOrThrow({
+      where: { stepEdge: { routeId: route.routeId } },
+      select: { id: true },
+    })
+
+    await expect(prisma.routeChangeRevision.create({ data: { changeId } })).rejects.toThrow()
+
+    await expect(
+      prisma.routeChangeRevision.create({
+        data: { changeId, stepRevisionId: revision.id, stepEdgeRevisionId: edgeRevision.id },
+      }),
+    ).rejects.toThrow()
+  })
+
+  /**
+   * The state an announcement points at cannot be altered underneath it, which is what makes
+   * "it reads the same in five years" a property rather than a hope.
+   */
+  it('points at rows the database refuses to change or remove', async () => {
+    const route = await makeRoute()
+    const edit = await reviseStep({
+      actor: { id: author },
+      stepId: route.steps.docs ?? '',
+      label: 'Documents and certified copies',
+      category: StepCategory.documents_preparation,
+    })
+    const { changeId } = await announceChange({
+      authorId: author,
+      routeId: route.routeId,
+      kind: RouteChangeKind.structural,
+      severity: ChangeSeverity.relevant,
+      title: 'Certified copies added',
+      describes: { stepRevisionIds: [edit.revisionId] },
+    })
+
+    await expect(
+      prisma.stepRevision.updateMany({
+        where: { id: edit.revisionId },
+        data: { label: 'Rewritten history' },
+      }),
+    ).rejects.toThrow()
+    await expect(
+      prisma.stepRevision.deleteMany({ where: { id: edit.revisionId } }),
+    ).rejects.toThrow()
+    // And the link itself is not deletable by a normal user.
+    await expect(prisma.routeChangeRevision.deleteMany({ where: { changeId } })).rejects.toThrow()
+
+    const shadow = await shadowForChange(changeId)
+    expect(shadow?.after.steps.find((s) => s.id === route.steps.docs)?.label).toBe(
+      'Documents and certified copies',
+    )
   })
 })

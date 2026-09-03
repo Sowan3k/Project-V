@@ -277,6 +277,10 @@ rendering it guards is not written yet.
 | 21 | Change relevance is computed from effective date, not edit date | ✅ |
 | 21b | A step completed before a change's effective date stays completed and reads as context | ✅ |
 | 21c | No module compares a follower's recorded date against the *announcement* date | ✅ |
+| 21d | An announcement resolves to the exact revision it names, not to a date | ✅ |
+| 21e | Two announcements at one timestamp resolve to different, correct states | ✅ |
+| 21f | A forked revision chain leaves no announcement ambiguous | ✅ |
+| 21g | `shadowForChange` contains no date comparison at all | ✅ |
 | 22 | The route model represents a branch that diverges and reconnects | ✅ |
 | 23 | 30-day dormancy applies to unused new routes only; established routes go quiet/stale | ⬜ |
 
@@ -1221,3 +1225,60 @@ saying why.
 and should prefer asserting the underlying row over the rendered projection where both are
 available.** The integration tests insert a 25ms pause before "after" writes for the same
 reason.
+
+---
+
+## 19. The Phase 10 review finding: date association was never going to hold
+
+The review asked for one thing Phase 10 had left implicit — a durable link between a change
+announcement and the revision state it describes — and it was right to.
+
+**The failure would have been silent.** Matching by date works perfectly on a quiet route with
+one change a month, which is exactly the shape of every fixture written so far. It breaks on
+the shape this product is *for*: a busy route where several people edit together. Nothing would
+have thrown; the shadow comparison would simply have shown the wrong "before" and looked
+entirely plausible doing it.
+
+Three properties of the ledger make it unusable, and every one of them is deliberate:
+
+| Property | Where it comes from | What it does to date matching |
+|---|---|---|
+| Revisions in one transaction share a `createdAt` | Phase 3's write service appends and repoints in one transaction | A cut between two of them is arbitrary |
+| `previousRevisionId` is non-unique | Concurrent edits both survive (FR-70, invariant 15) | "Current at time T" has two correct answers |
+| Announcements cluster | Contributors edit, then announce | Two changes minutes apart describe edits made together |
+
+Phase 10 had already met the first of these in CI (§18) and treated it as a test-timing
+nuisance. It was a design signal.
+
+### Why only the "to" side is stored
+
+The obvious shape is a from/to pair. It is wrong here, because every revision already carries
+`previousRevisionId` — immutably, enforced by trigger. Storing a "from" as well would duplicate
+a fact the ledger owns, and a duplicate can disagree with the original; the copy would then be
+wrong in exactly the cases where somebody was relying on it.
+
+Storing only the "to" also gives one fact for free: a named revision whose `previousRevisionId`
+is null means the entity did not exist before. "This change added a step" needs no flag.
+
+### What made the guard non-vacuous
+
+The most valuable assertion in this batch reads the *source* of `shadowForChange` and requires
+it to contain no `createdAt`, no `announcedAt`, no `lte`/`gte`, and no `getTime()`. That is
+crude, and it is the only form of the claim a test can actually make: any test that fed it data
+would pass just as happily on a date-based implementation, because on tidy fixtures the two
+agree. The property being defended is *how the answer is obtained*, so the source is what has
+to be checked.
+
+The same reasoning produced the two-timestamp integration test, which constructs the ambiguity
+on purpose — two announcements written with one `new Date()` — and asserts the premise
+(`new Set(...).size === 1`) before asserting the behaviour. Without that assertion the test
+would quietly stop testing anything the day timestamps stopped colliding.
+
+### One guard tripped on the schema's own prose
+
+`introduces no snapshot, version number or sequence` failed on comments explaining *why there
+is no snapshot table*. `SCHEMA` strips `///` documentation but keeps `//` notes.
+
+Fixed by stripping both comment forms for that assertion — the same rule the enum single-source
+guard already follows, for the same reason: prose cannot drift into behaviour, so scanning it
+as if it could produces findings that are pure noise. **An absence guard must read code only.**
