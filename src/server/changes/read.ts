@@ -66,17 +66,6 @@ export async function changesForRoute(routeId: string, limit = 50): Promise<read
   return rows.map(toChangeView)
 }
 
-/** Changes announced strictly after a moment — the "since you started following" query. */
-export async function changesSince(routeId: string, since: Date): Promise<readonly ChangeView[]> {
-  const rows = await prisma.routeChange.findMany({
-    where: { routeId, announcedAt: { gt: since } },
-    select: CHANGE_SELECT,
-    orderBy: [{ announcedAt: 'desc' }, { id: 'desc' }],
-  })
-
-  return rows.map(toChangeView)
-}
-
 function toChangeView(row: {
   id: string
   kind: RouteChangeKind

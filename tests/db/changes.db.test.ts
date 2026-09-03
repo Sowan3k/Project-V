@@ -22,7 +22,6 @@ import {
 } from '../../src/server/changes/read'
 import {
   announceChange,
-  disruptionBecamePermanent,
   recordDisruption,
   resolveDisruption,
 } from '../../src/server/changes/service'
@@ -764,9 +763,16 @@ describe.skipIf(!url)('FR-32, FR-63 — a disruption appears, expires, and rewri
   })
 
   /**
-   * BR-08's escape hatch, done deliberately: a disruption that turns out to be permanent is
-   * resolved *and* a change is announced. Both records survive, because "it started as a
-   * closure in September and became the rule" is the actual history.
+   * BR-08's escape hatch, walked the way a contributor actually walks it.
+   *
+   * "Temporary disruptions should expire or resolve without permanently redefining the route
+   * **unless they become structural changes**." That is two deliberate acts with a form each
+   * — resolve the disruption, announce the change — and deliberately not a one-click
+   * conversion, which would blur exactly the line invariant 19 keeps sharp.
+   *
+   * Both records survive, and that is the point: "it started as a closure in September and
+   * became the rule" is the actual history, and a single combined record would lose how the
+   * community learned it.
    */
   it('records a disruption that became permanent as two facts, not one', async () => {
     const route = await makeRoute()
@@ -780,25 +786,39 @@ describe.skipIf(!url)('FR-32, FR-63 — a disruption appears, expires, and rewri
       stepId: route.steps.visa ?? '',
     })
 
-    const { changeId } = await disruptionBecamePermanent({
+    // Step one: it is over as a temporary thing.
+    await resolveDisruption({
       authorId: author,
       disruptionId,
+      note: 'The suspension was made permanent.',
+    })
+
+    // Step two: the route really did change, so that is announced separately.
+    const { changeId } = await announceChange({
+      authorId: author,
+      routeId: route.routeId,
       kind: RouteChangeKind.structural,
       severity: ChangeSeverity.critical,
       title: 'Interview requirement removed permanently',
       effectiveAt: ago(1),
+      stepId: route.steps.visa ?? '',
     })
 
     const disruption = await prisma.temporaryDisruption.findUniqueOrThrow({
       where: { id: disruptionId },
     })
     expect(disruption.resolvedAt).not.toBeNull()
+    // The original window is intact, so the history stays legible.
+    expect(disruption.endsAt?.toDateString()).toBe(ahead(1).toDateString())
 
     const change = await prisma.routeChange.findUniqueOrThrow({ where: { id: changeId } })
     expect(change.routeId).toBe(route.routeId)
-    // It inherited the disruption's process scope, so the "where" is not lost in the handover.
     expect(change.stepId).toBe(route.steps.visa)
     expect(change.effectiveAt).not.toBeNull()
+
+    // Two records, both readable. Neither replaced the other.
+    expect(await prisma.temporaryDisruption.count({ where: { routeId: route.routeId } })).toBe(1)
+    expect(await prisma.routeChange.count({ where: { routeId: route.routeId } })).toBe(1)
   })
 
   it('refuses a window that ends before it starts', async () => {

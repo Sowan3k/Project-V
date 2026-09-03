@@ -162,22 +162,6 @@ export async function followerChangeReport(
   }
 }
 
-/**
- * Just the headline: does this follower have anything to look at? — FR-28.
- *
- * Cheap enough to call from the route header on every view, so the Changes tab can carry a
- * count without the page loading a full comparison it may never show.
- */
-export async function followerChangeCount(
-  userId: string,
-  routeId: string,
-  { now = new Date() }: { now?: Date } = {},
-): Promise<{ total: number; needsAttention: number } | null> {
-  const report = await followerChangeReport(userId, routeId, { now })
-  if (report === null) return null
-  return { total: report.changes.length, needsAttention: report.needsAttention }
-}
-
 /* ══════════════════════════════════════════════════════════════════════════════════════════
    The follower's own answer — §13.3
    ══════════════════════════════════════════════════════════════════════════════════════════ */

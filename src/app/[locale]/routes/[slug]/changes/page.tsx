@@ -6,6 +6,7 @@ import {
   DisruptionCard,
   DisruptionList,
   FollowerChangeList,
+  ResolveDisruptionControl,
 } from '@/components/changes'
 import { ContentColumn, GridRegion, PageGrid } from '@/components/layout'
 import { RouteContext } from '@/components/route-context'
@@ -28,6 +29,7 @@ import {
   announceChangeAction,
   clearChangeStanceAction,
   recordDisruptionAction,
+  resolveDisruptionAction,
   setChangeStanceAction,
 } from './actions'
 
@@ -82,6 +84,12 @@ export default async function RouteChangesPage({
   // identity at all. Two functions in two directories, on opposite sides of the privacy line.
   const report = viewer === null ? null : await followerChangeReport(viewer.id, route.id, { now })
 
+  // Resolving a running disruption is a contribution like any other, so it is offered to any
+  // signed-in reader — following the route is not a prerequisite for knowing the centre
+  // reopened (invariant 3).
+  const resolve =
+    viewer === null ? undefined : { locale, slug, action: resolveDisruptionAction }
+
   return (
     <RouteContext route={route} dictionary={t} locale={locale} tab="changes">
       <ContentColumn width="canvas">
@@ -131,9 +139,19 @@ export default async function RouteChangesPage({
           </ContentColumn>
 
           {report === null ? (
-            <AnonymousDisruptions routeId={route.id} dictionary={t} now={now} />
+            <PublicDisruptions
+              routeId={route.id}
+              dictionary={t}
+              now={now}
+              resolve={resolve}
+            />
           ) : (
-            <DisruptionList entries={report.disruptions} dictionary={t} now={now} />
+            <DisruptionList
+              entries={report.disruptions}
+              dictionary={t}
+              now={now}
+              resolve={resolve}
+            />
           )}
         </section>
 
@@ -269,14 +287,24 @@ async function AnonymousChangeList({
   )
 }
 
-async function AnonymousDisruptions({
+/**
+ * Disruptions for a reader with no journey — no relevance, because there is no progress to
+ * measure against and inventing a position would be a lie.
+ */
+async function PublicDisruptions({
   routeId,
   dictionary: t,
   now,
+  resolve,
 }: {
   routeId: string
   dictionary: Dictionary
   now: Date
+  resolve?: {
+    locale: string
+    slug: string
+    action: (formData: FormData) => void | Promise<void>
+  }
 }) {
   const disruptions = await disruptionsForRoute(routeId, { now })
   if (disruptions.length === 0) {
@@ -285,12 +313,17 @@ async function AnonymousDisruptions({
   return (
     <ul className="mt-3 space-y-3">
       {disruptions.map((disruption) => (
-        <DisruptionCard
-          key={disruption.id}
-          disruption={disruption}
-          dictionary={t}
-          now={now}
-        />
+        <DisruptionCard key={disruption.id} disruption={disruption} dictionary={t} now={now}>
+          {resolve === undefined || !disruption.active ? null : (
+            <ResolveDisruptionControl
+              disruptionId={disruption.id}
+              locale={resolve.locale}
+              slug={resolve.slug}
+              action={resolve.action}
+              dictionary={t}
+            />
+          )}
+        </DisruptionCard>
       ))}
     </ul>
   )

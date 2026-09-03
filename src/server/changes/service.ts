@@ -89,36 +89,6 @@ export async function announceChange(input: AnnounceChangeInput): Promise<{ chan
   return { changeId: created.id }
 }
 
-/**
- * Correct an announcement — its severity, its wording, or an effective date learned later.
- *
- * Editing rather than appending is right here, and it is not a hole in invariant 2. The
- * announcement is a label on an event, not a claim about the world that somebody might later
- * need to see the earlier version of; the *change itself* lives in the revision ledger and is
- * as immutable as ever. What must never be possible is making an announcement vanish, and
- * that is enforced elsewhere: `RouteChange` is a community signal, and the write guard
- * refuses `delete` on it outright.
- */
-export async function reviseAnnouncement(
-  input: Contributor & {
-    readonly changeId: string
-    readonly severity?: ChangeSeverity
-    readonly title?: string
-    readonly detail?: string | null
-    readonly effectiveAt?: Date | null
-  },
-): Promise<void> {
-  await prisma.routeChange.update({
-    where: { id: input.changeId },
-    data: {
-      ...(input.severity === undefined ? {} : { severity: input.severity }),
-      ...(input.title === undefined ? {} : { title: input.title.trim() }),
-      ...(input.detail === undefined ? {} : { detail: emptyToNull(input.detail) }),
-      ...(input.effectiveAt === undefined ? {} : { effectiveAt: input.effectiveAt }),
-    },
-  })
-}
-
 /* ══════════════════════════════════════════════════════════════════════════════════════════
    Temporary disruptions — the overlay that never edits the route
    ══════════════════════════════════════════════════════════════════════════════════════════ */
@@ -181,6 +151,14 @@ export async function recordDisruption(
  * happened stay separately legible. Somebody reading later can see that a fortnight's closure
  * was called off after four days, which is a different and more useful fact than a fortnight
  * that was always four days.
+ *
+ * **A disruption that turns out to be permanent is resolved here and then announced as a
+ * change** — two deliberate acts by a person, with a form each. BR-08 allows a disruption to
+ * become a structural change; it does not ask for a one-click conversion, and a shortcut that
+ * did both at once would blur the line between an overlay and a revision that invariant 19
+ * exists to keep sharp. Keeping both records is the point: "it started as a closure in
+ * September and became the rule" is the actual history, and one combined record would lose how
+ * the community learned it.
  */
 export async function resolveDisruption(
   input: Contributor & { readonly disruptionId: string; readonly note?: string | null },
@@ -188,52 +166,6 @@ export async function resolveDisruption(
   await prisma.temporaryDisruption.update({
     where: { id: input.disruptionId },
     data: { resolvedAt: new Date(), resolvedNote: emptyToNull(input.note) },
-  })
-}
-
-/**
- * A disruption that became permanent — BR-08, BR-27.
- *
- * Named for what BR-08 calls it ("unless they become structural changes") rather than
- * "promote", which the invariant-13 guard reads as paid placement and which would have been
- * a misleading word here anyway — nothing is being elevated in standing.
- *
- * "Temporary disruptions should expire or resolve without permanently redefining the route
- * **unless they become structural changes**." That escape hatch is deliberately not automatic
- * and deliberately not a mutation of the disruption into a revision. What happens instead is
- * what a person would do: the disruption is resolved, and a permanent change is announced
- * alongside whatever route edit the contributor makes through the revision service.
- *
- * Keeping both records is the point. "This started as a two-week closure in September and
- * turned out to be the new rule" is the actual history, and collapsing it into a single
- * permanent change would erase how the community learned it.
- */
-export async function disruptionBecamePermanent(
-  input: Contributor & {
-    readonly disruptionId: string
-    readonly kind: RouteChangeKind
-    readonly severity: ChangeSeverity
-    readonly title: string
-    readonly detail?: string | null
-    readonly effectiveAt?: Date | null
-  },
-): Promise<{ changeId: string }> {
-  const disruption = await prisma.temporaryDisruption.findUniqueOrThrow({
-    where: { id: input.disruptionId },
-    select: { routeId: true, stepId: true },
-  })
-
-  await resolveDisruption({ authorId: input.authorId, disruptionId: input.disruptionId })
-
-  return announceChange({
-    authorId: input.authorId,
-    routeId: disruption.routeId,
-    stepId: disruption.stepId,
-    kind: input.kind,
-    severity: input.severity,
-    title: input.title,
-    detail: input.detail ?? null,
-    effectiveAt: input.effectiveAt ?? null,
   })
 }
 

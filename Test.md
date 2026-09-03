@@ -1161,6 +1161,33 @@ archived, which the bare word never did.
 A standing note for later phases: **check new string unions against the enum registry before
 writing them**, not after. The check is three lines of Node against the `as const` arrays.
 
+### The SVG `<title>` trap, a second time — and why the fix improved the test
+
+Four E2E failures on the first Phase 10 gate run (#42), all one cause. `getByText('APS
+certificate')` resolved to `<title>3. APS certificate — Documents and preparation</title>`
+inside the road's `<svg>`, which Playwright reports as **hidden**: it is an accessibility
+label, not rendered text. Test.md §17 already records this exact trap from Phase 8; the road
+is drawn above the comparison rows, so the title is simply first in DOM order.
+
+`.first()` does not help — it selects the wrong element more decisively. The fix is to scope
+to the element that actually carries the claim:
+
+```
+const addedRow = page.locator('li').filter({ hasText: 'APS certificate' }).first()
+await expect(addedRow.getByText(/was not part of the route then/i)).toBeVisible()
+await expect(addedRow.getByText(/^added$/i)).toBeVisible()
+```
+
+That is a **better assertion than the one it replaced**. Three loose string matches on a page
+became one row proving the step, the gap opposite it and the "Added" mark appear *together* —
+which is what FR-77's "location of change" actually claims. Same for the disruption card: its
+date, location and process scope are now asserted within one card, so they are proved to
+belong to each other rather than merely to be somewhere on the page.
+
+**Standing rule for this suite: when route content is under test, scope the assertion to the
+row, card or form that carries it.** The road will always match first, and matching the road
+is never the thing being tested.
+
 ### What the guards cannot prove, and what covers it instead
 
 **That the side-by-side comparison is actually comprehensible.** Tests can assert that both

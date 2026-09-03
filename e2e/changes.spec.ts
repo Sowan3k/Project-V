@@ -192,10 +192,20 @@ test.describe('change propagation', () => {
     // FR-30, BR-17, invariant 8 — said plainly, above the fold.
     await expect(page.getByText(/your completed steps, dates, tasks and notes are exactly/i)).toBeVisible()
 
-    // FR-77 — scale AND location. A new step appears with nothing opposite it.
+    // FR-77 — scale AND location.
     await expect(page.getByText(/1 step added/i).first()).toBeVisible()
-    await expect(page.getByText('APS certificate').first()).toBeVisible()
-    await expect(page.getByText(/was not part of the route then/i).first()).toBeVisible()
+
+    // The location, asserted as one row rather than three loose strings: the added step, the
+    // gap opposite it, and the mark, all on the same line of the comparison.
+    //
+    // Scoped to the row deliberately. A bare `getByText('APS certificate')` matches the road's
+    // own `<title>` first — which is the renderer having correctly drawn the new step, but is
+    // an accessibility label rather than visible text, so it fails a visibility assertion
+    // (Test.md §17, and again here).
+    const addedRow = page.locator('li').filter({ hasText: 'APS certificate' }).first()
+    await expect(addedRow).toBeVisible()
+    await expect(addedRow.getByText(/was not part of the route then/i)).toBeVisible()
+    await expect(addedRow.getByText(/^added$/i)).toBeVisible()
 
     // §14.2 — the comparison is against the day they started following.
     await expect(page.getByText(/the route when you started/i).first()).toBeVisible()
@@ -317,24 +327,29 @@ test.describe('change propagation', () => {
 
     await page.goto(`/en/routes/${route.slug}/changes`)
 
-    // All three scopes on the face of it — when, where, which part of the process.
-    await expect(page.getByText(new RegExp(marker, 'i'))).toBeVisible()
-    await expect(page.getByText('Dhaka, Bangladesh').first()).toBeVisible()
-    await expect(page.getByText('Language test').first()).toBeVisible()
-    await expect(page.getByText(/happening now/i).first()).toBeVisible()
+    // All three scopes on one card — when, where, and which part of the process. Asserted
+    // within the card so it proves they belong together, and so `Language test` matches the
+    // card's own text rather than the road's `<title>`.
+    const card = page.locator('li').filter({ hasText: marker }).first()
+    await expect(card).toBeVisible()
+    await expect(card.getByText('Dhaka, Bangladesh')).toBeVisible()
+    await expect(card.getByText('Language test')).toBeVisible()
+    await expect(card.getByText(/happening now/i)).toBeVisible()
 
     // §31.4 — it overlaps their own planned date, so it is a caution rather than a notice.
-    await expect(page.getByText(/overlaps the date you planned for this step/i)).toBeVisible()
+    await expect(card.getByText(/overlaps the date you planned for this step/i)).toBeVisible()
 
     // BR-27, said on the card: this is not a route change.
     await expect(
-      page.getByText(/this is a temporary condition, not a change to the route/i).first(),
+      card.getByText(/this is a temporary condition, not a change to the route/i),
     ).toBeVisible()
 
-    // Invariant 19 — the road itself is untouched. Same three steps, same labels.
+    // Invariant 19 — the road itself is untouched. Same three steps, same labels, read from
+    // the rendered road's accessible titles rather than by visible-text matching.
     await page.goto(`/en/routes/${route.slug}`)
+    const roadTitles = await page.locator('svg[role="img"] title').allTextContents()
     for (const label of ['Documents', 'Language test', 'Visa application']) {
-      await expect(page.getByText(label).first()).toBeVisible()
+      expect(roadTitles.some((title) => title.includes(label)), label).toBe(true)
     }
     const revisionsAfter = await prisma.stepRevision.count({
       where: { step: { routeId: route.routeId } },
@@ -417,14 +432,13 @@ test.describe('change propagation', () => {
     await page.goto(`/en/routes/${route.slug}/changes`)
 
     const marker = `strike-${randomUUID().slice(0, 8)}`
-    const form = page.locator('form').filter({
-      has: page.getByRole('button', { name: /record this disruption/i }),
-    })
-    await form.locator('input[name="disruptionTitle"]').fill(`Embassy strike ${marker}`)
-    await form.locator('input[name="startsAt"]').fill(new Date().toISOString().slice(0, 10))
-    await form.locator('input[name="endsAt"]').fill(ahead(5).toISOString().slice(0, 10))
-    await form.locator('input[name="locationScope"]').fill('Dhaka, Bangladesh')
-    await form.getByRole('button', { name: /record this disruption/i }).click()
+    // Located by field name rather than by accessible name: a control's accessible name
+    // includes its own content, so a filled input stops matching its label (Test.md §17).
+    await page.locator('input[name="disruptionTitle"]').fill(`Embassy strike ${marker}`)
+    await page.locator('input[name="startsAt"]').fill(new Date().toISOString().slice(0, 10))
+    await page.locator('input[name="endsAt"]').fill(ahead(5).toISOString().slice(0, 10))
+    await page.locator('input[name="locationScope"]').fill('Dhaka, Bangladesh')
+    await page.getByRole('button', { name: /record this disruption/i }).click()
 
     // Live, with no review step in between.
     await expect(page.getByText(new RegExp(marker, 'i'))).toBeVisible()

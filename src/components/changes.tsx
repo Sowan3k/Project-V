@@ -35,6 +35,9 @@ import type { RelevantChange, RelevantDisruption } from '@/server/journeys/chang
  * because no such conclusion is ever ours to draw (FR-30, BR-17, §41.3, invariant 8).
  */
 
+const INPUT =
+  'mt-1 block w-full rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
+
 /* ══════════════════════════════════════════════════════════════════════════════════════════
    Severity and dates
    ══════════════════════════════════════════════════════════════════════════════════════════ */
@@ -410,14 +413,64 @@ export function DisruptionCard({
   )
 }
 
+/**
+ * "It has ended" — BR-08.
+ *
+ * A disruption that could only ever expire on its announced schedule would leave a closure
+ * showing for a week after it was lifted, which is exactly the stale-information problem this
+ * platform exists to fix. Resolving sets `resolvedAt` and leaves `endsAt` alone, so the
+ * announced window and what actually happened stay separately readable.
+ *
+ * Offered to any signed-in contributor, like every other contribution here — no approval gate
+ * and no ownership (invariant 3).
+ */
+export function ResolveDisruptionControl({
+  disruptionId,
+  locale,
+  slug,
+  action,
+  dictionary: t,
+}: {
+  disruptionId: string
+  locale: string
+  slug: string
+  action: (formData: FormData) => void | Promise<void>
+  dictionary: Dictionary
+}) {
+  return (
+    <form action={action} className="mt-3 flex flex-wrap items-end gap-2 border-t border-hairline pt-3">
+      <input type="hidden" name="locale" value={locale} />
+      <input type="hidden" name="slug" value={slug} />
+      <input type="hidden" name="disruptionId" value={disruptionId} />
+      <label className="flex-1 text-xs text-ink-700">
+        {t.changes.fieldDetail}
+        <input type="text" name="resolvedNote" className={INPUT} />
+      </label>
+      <button
+        type="submit"
+        className="rounded-lg border border-hairline px-2.5 py-1.5 text-xs text-ink-900 hover:border-brand-700 hover:text-brand-900"
+      >
+        {t.changes.resolveDisruption}
+      </button>
+    </form>
+  )
+}
+
 export function DisruptionList({
   entries,
   dictionary: t,
   now,
+  resolve,
 }: {
   entries: readonly RelevantDisruption[]
   dictionary: Dictionary
   now: Date
+  /** Present only for a signed-in reader; absent means the control is not offered. */
+  resolve?: {
+    locale: string
+    slug: string
+    action: (formData: FormData) => void | Promise<void>
+  }
 }) {
   if (entries.length === 0) {
     return <p className="mt-3 text-sm text-ink-700">{t.changes.noDisruptions}</p>
@@ -431,7 +484,18 @@ export function DisruptionList({
           relevance={entry.relevance}
           dictionary={t}
           now={now}
-        />
+        >
+          {/* Only worth offering while it is still running. */}
+          {resolve === undefined || !entry.disruption.active ? null : (
+            <ResolveDisruptionControl
+              disruptionId={entry.disruption.id}
+              locale={resolve.locale}
+              slug={resolve.slug}
+              action={resolve.action}
+              dictionary={t}
+            />
+          )}
+        </DisruptionCard>
       ))}
     </ul>
   )
