@@ -107,9 +107,31 @@ Full write-up in [Phases.md](Phases.md). Decisions worth carrying forward:
 | **Merge is a pointer, not a content transfer** | Relocating steps would put revision chains under a route that did not author them and detach journey progress from the route its owner chose. Nothing moves, so both histories and both follower sets survive by construction (FR-58, BR-25, §40.4). |
 | **A duplicate flag changes nothing, and is never counted** | §40.1 protects routes that overlap but differ. Ten flags and one flag both mean "an administrator should compare these". |
 
+### Owner decisions on Phase 11 (2026-09-03)
+
+Phase 11 approved with two decisions, both recorded durably in CLAUDE.md §5:
+
+**1. The quiet window is 90 days — an owner-approved V1 implementation parameter.** Explicitly
+*not* derived from the frozen baseline: §19 says "no recent activity" and never defines
+*recent*, and §11 leaves the related staleness threshold open. `quiet` stays informational
+only, generates no caution, must never imply stale/unsafe/invalid/disputed/dormant/abandoned,
+and never downgrades an established route. **Phase 12 must review its reader-facing wording.**
+No further lifecycle thresholds are to be invented.
+
+**2. Canonical-successor merge semantics approved for V1**, recorded so §40.4's "combine them
+into a stronger canonical route" is never later reinterpreted as destructive physical content
+movement. A duplicate keeps its steps, fields, revision chains, attribution, followers,
+journeys and private progress; it leaves discovery and signposts the successor. Useful
+information reaches the canonical route through the ordinary *attributed* contribution system,
+not by rewriting historical ownership. Identities stay stable, the merge is reversible, and
+both routes keep rendering through the one generic renderer.
+
+No requirement was amended or renumbered — neither decision needed formal change control.
+Both are implementation interpretations recorded against existing requirements.
+
 ### Next step
 
-Phase 12 — responsive, accessibility, polish and the support link — **awaiting approval.**
+Phase 12 — responsive, accessibility, polish and the support link.
 
 Two items are already logged for it (Test.md §18 and §21): the Phase 10 shadow comparison and
 the Phase 11 "quiet" copy have both been reasoned about carefully and neither has been in front

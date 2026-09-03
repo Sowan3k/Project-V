@@ -808,6 +808,17 @@ lifecycle and merge, and the Phase 3 model-classification test refused it — on
 decision. `Route.mergedIntoId` itself has existed since Phase 2. Migration
 `20260903235000_lifecycle_duplicates_and_merge` is `CREATE`/`ADD COLUMN` only.
 
+**Two owner decisions, both recorded in CLAUDE.md §5** (2026-09-03):
+
+- **The 90-day quiet window is an approved V1 implementation parameter, not a baseline rule.**
+  §19 defines `quiet` as "no recent activity" and never defines *recent*. It stays
+  informational, generates no caution, and never downgrades an established route. Phase 12
+  reviews its wording.
+- **Canonical-successor merge is the approved V1 semantics**, recorded explicitly so §40.4's
+  "combine them into a stronger canonical route" is never reinterpreted as destructive content
+  movement. Information reaches the survivor through the ordinary attributed contribution
+  system, never by transplanting revision chains.
+
 ---
 
 ## Phase 12 — Responsive, accessibility, polish, support link
