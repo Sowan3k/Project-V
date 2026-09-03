@@ -150,7 +150,7 @@ export interface DuplicateFlagView {
   readonly duplicateOfSlug: string
   readonly duplicateOfTitle: string
   readonly note: string | null
-  readonly reporterHandle: string | null
+  readonly flaggedByHandle: string | null
   readonly createdAt: Date
 }
 
@@ -172,7 +172,7 @@ export async function openDuplicateFlags(limit = 50): Promise<readonly Duplicate
       id: true,
       note: true,
       createdAt: true,
-      reporter: { select: { handle: true } },
+      flaggedBy: { select: { handle: true } },
       route: { select: { slug: true, currentRevision: { select: { title: true } } } },
       duplicateOf: { select: { slug: true, currentRevision: { select: { title: true } } } },
     },
@@ -187,7 +187,7 @@ export async function openDuplicateFlags(limit = 50): Promise<readonly Duplicate
     duplicateOfSlug: row.duplicateOf.slug,
     duplicateOfTitle: row.duplicateOf.currentRevision?.title ?? row.duplicateOf.slug,
     note: row.note,
-    reporterHandle: row.reporter?.handle ?? null,
+    flaggedByHandle: row.flaggedBy?.handle ?? null,
     createdAt: row.createdAt,
   }))
 }

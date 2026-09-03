@@ -75,7 +75,7 @@ model User {
   disruptionsRecorded TemporaryDisruption[] @relation("DisruptionsRecorded")
 
   lifecycleTransitions  RouteLifecycleEvent[] @relation("LifecycleTransitions")
-  duplicateFlagsFiled   DuplicateFlag[]       @relation("DuplicateFlagsFiled")
+  duplicateFlagsRaised  DuplicateFlag[]       @relation("DuplicateFlagsRaised")
   duplicateFlagsHandled DuplicateFlag[]       @relation("DuplicateFlagsResolved")
   routesMerged          Route[]               @relation("RouteMerges")
 

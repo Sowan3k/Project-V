@@ -13,7 +13,7 @@ import { Road } from '@/renderer'
 import { currentViewer } from '@/server/auth'
 import { getRouteBySlug, getStepFields, searchRoutes } from '@/server/routes/read'
 
-import { flagDuplicateAction } from '../../admin/actions-lifecycle'
+import { flagDuplicateAction } from './actions'
 
 /**
  * The route overview — FR-03, FR-06, FR-09, VR-03, VR-04, VR-05.

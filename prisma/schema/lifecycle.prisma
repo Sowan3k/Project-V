@@ -84,7 +84,7 @@ model DuplicateFlag {
   id      String @id @default(cuid())
 
   /// The route being flagged, and the one it is said to duplicate. Ordered but not directed:
-  /// which of the two survives a merge is the administrator's decision, not the reporter's.
+  /// which of the two survives a merge is the administrator's decision, not the flagger's.
   routeId String
   route   Route  @relation("DuplicateFlagSubject", fields: [routeId], references: [id], onDelete: Restrict)
   duplicateOfId String
@@ -92,8 +92,12 @@ model DuplicateFlag {
 
   note String?
 
-  reporterId String?
-  reporter   User?   @relation("DuplicateFlagsFiled", fields: [reporterId], references: [id], onDelete: SetNull)
+  /// Named `flaggedBy`, not `reporter`. In this product REPORT means "this may be dangerous"
+  /// and is reserved for the safety path (§23.1, CLAUDE.md §5); a duplicate flag is editorial
+  /// housekeeping. Borrowing the word would blur the one separation the safety architecture
+  /// spends the most effort keeping sharp — and two architecture guards caught it doing so.
+  flaggedById String?
+  flaggedBy   User?   @relation("DuplicateFlagsRaised", fields: [flaggedById], references: [id], onDelete: SetNull)
 
   /// Answered — merged, or judged genuinely different. Both outcomes close the flag, and the
   /// second is a real answer rather than a failure: §40.1 exists to protect it.
@@ -106,7 +110,7 @@ model DuplicateFlag {
 
   /// One standing flag per pair per person. Somebody flagging twice is one opinion, not two —
   /// the same reason `Confirmation` is unique per person (invariant 14).
-  @@unique([routeId, duplicateOfId, reporterId])
+  @@unique([routeId, duplicateOfId, flaggedById])
   @@index([routeId, resolvedAt])
   @@index([duplicateOfId])
   @@map("duplicate_flags")

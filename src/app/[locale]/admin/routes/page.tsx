@@ -124,7 +124,7 @@ export default async function AdminRoutesPage({
                   <p className="mt-1 text-xs leading-5 text-ink-700">{flag.note}</p>
                 )}
                 <p className="mt-1 text-xs text-ink-500">
-                  {flag.reporterHandle ?? '—'} · {flag.createdAt.toISOString().slice(0, 10)}
+                  {flag.flaggedByHandle ?? '—'} · {flag.createdAt.toISOString().slice(0, 10)}
                 </p>
 
                 <form action={resolveDuplicateFlagAction} className="mt-3 flex flex-wrap items-end gap-2">

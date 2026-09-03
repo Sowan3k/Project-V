@@ -8,7 +8,6 @@ import { ROUTE_LIFECYCLE_STATES, RouteLifecycleState as Lifecycle } from '@/doma
 import { optionalText, text } from '@/lib/form-fields'
 import { currentViewer } from '@/server/auth'
 import {
-  flagDuplicate,
   mergeRoutes,
   requireAdministrator,
   resolveDuplicateFlag,
@@ -18,7 +17,11 @@ import {
 } from '@/server/lifecycle/service'
 
 /**
- * Lifecycle, duplicate and merge actions — Phase 11. FR-40, FR-46, FR-58, §19.2, §40.4.
+ * Administrator maintenance actions — Phase 11. FR-40, FR-46, FR-58, §19.2, §40.4.
+ *
+ * Everything here is an administrator's decision. Flagging a *likely* duplicate is not — §40.4
+ * gives that to any contributor — so it lives in the route's own actions file beside the form
+ * that submits it, rather than here where its presence would suggest it needed a role.
  *
  * Every field is read through `@/lib/form-fields`, which throws on a file: Next encodes every
  * server-action form as `multipart/form-data` whatever the page renders, so the refusal has to
@@ -38,25 +41,6 @@ async function requireSignedIn(locale: string, next: string): Promise<{ id: stri
 
 function oneOf<T extends string>(values: readonly T[], raw: string, fallback: T): T {
   return (values as readonly string[]).includes(raw) ? (raw as T) : fallback
-}
-
-/** §40.4 — any signed-in contributor may say two routes look like the same journey. */
-export async function flagDuplicateAction(formData: FormData): Promise<void> {
-  const locale = text(formData, 'locale')
-  const slug = text(formData, 'slug')
-  const viewer = await requireSignedIn(locale, `/${locale}/routes/${slug}`)
-
-  const duplicateOfId = text(formData, 'duplicateOfId')
-  if (duplicateOfId === '') return
-
-  await flagDuplicate({
-    reporterId: viewer.id,
-    routeId: text(formData, 'routeId'),
-    duplicateOfId,
-    note: optionalText(formData, 'duplicateNote'),
-  })
-
-  revalidatePath(`/${locale}/routes/${slug}`)
 }
 
 /** FR-46 — the administrator sets a route's standing, with a reason kept beside it. */

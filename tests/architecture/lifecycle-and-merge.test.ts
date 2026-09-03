@@ -157,7 +157,7 @@ describe('invariant 14, FR-71, BR-32 — no count decides standing', () => {
   it('compares follower and confirmation counts only against zero', () => {
     const domain = stripComments(read('src/domain/lifecycle.ts'))
     const comparisons = [
-      ...domain.matchAll(/(followerCount|confirmationCount|revisionsAfterCreation)\s*[><=!]+\s*(\w+)/g),
+      ...domain.matchAll(/(followerCount|confirmationCount)\s*[><=!]+\s*(\w+)/g),
     ]
     expect(comparisons.length).toBeGreaterThan(0)
     for (const [, name, operand] of comparisons) {
@@ -320,7 +320,7 @@ describe('the administrator role is checked in the service, not in a page', () =
     const start = service.indexOf('export async function flagDuplicate')
     const body = service.slice(start, service.indexOf('\nexport ', start + 10))
     expect(body).not.toMatch(/requireAdministrator/)
-    expect(body).toMatch(/reporterId/)
+    expect(body).toMatch(/flaggedById/)
   })
 
   it('shows a not-found rather than a forbidden to everyone else', () => {

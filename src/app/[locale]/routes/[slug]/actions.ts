@@ -25,6 +25,7 @@ import {
 } from '@/domain/enums'
 import { optionalText, text } from '@/lib/form-fields'
 import { currentViewer } from '@/server/auth'
+import { flagDuplicate } from '@/server/lifecycle/service'
 import {
   addEdge,
   addField,
@@ -233,6 +234,25 @@ export async function challengeFieldAction(formData: FormData): Promise<void> {
     fieldId: text(formData, 'fieldId'),
     reason: oneOf<ChallengeReason>(CHALLENGE_REASONS, text(formData, 'reason'), Reason.other),
     note: optionalText(formData, 'note'),
+  })
+
+  revalidatePath(`/${locale}/routes/${slug}`)
+}
+
+/** §40.4 — any signed-in contributor may say two routes look like the same journey. */
+export async function flagDuplicateAction(formData: FormData): Promise<void> {
+  const locale = text(formData, 'locale')
+  const slug = text(formData, 'slug')
+  const viewer = await requireContributor(locale, `/${locale}/routes/${slug}`)
+
+  const duplicateOfId = text(formData, 'duplicateOfId')
+  if (duplicateOfId === '') return
+
+  await flagDuplicate({
+    flaggedById: viewer.id,
+    routeId: text(formData, 'routeId'),
+    duplicateOfId,
+    note: optionalText(formData, 'duplicateNote'),
   })
 
   revalidatePath(`/${locale}/routes/${slug}`)

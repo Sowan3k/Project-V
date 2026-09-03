@@ -92,11 +92,18 @@ export interface LifecycleEvidence {
   /** Confirmations anyone has left on this route's information. Also only a zero test. */
   readonly confirmationCount: number
   /**
-   * Revisions written after the route was created — that is, edits rather than the act of
-   * creating it. A route whose only revisions are its own birth has had nothing happen to it.
+   * When anything last happened to this route — any revision to it, or any confirmation.
+   * Null only if nothing ever has, which cannot occur for a route that has steps.
+   *
+   * **This replaced a "revisions written after the route was created" count, which was
+   * wrong in a way only the integration suite could show.** Building a route writes its
+   * steps, edges and fields milliseconds *after* the route row, so every route in existence
+   * had "activity after creation" from the moment it was born and nothing could ever have
+   * gone dormant. FR-38 would have been dead on arrival with every unit test passing.
+   *
+   * A date compared against the same 30 days has no such edge: a route built on day zero and
+   * left alone is untouched on day 31, and one that gained a field on day 25 is not.
    */
-  readonly revisionsAfterCreation: number
-  /** The most recent material change or confirmation, or null if nothing has ever happened. */
   readonly lastActivityAt: Date | null
   /** Information items past a stored `reviewDueAt` or `expiresAt`. Dates, not a period. */
   readonly needsReviewCount: number
@@ -138,12 +145,19 @@ function daysBetween(from: Date, to: Date): number {
   return (to.getTime() - from.getTime()) / DAY_MS
 }
 
-/** Has anything at all happened to this route since it was created? */
-function everUsed(evidence: LifecycleEvidence): boolean {
+/**
+ * Has anybody used this route — followed it, confirmed anything on it, or touched it lately?
+ *
+ * The three signals §19 names, and each is a **zero test or a date**, never a ranking. Any one
+ * of them keeps a route out of dormancy, because FR-38 describes the dormant case as one with
+ * "no meaningful use **or** activity".
+ */
+function everUsed(evidence: LifecycleEvidence, now: Date): boolean {
+  if (evidence.followerCount > 0) return true
+  if (evidence.confirmationCount > 0) return true
   return (
-    evidence.followerCount > 0 ||
-    evidence.confirmationCount > 0 ||
-    evidence.revisionsAfterCreation > 0
+    evidence.lastActivityAt !== null &&
+    daysBetween(evidence.lastActivityAt, now) < DORMANCY_DAYS
   )
 }
 
@@ -184,7 +198,7 @@ export function proposeLifecycle(
   // than as a comment somebody has to remember.
   if (current === Lifecycle.experimental) {
     const old = daysBetween(evidence.createdAt, now) >= DORMANCY_DAYS
-    if (old && !everUsed(evidence)) return propose(Lifecycle.dormant, 'unused_since_creation')
+    if (old && !everUsed(evidence, now)) return propose(Lifecycle.dormant, 'unused_since_creation')
     return null
   }
 
@@ -192,7 +206,7 @@ export function proposeLifecycle(
   // rather than anywhere better is the direction rule: automation may restore what it took,
   // and may not grant more than that.
   if (current === Lifecycle.dormant) {
-    if (everUsed(evidence)) return propose(Lifecycle.experimental, 'activity_resumed')
+    if (everUsed(evidence, now)) return propose(Lifecycle.experimental, 'activity_resumed')
     return null
   }
 

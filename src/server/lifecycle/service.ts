@@ -73,44 +73,34 @@ const ADMINISTRATIVE_REASON = 'administrative'
  * (invariant 12, BR-04, BR-11, D-19). An architecture test asserts this function never reads
  * the `Report` table.
  */
-export async function lifecycleEvidenceFor(routeId: string): Promise<LifecycleEvidence> {
+export async function lifecycleEvidenceFor(
+  routeId: string,
+  now: Date = new Date(),
+): Promise<LifecycleEvidence> {
   const route = await prisma.route.findUniqueOrThrow({
     where: { id: routeId },
     select: { lifecycleState: true, createdAt: true },
   })
 
-  const [followerCount, confirmationCount, informationCount, revisions, lastConfirmation] =
-    await Promise.all([
-      prisma.journey.count({ where: { routeId, archivedAt: null } }),
-      prisma.confirmation.count({ where: { field: { step: { routeId } } } }),
-      prisma.field.count({ where: { archivedAt: null, step: { routeId } } }),
-      // Revisions written *after* the route was created — edits, rather than the act of
-      // creating it. A route whose only revisions are its own birth has had nothing happen.
-      Promise.all([
-        prisma.routeRevision.count({
-          where: { routeId, createdAt: { gt: route.createdAt } },
-        }),
-        prisma.stepRevision.count({
-          where: { step: { routeId }, createdAt: { gt: route.createdAt } },
-        }),
-        prisma.fieldRevision.count({
-          where: { field: { step: { routeId } }, createdAt: { gt: route.createdAt } },
-        }),
-      ]),
-      prisma.confirmation.findFirst({
-        where: { field: { step: { routeId } } },
-        orderBy: { createdAt: 'desc' },
-        select: { createdAt: true },
-      }),
-    ])
+  const newest = { orderBy: { createdAt: 'desc' as const }, select: { createdAt: true } }
 
-  const lastRevision = await prisma.fieldRevision.findFirst({
-    where: { field: { step: { routeId } } },
-    orderBy: { createdAt: 'desc' },
-    select: { createdAt: true },
-  })
+  const [followerCount, confirmationCount, informationCount, latest] = await Promise.all([
+    prisma.journey.count({ where: { routeId, archivedAt: null } }),
+    prisma.confirmation.count({ where: { field: { step: { routeId } } } }),
+    prisma.field.count({ where: { archivedAt: null, step: { routeId } } }),
+    // When anything last happened — across every kind of revision, plus confirmations.
+    //
+    // All four are needed. An earlier version read only field revisions, which would have
+    // called a route whose *steps* were rewritten last week untouched.
+    Promise.all([
+      prisma.routeRevision.findFirst({ where: { routeId }, ...newest }),
+      prisma.stepRevision.findFirst({ where: { step: { routeId } }, ...newest }),
+      prisma.stepEdgeRevision.findFirst({ where: { stepEdge: { routeId } }, ...newest }),
+      prisma.fieldRevision.findFirst({ where: { field: { step: { routeId } } }, ...newest }),
+      prisma.confirmation.findFirst({ where: { field: { step: { routeId } } }, ...newest }),
+    ]),
+  ])
 
-  const now = new Date()
   // The same rule Phase 6 uses for `needsReviewCount`, against the same two stored dates:
   // `reviewDueAt` lives on the field and `expiresAt` on its current revision. Both are dates
   // a contributor entered — no period is assumed, and CLAUDE.md §11's open staleness
@@ -123,16 +113,15 @@ export async function lifecycleEvidenceFor(routeId: string): Promise<LifecycleEv
     },
   })
 
-  const activity = [lastConfirmation?.createdAt, lastRevision?.createdAt].filter(
-    (date): date is Date => date !== undefined,
-  )
+  const activity = latest
+    .map((row) => row?.createdAt)
+    .filter((date): date is Date => date !== undefined)
 
   return {
     current: route.lifecycleState,
     createdAt: route.createdAt,
     followerCount,
     confirmationCount,
-    revisionsAfterCreation: revisions.reduce((sum, n) => sum + n, 0),
     lastActivityAt:
       activity.length === 0
         ? null
@@ -162,7 +151,7 @@ export async function applyProposedLifecycle(
   routeId: string,
   now: Date = new Date(),
 ): Promise<TransitionResult> {
-  const evidence = await lifecycleEvidenceFor(routeId)
+  const evidence = await lifecycleEvidenceFor(routeId, now)
   const proposal = proposeLifecycle(evidence, now, {
     // Reuses Phase 6's display window rather than introducing a second number. It decides
     // only what counts as *recent*; it is emphatically not a staleness threshold, which
@@ -187,7 +176,6 @@ export async function applyProposedLifecycle(
         evidence: {
           followerCount: evidence.followerCount,
           confirmationCount: evidence.confirmationCount,
-          revisionsAfterCreation: evidence.revisionsAfterCreation,
           needsReviewCount: evidence.needsReviewCount,
           informationCount: evidence.informationCount,
           lastActivityAt: evidence.lastActivityAt?.toISOString() ?? null,
@@ -278,12 +266,12 @@ export async function setLifecycleState({
  * a flag is a request for a person to compare them and nothing more (invariant 14).
  */
 export async function flagDuplicate({
-  reporterId,
+  flaggedById,
   routeId,
   duplicateOfId,
   note,
 }: {
-  readonly reporterId: string
+  readonly flaggedById: string
   readonly routeId: string
   readonly duplicateOfId: string
   readonly note?: string | null
@@ -294,7 +282,7 @@ export async function flagDuplicate({
 
   const existing = await prisma.duplicateFlag.findUnique({
     where: {
-      routeId_duplicateOfId_reporterId: { routeId, duplicateOfId, reporterId },
+      routeId_duplicateOfId_flaggedById: { routeId, duplicateOfId, flaggedById },
     },
     select: { id: true },
   })
@@ -309,7 +297,7 @@ export async function flagDuplicate({
   }
 
   const created = await prisma.duplicateFlag.create({
-    data: { routeId, duplicateOfId, reporterId, note: note?.trim() || null },
+    data: { routeId, duplicateOfId, flaggedById, note: note?.trim() || null },
     select: { id: true },
   })
   return { flagId: created.id }

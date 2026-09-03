@@ -138,10 +138,18 @@ async function makeRoute(prefix: string, authorId: string | null = null): Promis
   return { routeId, slug, steps: { first: first.stepId, second: second.stepId } }
 }
 
-/** Backdates a route so the dormancy period can be reached without waiting 30 days. */
-async function backdate(routeId: string, days: number): Promise<void> {
-  await prisma.$executeRaw`UPDATE routes SET "createdAt" = ${daysAgo(days)} WHERE id = ${routeId}`
-}
+/**
+ * A clock `days` in the future, for reaching the dormancy period without waiting 30 days.
+ *
+ * **Deliberately not backdating the fixtures.** The first attempt rewrote `createdAt` on the
+ * route and its revisions, and the revision tables refused — Postgres triggers make every
+ * revision row immutable (the Phase 2 migration). That refusal is the ledger working, and
+ * fighting it in a test would have meant weakening the thing the whole product rests on.
+ *
+ * Moving the observer instead is also the better test: it exercises the same code path
+ * production uses, with `now` supplied rather than assumed, and it needs no privileged write.
+ */
+const later = (days: number): Date => new Date(Date.now() + days * DAY)
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════
    Invariant 23 — dormancy against real routes
@@ -150,12 +158,12 @@ async function backdate(routeId: string, days: number): Promise<void> {
 describe.skipIf(!url)('FR-38, D-20, invariant 23 — an unused new route goes dormant', () => {
   it('parks a route nobody used, and takes it out of search without deleting it', async () => {
     const route = await makeRoute('dormant')
-    await backdate(route.routeId, DORMANCY_DAYS + 5)
+    const when = later(DORMANCY_DAYS + 5)
 
     const before = await searchRoutes({ originCountry: 'BD', destinationCountry: 'DE' })
     expect(before.map((r) => r.slug)).toContain(route.slug)
 
-    const result = await applyProposedLifecycle(route.routeId)
+    const result = await applyProposedLifecycle(route.routeId, when)
     expect(result.applied?.to).toBe(RouteLifecycleState.dormant)
     expect(result.applied?.reason).toBe('unused_since_creation')
 
@@ -174,8 +182,7 @@ describe.skipIf(!url)('FR-38, D-20, invariant 23 — an unused new route goes do
 
   it('records the transition with the evidence it saw, and no report count', async () => {
     const route = await makeRoute('dormant-log')
-    await backdate(route.routeId, DORMANCY_DAYS + 1)
-    await applyProposedLifecycle(route.routeId)
+    await applyProposedLifecycle(route.routeId, later(DORMANCY_DAYS + 1))
 
     const events = await lifecycleHistory(route.routeId)
     expect(events).toHaveLength(1)
@@ -195,21 +202,21 @@ describe.skipIf(!url)('FR-38, D-20, invariant 23 — an unused new route goes do
 
   it('is idempotent — a second pass proposes nothing and logs nothing', async () => {
     const route = await makeRoute('dormant-twice')
-    await backdate(route.routeId, DORMANCY_DAYS + 1)
+    const when = later(DORMANCY_DAYS + 1)
 
-    expect((await applyProposedLifecycle(route.routeId)).applied).not.toBeNull()
-    expect((await applyProposedLifecycle(route.routeId)).applied).toBeNull()
+    expect((await applyProposedLifecycle(route.routeId, when)).applied).not.toBeNull()
+    expect((await applyProposedLifecycle(route.routeId, when)).applied).toBeNull()
     expect(await prisma.routeLifecycleEvent.count({ where: { routeId: route.routeId } })).toBe(1)
   })
 
   it('brings a dormant route back the moment somebody follows it', async () => {
     const route = await makeRoute('dormant-revive')
-    await backdate(route.routeId, DORMANCY_DAYS + 1)
-    await applyProposedLifecycle(route.routeId)
+    const when = later(DORMANCY_DAYS + 1)
+    await applyProposedLifecycle(route.routeId, when)
 
     await followRoute({ userId: follower1, routeId: route.routeId })
 
-    const revived = await applyProposedLifecycle(route.routeId)
+    const revived = await applyProposedLifecycle(route.routeId, when)
     expect(revived.applied?.to).toBe(RouteLifecycleState.experimental)
     expect(revived.applied?.reason).toBe('activity_resumed')
     // Back in search.
@@ -225,10 +232,9 @@ describe.skipIf(!url)('FR-38, D-20, invariant 23 — an unused new route goes do
    */
   it('never parks an established route with exactly the same silence', async () => {
     const [newish, settled] = await Promise.all([makeRoute('quiet-new'), makeRoute('quiet-old')])
-    await Promise.all([
-      backdate(newish.routeId, 400),
-      backdate(settled.routeId, 400),
-    ])
+    // One clock, 400 days on. Identical silence for both routes — the only difference is
+    // which lifecycle state they are in, which is exactly what invariant 23 turns on.
+    const when = later(400)
     await setLifecycleState({
       adminId: admin,
       routeId: settled.routeId,
@@ -236,8 +242,8 @@ describe.skipIf(!url)('FR-38, D-20, invariant 23 — an unused new route goes do
       note: 'Reviewed and established',
     })
 
-    const parked = await applyProposedLifecycle(newish.routeId)
-    const quiet = await applyProposedLifecycle(settled.routeId)
+    const parked = await applyProposedLifecycle(newish.routeId, when)
+    const quiet = await applyProposedLifecycle(settled.routeId, when)
 
     expect(parked.applied?.to).toBe(RouteLifecycleState.dormant)
     // Quiet, never dormant — and quiet is not a defect.
@@ -253,13 +259,12 @@ describe.skipIf(!url)('FR-38, D-20, invariant 23 — an unused new route goes do
 
   it('produces no caution for a quiet route in the route projection', async () => {
     const route = await makeRoute('quiet-caution')
-    await backdate(route.routeId, 400)
     await setLifecycleState({
       adminId: admin,
       routeId: route.routeId,
       state: RouteLifecycleState.established,
     })
-    await applyProposedLifecycle(route.routeId)
+    await applyProposedLifecycle(route.routeId, later(400))
 
     const detail = await getRouteBySlug(route.slug)
     expect(detail?.lifecycleState).toBe(RouteLifecycleState.quiet)
@@ -290,7 +295,6 @@ describe.skipIf(!url)('FR-38, D-20, invariant 23 — an unused new route goes do
 
   it('leaves an administrator’s archival alone', async () => {
     const route = await makeRoute('archived')
-    await backdate(route.routeId, 900)
     await setLifecycleState({
       adminId: admin,
       routeId: route.routeId,
@@ -298,8 +302,9 @@ describe.skipIf(!url)('FR-38, D-20, invariant 23 — an unused new route goes do
       note: 'Superseded by policy change',
     })
 
-    // Nothing automatic may move it back out, in either direction (invariant 14).
-    expect((await applyProposedLifecycle(route.routeId)).applied).toBeNull()
+    // Nothing automatic may move it back out, in either direction (invariant 14) — not even
+    // 900 days later with everything overdue.
+    expect((await applyProposedLifecycle(route.routeId, later(900))).applied).toBeNull()
 
     const detail = await getRouteBySlug(route.slug)
     expect(detail?.lifecycleState).toBe(RouteLifecycleState.archived)
@@ -556,7 +561,7 @@ describe.skipIf(!url)('FR-40, FR-58, BR-25, invariant 20 — a merge loses nothi
         data: { handle: generateHandle(), email: `flag-${i}-${randomUUID()}@example.test` },
       })
       await flagDuplicate({
-        reporterId: reporter.id,
+        flaggedById: reporter.id,
         routeId: a.routeId,
         duplicateOfId: b.routeId,
         note: 'These look the same to me',
@@ -581,9 +586,9 @@ describe.skipIf(!url)('FR-40, FR-58, BR-25, invariant 20 — a merge loses nothi
     const a = await makeRoute('flag-once-a')
     const b = await makeRoute('flag-once-b')
 
-    await flagDuplicate({ reporterId: member, routeId: a.routeId, duplicateOfId: b.routeId })
+    await flagDuplicate({ flaggedById: member, routeId: a.routeId, duplicateOfId: b.routeId })
     await flagDuplicate({
-      reporterId: member,
+      flaggedById: member,
       routeId: a.routeId,
       duplicateOfId: b.routeId,
       note: 'Actually, here is a better reason',
@@ -600,7 +605,7 @@ describe.skipIf(!url)('FR-40, FR-58, BR-25, invariant 20 — a merge loses nothi
     const a = await makeRoute('flag-diff-a')
     const b = await makeRoute('flag-diff-b')
     const { flagId } = await flagDuplicate({
-      reporterId: member,
+      flaggedById: member,
       routeId: a.routeId,
       duplicateOfId: b.routeId,
     })
@@ -639,7 +644,7 @@ describe.skipIf(!url)('FR-40, FR-58, BR-25, invariant 20 — a merge loses nothi
 
     const other = await makeRoute('undeletable-2')
     const { flagId } = await flagDuplicate({
-      reporterId: member,
+      flaggedById: member,
       routeId: route.routeId,
       duplicateOfId: other.routeId,
     })

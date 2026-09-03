@@ -32,7 +32,6 @@ const evidence = (over: Partial<LifecycleEvidence> = {}): LifecycleEvidence => (
   createdAt: daysAgo(1),
   followerCount: 0,
   confirmationCount: 0,
-  revisionsAfterCreation: 0,
   lastActivityAt: null,
   needsReviewCount: 0,
   informationCount: 3,
@@ -69,7 +68,8 @@ describe('FR-38, D-20, BR-09, invariant 23 — dormancy', () => {
     for (const used of [
       { followerCount: 1 },
       { confirmationCount: 1 },
-      { revisionsAfterCreation: 1 },
+      // Activity inside the dormancy window keeps it out too — the third of §19's signals.
+      { lastActivityAt: daysAgo(3) },
     ]) {
       expect(
         proposeLifecycle(evidence({ createdAt: daysAgo(400), ...used }), NOW, WINDOW),
@@ -80,7 +80,11 @@ describe('FR-38, D-20, BR-09, invariant 23 — dormancy', () => {
 
   it('brings a dormant route back the moment somebody uses it', () => {
     const result = proposeLifecycle(
-      evidence({ current: RouteLifecycleState.dormant, followerCount: 1 }),
+      evidence({
+        current: RouteLifecycleState.dormant,
+        followerCount: 1,
+        lastActivityAt: daysAgo(200),
+      }),
       NOW,
       WINDOW,
     )
@@ -91,9 +95,34 @@ describe('FR-38, D-20, BR-09, invariant 23 — dormancy', () => {
     })
   })
 
+  /**
+   * **The defect the integration suite caught, kept as a unit test.**
+   *
+   * An earlier version asked "were any revisions written after the route was created?" —
+   * which is true of every route in existence, because building one writes its steps, edges
+   * and fields milliseconds after the route row. Nothing could ever have gone dormant, and
+   * every unit test passed because the fixtures set the count by hand.
+   *
+   * This asserts the case that was broken: a route built at creation time and untouched
+   * since, whose `lastActivityAt` is therefore its own birth.
+   */
+  it('parks a route whose only activity was being built', () => {
+    const built = evidence({ createdAt: daysAgo(45), lastActivityAt: daysAgo(45) })
+    expect(proposeLifecycle(built, NOW, WINDOW)?.to).toBe(RouteLifecycleState.dormant)
+  })
+
+  it('spares a route that was touched inside the dormancy window', () => {
+    const touched = evidence({ createdAt: daysAgo(45), lastActivityAt: daysAgo(3) })
+    expect(proposeLifecycle(touched, NOW, WINDOW)).toBeNull()
+  })
+
   it('leaves a dormant route dormant while nothing happens', () => {
     expect(
-      proposeLifecycle(evidence({ current: RouteLifecycleState.dormant }), NOW, WINDOW),
+      proposeLifecycle(
+        evidence({ current: RouteLifecycleState.dormant, lastActivityAt: daysAgo(200) }),
+        NOW,
+        WINDOW,
+      ),
     ).toBeNull()
   })
 })
@@ -280,7 +309,6 @@ describe('FR-71, BR-32, invariant 14 — automation never raises a route’s sta
             createdAt: daysAgo(500),
             followerCount,
             confirmationCount,
-            revisionsAfterCreation: confirmationCount,
             lastActivityAt: daysAgo(1),
           }),
           NOW,
@@ -331,7 +359,11 @@ describe('FR-71, BR-32, invariant 14 — automation never raises a route’s sta
 
   /** Idempotent: a second pass over an unchanged record proposes nothing. */
   it('proposes nothing when the route is already where it belongs', () => {
-    const parked = evidence({ current: RouteLifecycleState.dormant, createdAt: daysAgo(900) })
+    const parked = evidence({
+      current: RouteLifecycleState.dormant,
+      createdAt: daysAgo(900),
+      lastActivityAt: daysAgo(900),
+    })
     expect(proposeLifecycle(parked, NOW, WINDOW)).toBeNull()
 
     const settled = evidence({
@@ -342,7 +374,11 @@ describe('FR-71, BR-32, invariant 14 — automation never raises a route’s sta
   })
 
   it('returns no score of any kind', () => {
-    const result = proposeLifecycle(evidence({ createdAt: daysAgo(60) }), NOW, WINDOW)
+    const result = proposeLifecycle(
+      evidence({ createdAt: daysAgo(60), lastActivityAt: daysAgo(60) }),
+      NOW,
+      WINDOW,
+    )
     expect(result).not.toBeNull()
     expect(Object.entries(result ?? {}).filter(([, v]) => typeof v === 'number')).toEqual([])
     expect(Object.keys(result ?? {}).sort()).toEqual(['from', 'reason', 'to'])

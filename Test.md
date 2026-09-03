@@ -1367,6 +1367,41 @@ Narrowing the regex was the wrong fix. That guard scans user-facing copy, which 
 "sends readers to", which reads better anyway. Same conclusion as Phase 10's `promoteDisruption`
 rename: **when a broad guard fires on prose, change the prose.**
 
+### The defect only the integration suite could find
+
+The first dormancy rule asked "were any revisions written after the route was created?" It is
+the natural way to say "has anything happened since", every unit test passed, and it was
+**completely broken**: creating a route writes its steps, edges and fields milliseconds after
+the route row, so every route in existence had activity-after-creation from birth. Nothing
+could ever have gone dormant. FR-38 would have shipped dead.
+
+The unit tests could not have caught it, and the reason is worth stating plainly: **they set
+the count by hand.** A fixture saying `revisionsAfterCreation: 0` describes a route that cannot
+exist. Only building a real route through the real service produced the real number, and the
+integration run failed on six assertions at once.
+
+The rule is now a date — `lastActivityAt` compared against the same baseline 30 days — which
+has no such edge. A route built on day zero and left alone is untouched on day 31; one that
+gained a field on day 25 is not. The broken case is kept as a unit test with the fixture that
+actually occurs.
+
+**The general lesson: a fixture field that the production code derives is a fixture field that
+can describe an impossible world.** Where a value is computed from several tables, the unit
+test proves the rule and only the integration test proves the input.
+
+### Fighting the immutability triggers, and stopping
+
+The first fix to the integration fixtures was to backdate `createdAt` on the routes *and their
+revisions*, so a 30-day-old route could be tested without waiting 30 days. Postgres refused:
+the Phase 2 migration makes every revision row immutable against UPDATE.
+
+That refusal is the ledger working exactly as designed, and the right response was to stop
+pushing. `applyProposedLifecycle` already takes `now`, so the tests move the **observer**
+instead of the record — `later(DORMANCY_DAYS + 5)` rather than `backdate(35)`. It needs no
+privileged write, exercises the same code path production uses, and is a better test for it.
+
+**When a fixture needs a capability the product deliberately refuses, the fixture is wrong.**
+
 ### What the tests cannot prove
 
 **That a merge is the right call for any given pair.** Every mechanical property is asserted —
