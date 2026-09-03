@@ -610,6 +610,32 @@ export const en = {
     recordDecision: 'Record this decision',
     roleScope:
       'This role exists for safety, disputes, abuse and exceptional cases. Ordinary contributions are not reviewed here and never need approval — they go live when they are made, and the community corrects them.',
+
+    // ── Phase 11: route maintenance (FR-46, §19.2) ──────────────────────────────
+    routesTitle: 'Route maintenance',
+    routesLede:
+      'The periodic review: archive obsolete routes, merge duplicates, and set standing where the record cannot decide it.',
+    routesDirection:
+      'Automatic transitions can only lower a route’s prominence or ask for a review. Raising a route’s standing is a judgement, so it happens here and is recorded with your name against it.',
+    duplicatesTitle: 'Duplicate flags',
+    duplicatesEmpty: 'No open duplicate flags.',
+    duplicatesOldestFirst:
+      'Oldest first. Nothing here is ranked by how many people flagged it — two routes are the same journey or they are not, and no number of flags settles that.',
+    mergeInto: 'Merge into',
+    mergeSubmit: 'Merge',
+    mergeNote: 'Why (kept with the decision)',
+    mergeExplainer:
+      'The duplicate keeps every step, field, revision and follower it has. It leaves search and sends readers to the surviving route. Nothing is copied, moved or deleted, and the merge can be undone.',
+    unmergeSubmit: 'Undo this merge',
+    notDuplicate: 'They are different journeys',
+    setState: 'Set standing',
+    stateNote: 'Why (kept with the decision)',
+    runReview: 'Run the periodic review',
+    runReviewHint:
+      'Applies what each route’s own record proposes — dormancy for unused new routes, staleness where information is overdue, quiet where nothing has happened lately. It never promotes a route and never archives one.',
+    reviewedNone: 'Nothing needed changing.',
+    reviewedCount: (n: number) =>
+      n === 1 ? '1 route changed standing' : `${n} routes changed standing`,
   },
 
   /**
@@ -796,6 +822,57 @@ export const en = {
     noAlerts:
       'We do not send emails or push notifications. Changes appear here and on your journey when you next look.',
   },
+
+  /**
+   * Lifecycle, duplicates and merge — Phase 11.
+   *
+   * The wording rule that governs this whole section: **silence is not a defect.** FR-39 and
+   * BR-10 are explicit that an established route does not become false because nothing has
+   * happened for a while, so nothing here says or implies that it has. A quiet route states
+   * when it was last confirmed and stops.
+   */
+  lifecycle: {
+    quietExplainer:
+      'Nothing has changed on this route recently. That is not a sign of a problem — a route can be quiet because its process is settled, or because its intake is seasonal. Its last confirmation date is shown so you can judge for yourself.',
+    dormantExplainer:
+      'This route was created and then nothing happened to it — no followers, no confirmations and no edits. It has been set aside so it does not crowd routes people are using. Nothing has been deleted, and it comes back if anyone uses it.',
+    staleExplainer:
+      'Some information on this route has passed a review or expiry date that a contributor set for it. That is a request to check, not a claim that it is wrong.',
+    archivedExplainer:
+      'An administrator archived this route. It is no longer offered in search, and everything it contains stays readable here.',
+
+    mergedTitle: 'This route has been merged',
+    mergedBody: (title: string) =>
+      `The community now maintains this journey as “${title}”. Everything here stays readable, and if you are following this route your progress is untouched.`,
+    mergedGoTo: 'Open the current route',
+    mergedNothingLost:
+      'Nothing was moved or deleted. Both routes keep their own steps, information, history and followers.',
+    mergedFromTitle: 'Routes merged into this one',
+
+    historyTitle: 'Standing over time',
+    historyLede:
+      'How this route’s standing has changed, and why. Automatic changes have no author; an administrator’s do.',
+    historyEmpty: 'This route’s standing has not changed since it was created.',
+    historyAutomatic: 'Automatic',
+    reason: {
+      unused_since_creation: 'Created, then unused for 30 days',
+      activity_resumed: 'Activity resumed',
+      no_recent_activity: 'No recent activity',
+      review_overdue: 'Information is due for review',
+      review_caught_up: 'No information is overdue any more',
+      administrative: 'An administrator decided',
+    },
+
+    flagDuplicate: 'Flag as a duplicate',
+    flagDuplicateHint:
+      'Use this when another route describes the same journey. Two routes can legitimately look similar and still be different — a different funding route, entrance exam or embassy process makes a genuinely different journey — so an administrator compares them rather than a count deciding.',
+    flagDuplicateOf: 'Which route does it duplicate?',
+    flagDuplicateNote: 'What makes you think they are the same journey?',
+    flagDuplicateSubmit: 'Send for comparison',
+    flagDuplicateSaved: 'Sent. An administrator will compare the two.',
+    signInToFlag: 'Sign in to flag a duplicate.',
+  },
+
 
   routeLifecycle: {
     experimental: 'Experimental',

@@ -110,6 +110,12 @@ export const COMMUNITY_SIGNAL_MODELS = [
   // part of the announcement, so it follows the announcement's rules: never deleted by a
   // normal user, and cascading only from the change it belongs to.
   'RouteChangeRevision',
+  // Phase 11. A lifecycle transition and a duplicate flag are both statements about a route
+  // that must survive being inconvenient: a record of parking a route is what makes the
+  // decision reviewable, and a flag that could be deleted is a disagreement that could be
+  // made to vanish. Neither is revisioned — a transition is an event, not an evolving fact.
+  'RouteLifecycleEvent',
+  'DuplicateFlag',
 ] as const
 export type CommunitySignalModel = (typeof COMMUNITY_SIGNAL_MODELS)[number]
 

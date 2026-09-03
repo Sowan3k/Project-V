@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
 import { ContentColumn, PageCanvas } from '@/components/layout'
+import { LifecycleNote, MergedNotice } from '@/components/lifecycle'
 import { FlyWindowNote } from '@/components/route-shared'
 import { RoutePassportPanel } from '@/components/trust'
 import type { Dictionary } from '@/i18n/dictionaries/en'
@@ -76,6 +77,12 @@ export function RouteContext({
                   <p className="mt-3 text-base leading-7 text-ink-700">{route.summary}</p>
                 </ContentColumn>
               )}
+              {/* Phase 11 — what this route's standing means, where it needs saying. Quiet
+                  is explained rather than warned about: FR-39 and BR-10 are explicit that an
+                  established route does not become false through inactivity. */}
+              <ContentColumn width="reading">
+                <LifecycleNote state={route.lifecycleState} dictionary={t} />
+              </ContentColumn>
             </div>
 
             {/* Standing and timing sit together, beside the route rather than under it, and
@@ -86,6 +93,12 @@ export function RouteContext({
               <FlyWindowNote window={route.flyWindow} dictionary={t} />
             </div>
           </div>
+
+          {/* §40.4 — a merged route points readers at the survivor rather than vanishing,
+              and says plainly that nothing was moved or lost (FR-58, BR-25, invariant 20). */}
+          <ContentColumn width="reading">
+            <MergedNotice route={route} locale={locale} dictionary={t} />
+          </ContentColumn>
 
           {/* Tabs, not links away. The route stays above them on every view. */}
           <nav aria-label={t.route.tabsLabel} className="mt-6 -mb-px flex gap-1">

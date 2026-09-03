@@ -1,0 +1,113 @@
+/// Route lifecycle, duplicate flagging and merge — Phase 11.
+///
+/// FR-11, FR-38, FR-39, FR-40, FR-45, FR-46, FR-58. BR-09, BR-10, BR-15, BR-25, BR-32.
+/// D-20, D-38. §18.4, §19, §19.1, §19.2, §40.4. Invariants 1, 4, 14, 20, 23.
+///
+/// ─────────────────────────────────────────────────────────────────────────────────────────
+/// **Merge is a canonical-successor declaration, not a content transfer.**
+///
+/// The `Route.mergedIntoId` pointer has existed since Phase 2. Phase 11 gives it meaning, and
+/// the meaning is deliberately conservative: the duplicate keeps every step, field, revision,
+/// contributor attribution and follower it ever had, and gains a pointer saying which route
+/// supersedes it. Nothing is copied, moved or rewritten.
+///
+/// The alternative — physically moving steps and fields into the surviving route — was
+/// rejected. It would relocate revision chains under a route that did not author them,
+/// detach `JourneyStepProgress` rows from the route their owner was following, and produce
+/// duplicate knowledge with duplicate histories. BR-25 and FR-58 require merging to *preserve*
+/// progress and history; the safest way to preserve something is not to touch it.
+///
+/// §40.4 describes exactly this shape: "Archived duplicate routes may point visitors toward
+/// the active route rather than simply disappearing." Contributors then move whatever is
+/// worth keeping across using the ordinary ADD/UPDATE flow, where every carried-over fact is
+/// attributed to the person who carried it and the original stays readable in its own history.
+
+/// A record of every lifecycle transition, and why.
+///
+/// Lifecycle state is a single mutable column on `Route`, which on its own would make "when
+/// did this become dormant, and on what evidence?" unanswerable. This log answers it, and is
+/// append-only in the same spirit as the revision ledger: a state change is shared knowledge
+/// about a route, and a reader deciding whether to trust one deserves to see that it was
+/// parked and revived twice.
+///
+/// `evidence` records the counts the decision actually saw, as JSON, so a transition can be
+/// re-examined later against what was true at the time rather than what is true now. It is
+/// written by the system and never by a form.
+///
+/// Classified `communitySignal`: never deletable, updatable only in the sense that nothing
+/// updates it. Automatic transitions carry no actor; administrator ones do.
+model RouteLifecycleEvent {
+  id      String @id @default(cuid())
+  routeId String
+  route   Route  @relation(fields: [routeId], references: [id], onDelete: Restrict)
+
+  fromState RouteLifecycleState
+  toState   RouteLifecycleState
+
+  /// A `LifecycleReasonId` for automatic transitions, or `administrative` for a person's.
+  /// Not an enum type: the ids belong to `src/domain/lifecycle.ts`, which is where the rules
+  /// live, and promoting them to a database enum would put the vocabulary in two places.
+  reason String
+  /// The administrator's own words, where a person made the decision (FR-46).
+  note   String?
+
+  /// Null for an automatic transition. Automatic transitions are not anonymous actions by a
+  /// person; they are the absence of one, and recording a user id would misattribute them.
+  actorId String?
+  actor   User?   @relation("LifecycleTransitions", fields: [actorId], references: [id], onDelete: SetNull)
+
+  /// What the decision saw. Never includes a report count (invariant 12).
+  evidence Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([routeId, createdAt])
+  @@map("route_lifecycle_events")
+}
+
+/// Somebody thinks two routes are the same journey — §40.4, FR-40.
+///
+/// "The product should permit users to flag likely duplicates and, when appropriate, combine
+/// them into a stronger canonical route."
+///
+/// A flag is a **request for a person to look**, and nothing else. It changes no state, moves
+/// no route and is never counted toward one: §40.1 is explicit that two routes may legitimately
+/// coexist when the journeys genuinely differ, and no number of flags can establish that they
+/// do not. Ten flags and one flag both mean "an administrator should compare these two", which
+/// is why nothing here totals them (invariant 14, FR-71, BR-32).
+///
+/// Deliberately distinct from a Report. A duplicate flag says "these overlap"; a report says
+/// "this is dangerous". Keeping them apart is the same separation §23.1 draws between
+/// CHALLENGE and REPORT, for the same reason — merging the vocabularies would send editorial
+/// housekeeping to a safety queue and bury the things that matter.
+model DuplicateFlag {
+  id      String @id @default(cuid())
+
+  /// The route being flagged, and the one it is said to duplicate. Ordered but not directed:
+  /// which of the two survives a merge is the administrator's decision, not the reporter's.
+  routeId String
+  route   Route  @relation("DuplicateFlagSubject", fields: [routeId], references: [id], onDelete: Restrict)
+  duplicateOfId String
+  duplicateOf   Route  @relation("DuplicateFlagTarget", fields: [duplicateOfId], references: [id], onDelete: Restrict)
+
+  note String?
+
+  reporterId String?
+  reporter   User?   @relation("DuplicateFlagsFiled", fields: [reporterId], references: [id], onDelete: SetNull)
+
+  /// Answered — merged, or judged genuinely different. Both outcomes close the flag, and the
+  /// second is a real answer rather than a failure: §40.1 exists to protect it.
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   User?     @relation("DuplicateFlagsResolved", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolutionNote String?
+
+  createdAt DateTime @default(now())
+
+  /// One standing flag per pair per person. Somebody flagging twice is one opinion, not two —
+  /// the same reason `Confirmation` is unique per person (invariant 14).
+  @@unique([routeId, duplicateOfId, reporterId])
+  @@index([routeId, resolvedAt])
+  @@index([duplicateOfId])
+  @@map("duplicate_flags")
+}

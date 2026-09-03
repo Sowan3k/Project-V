@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 
 import { AddStepForm, ContributionInvitation } from '@/components/contribute'
 import { GridRegion, PageGrid } from '@/components/layout'
+import { FlagDuplicateForm } from '@/components/lifecycle'
 import { RouteContext } from '@/components/route-context'
 import { rendererStrings } from '@/components/route-shared'
 import { StepFields } from '@/components/step-fields'
@@ -10,7 +11,9 @@ import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { Road } from '@/renderer'
 import { currentViewer } from '@/server/auth'
-import { getRouteBySlug, getStepFields } from '@/server/routes/read'
+import { getRouteBySlug, getStepFields, searchRoutes } from '@/server/routes/read'
+
+import { flagDuplicateAction } from '../../admin/actions-lifecycle'
 
 /**
  * The route overview — FR-03, FR-06, FR-09, VR-03, VR-04, VR-05.
@@ -46,6 +49,17 @@ export default async function RoutePage({
   const requested = Array.isArray(query.step) ? query.step[0] : query.step
   const openStep = route.steps.find((s) => s.id === requested) ?? null
   const fields = openStep ? await getStepFields(openStep.id) : []
+
+  // Candidates for a duplicate flag: routes on the same origin/destination/level pair, which
+  // is the only pair that could plausibly describe the same journey (§40.1). Excludes this
+  // route and anything already merged away, so the list offers no dead ends.
+  const siblings = (
+    await searchRoutes({
+      originCountry: route.originCountry,
+      destinationCountry: route.destinationCountry,
+      studyLevel: route.studyLevel,
+    })
+  ).filter((candidate) => candidate.id !== route.id)
 
   return (
     <RouteContext route={route} dictionary={t} locale={locale} tab="overview">
@@ -143,6 +157,18 @@ export default async function RoutePage({
           )}
         </GridRegion>
       </PageGrid>
+
+      {/* §40.4 — flagging a likely duplicate. Sits at the foot of the route, below the
+          content it is about, because it is housekeeping rather than something a reader
+          came for. */}
+      <FlagDuplicateForm
+        route={route}
+        candidates={siblings}
+        locale={locale}
+        signedIn={viewer !== null}
+        action={flagDuplicateAction}
+        dictionary={t}
+      />
     </RouteContext>
   )
 }

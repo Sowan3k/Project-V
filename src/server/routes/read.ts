@@ -10,6 +10,7 @@ import type {
 } from '@/domain/enums'
 import { SourceClass as Source, StepCategory, StepEdgeKind } from '@/domain/enums'
 import { expectedFlyWindow, type FlyWindow } from '@/domain/fly-window'
+import { SEARCHABLE_LIFECYCLE_STATES } from '@/domain/lifecycle'
 import type { RouteGraph } from '@/domain/graph/types'
 import {
   RECENT_ACTIVITY_WINDOW_DAYS,
@@ -204,6 +205,11 @@ export async function searchRoutes(
     where: {
       archivedAt: null,
       mergedIntoId: null,
+      // Phase 11 — dormant, archived and removed routes leave the listing. None is deleted
+      // and every one stays reachable at its own address with its history intact (§19,
+      // FR-45, BR-15, invariant 4). `appearsInSearch` in src/domain/lifecycle.ts is the
+      // single definition of which states those are.
+      lifecycleState: { in: [...SEARCHABLE_LIFECYCLE_STATES] },
       ...(filters.originCountry ? { originCountry: filters.originCountry } : {}),
       ...(filters.destinationCountry ? { destinationCountry: filters.destinationCountry } : {}),
       ...(filters.studyLevel ? { studyLevel: filters.studyLevel } : {}),
@@ -256,7 +262,11 @@ export async function availableFilters(): Promise<{
   intakes: readonly string[]
 }> {
   const routes = await prisma.route.findMany({
-    where: { archivedAt: null, mergedIntoId: null },
+    where: {
+      archivedAt: null,
+      mergedIntoId: null,
+      lifecycleState: { in: [...SEARCHABLE_LIFECYCLE_STATES] },
+    },
     select: { originCountry: true, destinationCountry: true, intake: true },
   })
 
@@ -363,6 +373,15 @@ export interface StepView {
 
 export interface RouteDetail extends RouteSummary {
   readonly steps: readonly StepView[]
+  /**
+   * Set when this route has been merged into another — FR-40, FR-58, §40.4, invariant 20.
+   *
+   * The route is still fully readable, with every step, field, revision and follower it ever
+   * had. What changes is that it leaves search and says where the community now maintains
+   * this journey. §40.4: "Archived duplicate routes may point visitors toward the active
+   * route rather than simply disappearing."
+   */
+  readonly mergedInto: { readonly slug: string; readonly title: string } | null
   /**
    * The full standing, which is a superset of the ribbon's — same shape, more of it. The
    * route page can afford the extra aggregation that a page of search results cannot.
@@ -471,8 +490,12 @@ export async function getRouteBySlug(
         include: { currentRevision: true, _count: { select: { fields: { where: { archivedAt: null } } } } },
         orderBy: { id: 'asc' },
       },
+      mergedInto: { select: { slug: true, currentRevision: { select: { title: true } } } },
     },
   })
+  // A merged route is deliberately NOT excluded here. It leaves search, and it keeps its own
+  // address, its content and its history — which is what makes a merge non-destructive and
+  // what lets its followers carry on (FR-58, BR-25, §40.4, invariant 20).
   if (!route || route.archivedAt !== null) return null
 
   const graph = toGraph(route.steps, route.edges)
@@ -493,6 +516,13 @@ export async function getRouteBySlug(
     mechanism: route.mechanism,
     lifecycleState: route.lifecycleState,
     createdAt: route.createdAt,
+    mergedInto:
+      route.mergedInto === null
+        ? null
+        : {
+            slug: route.mergedInto.slug,
+            title: route.mergedInto.currentRevision?.title ?? route.mergedInto.slug,
+          },
     graph,
     stepCount: graph.steps.filter((s) => !s.archived).length,
     flyWindow: expectedFlyWindow(graph),

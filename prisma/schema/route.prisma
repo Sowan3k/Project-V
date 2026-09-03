@@ -74,6 +74,11 @@ model User {
   changesAnnounced    RouteChange[]         @relation("ChangesAnnounced")
   disruptionsRecorded TemporaryDisruption[] @relation("DisruptionsRecorded")
 
+  lifecycleTransitions  RouteLifecycleEvent[] @relation("LifecycleTransitions")
+  duplicateFlagsFiled   DuplicateFlag[]       @relation("DuplicateFlagsFiled")
+  duplicateFlagsHandled DuplicateFlag[]       @relation("DuplicateFlagsResolved")
+  routesMerged          Route[]               @relation("RouteMerges")
+
   reportsFiled      Report[] @relation("ReportsFiled")
   reportsHandled    Report[] @relation("ReportsHandled")
   fieldsQuarantined Field[]  @relation("FieldsQuarantined")
@@ -127,6 +132,20 @@ model Route {
   // Phase 10 — announcements and overlays. Neither is a revision.
   changes     RouteChange[]
   disruptions TemporaryDisruption[]
+
+  // Phase 11 — lifecycle history and duplicate flags (lifecycle.prisma). Restrict on both:
+  // a route that has been parked, revived or flagged carries a record of it, and the record
+  // is the thing that makes the decision reviewable later (invariants 1 and 4).
+  lifecycleEvents  RouteLifecycleEvent[]
+  duplicateFlags   DuplicateFlag[]      @relation("DuplicateFlagSubject")
+  flaggedAsCanonicalFor DuplicateFlag[] @relation("DuplicateFlagTarget")
+
+  /// When and why this route was merged into another (FR-40, FR-58, §40.4). The pointer
+  /// itself is `mergedIntoId` above and has existed since Phase 2; these record the decision.
+  mergedAt     DateTime?
+  mergedById   String?
+  mergedBy     User?     @relation("RouteMerges", fields: [mergedById], references: [id], onDelete: SetNull)
+  mergeNote    String?
 
   @@index([originCountry, destinationCountry, studyLevel])
   @@index([lifecycleState])

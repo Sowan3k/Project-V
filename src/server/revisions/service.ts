@@ -4,6 +4,7 @@ import type {
   ChallengeReason as ChallengeReasonT,
   FieldApplicability as FieldApplicabilityT,
   FieldCategory as FieldCategoryT,
+  RouteLifecycleState as RouteLifecycleStateT,
   RouteMechanism as RouteMechanismT,
   SourceClass as SourceClassT,
   StepCategory as StepCategoryT,
@@ -620,5 +621,79 @@ export async function archiveEdge(input: Change & { edgeId: string }): Promise<v
 export async function restoreField(input: Change & { fieldId: string }): Promise<void> {
   await write(input, async (tx) => {
     await tx.field.update({ where: { id: input.fieldId }, data: { archivedAt: null } })
+  })
+}
+
+// ── Route operational state — Phase 11 ───────────────────────────────────────
+//
+// Lifecycle state and the merge pointer are properties of the `Route` *row*, not of its
+// revisable content: `RouteRevision` holds the title and summary, and neither of these
+// appears in it. They are nonetheless writes to a revisioned model, so they live here — the
+// same boundary Phase 9's `setFieldQuarantine` had to respect, caught by the same
+// architecture test.
+//
+// The split that keeps working: **deciding** whether a route may change standing belongs to
+// `src/server/lifecycle`, which checks the administrator role and records the event;
+// **performing** the write belongs here, because only this module may write a `Route`.
+
+/**
+ * Move a route's lifecycle state — FR-11, FR-38, FR-39, FR-46, §19.
+ *
+ * **Creates no revision, and must not.** A route going quiet is not somebody editing what the
+ * route says; putting it in the contribution history would misattribute a system observation
+ * as an edit, exactly as it would for quarantine. The audit trail for these lives in
+ * `RouteLifecycleEvent` instead, which is where a reason and an actor can be recorded
+ * honestly — including the honest absence of an actor when nothing but the clock decided.
+ *
+ * **Deletes nothing.** Every state here is a change of prominence, never of content: the
+ * steps, fields, revisions and followers of a dormant or archived route are untouched, and
+ * the route stays readable at its own address (FR-45, BR-15, invariants 1 and 4).
+ */
+export async function setRouteLifecycleState(input: {
+  routeId: string
+  state: RouteLifecycleStateT
+  /** Null for an automatic transition — the absence of a person, not an anonymous one. */
+  actorId: string | null
+}): Promise<void> {
+  await write({ actor: { id: input.actorId, system: input.actorId === null } }, async (tx) => {
+    await tx.route.update({
+      where: { id: input.routeId },
+      data: { lifecycleState: input.state },
+    })
+  })
+}
+
+/**
+ * Point a duplicate route at the route that supersedes it, or clear that pointer —
+ * FR-40, FR-58, BR-25, D-38, §40.4, invariant 20.
+ *
+ * **This is the entire physical effect of a merge.** No step, field, revision, contributor
+ * attribution or journey is touched by it, which is why both routes keep their whole history
+ * and both follower sets survive: nothing was moved, so nothing could be lost. The duplicate
+ * simply leaves search and gains a signpost.
+ *
+ * Reversible by passing `mergedIntoId: null`. A merge is a judgement about whether two
+ * journeys are the same, §40.1 exists to protect the routes where the answer is no, and a
+ * judgement that cannot be withdrawn is one nobody should make.
+ */
+export async function setRouteMergePointer(input: {
+  routeId: string
+  mergedIntoId: string | null
+  actorId: string
+  note?: string | null
+}): Promise<void> {
+  await write({ actor: { id: input.actorId } }, async (tx) => {
+    await tx.route.update({
+      where: { id: input.routeId },
+      data:
+        input.mergedIntoId === null
+          ? { mergedIntoId: null, mergedAt: null, mergedById: null, mergeNote: null }
+          : {
+              mergedIntoId: input.mergedIntoId,
+              mergedAt: new Date(),
+              mergedById: input.actorId,
+              mergeNote: input.note ?? null,
+            },
+    })
   })
 }

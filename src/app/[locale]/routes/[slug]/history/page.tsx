@@ -1,9 +1,11 @@
 import { notFound } from 'next/navigation'
 
 import { ContentColumn } from '@/components/layout'
+import { LifecycleHistory, MergedFromList } from '@/components/lifecycle'
 import { RouteContext } from '@/components/route-context'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
+import { lifecycleHistory, mergedIntoThis } from '@/server/lifecycle/read'
 import { getRouteBySlug, getRouteHistory } from '@/server/routes/read'
 
 /**
@@ -34,7 +36,13 @@ export default async function RouteHistoryPage({
   const route = await getRouteBySlug(slug)
   if (!route) notFound()
 
-  const history = await getRouteHistory(route.id)
+  const [history, standing, mergedFrom] = await Promise.all([
+    getRouteHistory(route.id),
+    // Phase 11 — how the route's standing has moved, beside how its content has. Both belong
+    // on the History tab: they are the same question at two levels (FR-11, FR-31, §19).
+    lifecycleHistory(route.id),
+    mergedIntoThis(route.id),
+  ])
 
   return (
     <RouteContext route={route} dictionary={t} locale={locale} tab="history">
@@ -69,6 +77,9 @@ export default async function RouteHistoryPage({
             ))}
           </ol>
         )}
+
+        <MergedFromList routes={mergedFrom} locale={locale} dictionary={t} />
+        <LifecycleHistory events={standing} dictionary={t} />
       </ContentColumn>
     </RouteContext>
   )

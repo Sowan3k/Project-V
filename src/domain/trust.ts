@@ -1,9 +1,9 @@
 import type { FieldApplicability, RouteLifecycleState, SourceClass } from '@/domain/enums'
 import {
   FieldApplicability as Applicability,
-  RouteLifecycleState as Lifecycle,
   SourceClass as Source,
 } from '@/domain/enums'
+import { lifecycleWarrantsCaution } from '@/domain/lifecycle'
 
 /**
  * The trust surface — Phase 6.
@@ -349,8 +349,19 @@ export type RouteCautionId =
 export function snapshotCautions(input: RouteTrustSnapshot): readonly RouteCautionId[] {
   const cautions: RouteCautionId[] = []
 
-  // `established` is the one stored state that is not, by itself, a reason for caution.
-  if (input.lifecycleState !== Lifecycle.established) cautions.push('lifecycle_not_established')
+  // Two stored states are not, by themselves, a reason for caution.
+  //
+  // `established` was always one. **Phase 11 added `quiet`, and that is FR-39 in a line.**
+  // §19 defines quiet as "no recent activity, but no strong evidence of a problem", and
+  // FR-39 is explicit that an established route "shall not be treated as false merely because
+  // of 30 days without activity; they shall instead expose freshness/last-confirmed
+  // information". A caution on a quiet route would be the platform manufacturing a defect out
+  // of silence — which is precisely what invariant 23 and BR-10 forbid.
+  //
+  // What a quiet route shows instead is its last-confirmed date, as context, which the
+  // passport already carries. The rule itself lives in `src/domain/lifecycle.ts` so that the
+  // transition and the rendering cannot disagree about it.
+  if (lifecycleWarrantsCaution(input.lifecycleState)) cautions.push('lifecycle_not_established')
   if (input.informationCount === 0) cautions.push('no_information')
   if (input.quarantinedCount > 0) cautions.push('content_quarantined')
   if (input.disputedCount > 0) cautions.push('disputed_information')

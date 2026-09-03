@@ -740,6 +740,74 @@ and both histories; an established quiet route is never auto-invalidated.
 
 **FRs:** FR-38, FR-39, FR-40, FR-46, FR-58
 
+### Phase 11 result (2026-09-03)
+
+**Two rules carry the whole phase, and both are structural rather than remembered.**
+
+**Invariant 23 — dormancy is guarded by a type check, not a comment.** The only branch that
+can propose `dormant` sits inside `if (current === Lifecycle.experimental)`, so an established
+route cannot reach it however long it has been silent. §19.1 refined "everything is inactive
+after 30 days" into exactly that distinction, and a unit test runs the *same silent evidence*
+— created 3650 days ago, no followers, no confirmations, nothing for 3000 days — across every
+lifecycle state and asserts none but `experimental` is ever proposed dormant.
+
+**The direction rule — automation may only lower prominence or ask for a review; raising a
+route's standing requires a person.** Every piece of evidence available for promotion is a
+count, and FR-71 forbids counts alone conferring standing. So `proposeLifecycle` never returns
+`established` or `developing` from below, never touches `archived`, `removed` or `disputed`,
+and its only upward moves undo moves it made itself. Asserted over follower counts up to ten
+million.
+
+**Dormancy, quiet and staleness are three different things.**
+
+| State | Says | Comes from |
+|---|---|---|
+| `dormant` | Nobody ever used this route | `experimental` + 30 days + zero followers, confirmations and edits (FR-38's own number) |
+| `quiet` | An established route has gone still | No activity in the recent window. **Not a defect** |
+| `stale` | This route's own information is overdue | Stored `reviewDueAt` / `expiresAt` only — no invented period |
+
+**`quiet` carries no caution at all**, which is FR-39 in a line: "Established routes shall not
+be treated as false merely because of 30 days without activity; they shall instead expose
+freshness/last-confirmed information." `snapshotCautions` and `proposeLifecycle` both read one
+shared `lifecycleWarrantsCaution`, so the transition and the rendering cannot drift apart.
+
+**Merge is a canonical-successor declaration, and its whole physical effect is one pointer.**
+The duplicate keeps every step, field, revision, contributor attribution and follower it ever
+had; it leaves search and gains a signpost. Physically relocating content was rejected — it
+would put revision chains under a route that did not author them, detach `JourneyStepProgress`
+from the route its owner chose, and produce two histories for one fact. FR-58 requires that
+progress and history "shall not be lost", and the reliable way not to lose something is not to
+move it. §40.4 describes exactly this shape.
+
+Because nothing moves, **both follower sets survive by construction** rather than by careful
+handling. The integration suite proves it end to end: two routes, independent histories, a
+different follower with private progress on each, and after the merge every history entry is
+identical, both journeys are intact, the private note and completion date are untouched, and
+every contribution is still attributed to whoever made it. Merges chain, refuse cycles and
+self-merges, and are reversible — §40.1 protects routes that overlap heavily but are genuinely
+different, and a judgement that cannot be withdrawn is one nobody should make.
+
+**A duplicate flag changes nothing.** Ten people flagging a pair leaves the route in search
+with its standing untouched; the queue is ordered oldest-first and carries no tally, because
+two routes are the same journey or they are not and no count settles it (invariant 14). An
+administrator closing a flag as "genuinely different" is a real answer, not a failure.
+
+**Reports can never move a lifecycle state.** `LifecycleEvidence` has no report field, and the
+lifecycle modules never read the `Report` table or import the safety service — asserted
+structurally. Automatic archival on report volume would have made brigading a way to bury a
+route, which is what BR-11 keeps safety reports apart from accuracy signals to prevent.
+
+**Caught by an existing guard.** The first draft wrote `prisma.route.update` directly for
+lifecycle and merge, and the Phase 3 model-classification test refused it — only
+`src/server/revisions` may write a revisioned model. Execution moved to
+`setRouteLifecycleState` / `setRouteMergePointer` there; authorisation stayed in
+`src/server/lifecycle`. Exactly the split Phase 9's quarantine work arrived at.
+
+**Schema:** two additive models — `RouteLifecycleEvent` and `DuplicateFlag`, both
+`communitySignal` and undeletable — plus three nullable columns on `routes` recording a merge
+decision. `Route.mergedIntoId` itself has existed since Phase 2. Migration
+`20260903235000_lifecycle_duplicates_and_merge` is `CREATE`/`ADD COLUMN` only.
+
 ---
 
 ## Phase 12 — Responsive, accessibility, polish, support link

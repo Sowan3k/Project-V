@@ -94,9 +94,26 @@ on sign-in (`users.email`, `accounts`, `sessions`), so the 500 that would have m
 person to sign in is gone. Recorded, not re-verified from here — the reads above are the
 owner's.
 
+### Phase 11 — lifecycle, dormancy, merge and admin (same session)
+
+Full write-up in [Phases.md](Phases.md). Decisions worth carrying forward:
+
+| Decision | Why |
+|---|---|
+| **Dormancy is guarded by a state check, not a period check** | The only branch producing `dormant` is inside `if (current === experimental)`, so an established route cannot reach it however silent it goes. That is invariant 23 made structural rather than remembered. |
+| **Automation may only lower prominence or ask for review** | Every piece of evidence for promotion is a count, and FR-71 forbids counts alone conferring standing. `established` and `developing` are reachable only through an administrator's decision (FR-46). |
+| **`quiet` carries no caution** | FR-39: an established route is not false because nothing happened. `snapshotCautions` and `proposeLifecycle` share one `lifecycleWarrantsCaution`, so the transition and the rendering cannot disagree. |
+| **Staleness comes only from stored dates** | CLAUDE.md §11 leaves the period open, so nothing decides a route is stale after N days — only a contributor's own `reviewDueAt` / `expiresAt`. |
+| **Merge is a pointer, not a content transfer** | Relocating steps would put revision chains under a route that did not author them and detach journey progress from the route its owner chose. Nothing moves, so both histories and both follower sets survive by construction (FR-58, BR-25, §40.4). |
+| **A duplicate flag changes nothing, and is never counted** | §40.1 protects routes that overlap but differ. Ten flags and one flag both mean "an administrator should compare these". |
+
 ### Next step
 
-Phase 11 — lifecycle, dormancy, merge and admin.
+Phase 12 — responsive, accessibility, polish and the support link — **awaiting approval.**
+
+Two items are already logged for it (Test.md §18 and §21): the Phase 10 shadow comparison and
+the Phase 11 "quiet" copy have both been reasoned about carefully and neither has been in front
+of a reader. Both are judgement calls a test cannot settle.
 
 ---
 

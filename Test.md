@@ -273,7 +273,11 @@ rendering it guards is not written yet.
 | 19 | A temporary disruption expires without mutating the base route | ✅ |
 | 19b | The disruption model has no status/active column, and `src/` has no cron or sweeper | ✅ |
 | 19c | Nothing in the change modules writes a Route, Step, StepEdge or Field | ✅ |
-| 20 | Merging two routes preserves both follower sets and both revision histories | ⬜ |
+| 20 | Merging two routes preserves both follower sets and both revision histories | ✅ |
+| 20b | Both merged routes' histories are reconstructable entry-for-entry after the merge | ✅ |
+| 20c | Contributions stay attributed to their original authors across a merge | ✅ |
+| 20d | A merged route still renders through the one generic renderer | ✅ |
+| 20e | Merge is reversible; self-merge, double merge and cycles are refused | ✅ |
 | 21 | Change relevance is computed from effective date, not edit date | ✅ |
 | 21b | A step completed before a change's effective date stays completed and reads as context | ✅ |
 | 21c | No module compares a follower's recorded date against the *announcement* date | ✅ |
@@ -282,7 +286,11 @@ rendering it guards is not written yet.
 | 21f | A forked revision chain leaves no announcement ambiguous | ✅ |
 | 21g | `shadowForChange` contains no date comparison at all | ✅ |
 | 22 | The route model represents a branch that diverges and reconnects | ✅ |
-| 23 | 30-day dormancy applies to unused new routes only; established routes go quiet/stale | ⬜ |
+| 23 | 30-day dormancy applies to unused new routes only; established routes go quiet/stale | ✅ |
+| 23b | The same silent evidence parks an experimental route and never an established one | ✅ |
+| 23c | `quiet` produces no caution anywhere in the trust surface (FR-39, BR-10) | ✅ |
+| 23d | Staleness comes only from stored review/expiry dates, never from silence | ✅ |
+| 23e | No count promotes a route; no report can move a lifecycle state | ✅ |
 
 ### Rendering
 
@@ -1314,3 +1322,60 @@ writes on sign-in did not exist on production — `users.email`, `accounts` and 
 arrived in the Phase 7 migration. Anyone completing the Google handshake would have got a 500
 at the last step. That gap is now shut, and shut in the order that catches problems: data-
 bearing branch first.
+
+---
+
+## 21. Phase 11 — the two rules, and what a guard could not have caught
+
+### Invariant 23 is a type check, not a comment
+
+The distinction §19.1 draws — dormancy for unused new routes, freshness for established ones —
+is the kind of rule that survives review and dies in a refactor six months later, because
+nothing about the code stops you widening the condition.
+
+So the only branch that can produce `dormant` sits inside `if (current === Lifecycle.experimental)`,
+and an architecture test asserts `Lifecycle.dormant` is proposed in exactly one place. An
+established route cannot reach that branch at all.
+
+The unit test then attacks it from the other side, with the evidence most likely to trip a
+naive rule: **created 3650 days ago, zero followers, zero confirmations, zero edits, nothing
+for 3000 days.** Run across every lifecycle state, asserting none but `experimental` is ever
+proposed dormant. If somebody later moves the dormancy check outside the guard, that test
+fails on nine states at once.
+
+### The guard that made the design better, again
+
+The first draft wrote `prisma.route.update` directly for lifecycle state and the merge pointer.
+`model-classification.test.ts` refused it: only `src/server/revisions` may write a revisioned
+model.
+
+This is the second phase running where that boundary has forced the right split — Phase 9's
+quarantine hit it identically. The resolution is the same both times and is worth stating as a
+pattern: **deciding is one module's job, writing is another's.** Authorisation, evidence and the
+audit record stay in `src/server/lifecycle`; the single `tx.route.update` lives beside
+`archiveStep` and `setFieldQuarantine`, where every write to shared knowledge can be read in
+one place.
+
+### A false positive worth keeping
+
+`contribution-loop.test.ts` guards against §25's "competitive points game" with a regex
+including a bare `points`. It fired on new UI copy — "It leaves search and **points**
+readers at the surviving route" — the English verb, not the noun.
+
+Narrowing the regex was the wrong fix. That guard scans user-facing copy, which is exactly where
+"you earned 50 points" would appear, so its breadth is the point. The copy was reworded to
+"sends readers to", which reads better anyway. Same conclusion as Phase 10's `promoteDisruption`
+rename: **when a broad guard fires on prose, change the prose.**
+
+### What the tests cannot prove
+
+**That a merge is the right call for any given pair.** Every mechanical property is asserted —
+histories intact, followers preserved, progress untouched, reversible, cycle-free. Whether two
+routes actually describe the same journey is §40.1's question, it is a human judgement, and the
+product's answer is to put it in front of an administrator with both routes linked rather than
+to compute it. A test can only confirm that nothing decides it automatically, which it does.
+
+**That "quiet" reads as reassuring rather than as neglect.** The tests assert the absence of a
+caution and the absence of alarming words. Whether a student seeing "Quiet. Nothing has changed
+on this route recently" concludes "settled" or "abandoned" is a copy question that needs a
+reader, not an assertion. Flagged for the Phase 12 pass alongside the shadow comparison (§18).
