@@ -40,7 +40,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 6 | Trust, provenance and freshness surface | Uncertainty is visible | ✅ |
 | 7 | Identity and private journeys | Follow a route, track privately | ✅ |
 | 8 | Contribution loop | ADD / UPDATE / CONFIRM / CHALLENGE | ✅ |
-| 9 | Safety: reporting and quarantine | Abuse containment | ⬜ |
+| 9 | Safety: reporting and quarantine | Abuse containment | ✅ |
 | 10 | Change propagation and shadow route | Followers see what changed | ⬜ |
 | 11 | Lifecycle, dormancy, merge, admin | Maintenance without data loss | ⬜ |
 | 12 | Responsive, accessibility, polish, support link | Launch-quality UI | ⬜ |
@@ -553,7 +553,54 @@ mockup shows one; it is deferred (CLAUDE.md §8.6).
 **Exit criteria:** invariant tests 12–14 pass; a quarantined link is not normally clickable but
 remains in history; no raw count alone triggers any state change.
 
-**FRs:** FR-35, FR-36, FR-37, FR-68, FR-71, FR-73
+### Phase 9 result (2026-09-03)
+
+REPORT as an action distinct from CHALLENGE, quarantine that hides without deleting, and an
+administrator queue that shows evidence and recommends nothing.
+
+**The threshold question dissolved rather than being answered.** §23.2 leaves quarantine
+thresholds "an operational decision … not fixed in this concept baseline" and CLAUDE.md §11
+lists them as open — but FR-71 and invariant 14 independently forbid a raw count being the sole
+automatic determinant of a state change. Automatic quarantine was therefore never available,
+and making it an administrator action means **no number has to be guessed**. Guards forbid
+`reportThreshold`, `autoQuarantine`, `MIN_REPORTS` and `abuseScore` in both `src/` and the
+schema, and assert the safety module never compares a report count to anything at all.
+
+**Invariant 12 survived the phase that could have broken it.** `RouteTrustInput` still cannot
+observe a report; what this phase added is `quarantinedCount`, a count of *administrator
+actions* — a caution, never a reassurance.
+
+**Quarantine withholds server-side.** A phishing URL that reaches the page has already done
+most of its work, so `display: none` is not containment. The read layer returns an empty value
+and a null `sourceUrl`, while the field, its revisions and the whole history stay untouched —
+proved by the history tab still returning the withheld text, and by the browser suite reading
+the raw HTML and finding neither the text nor the URL.
+
+**Reports are not public.** A challenge is a claim about information and belongs beside it; a
+report is an accusation about conduct, and a public accusation board would be a defamation
+surface and a brigading target. Readers see the outcome — whether something is withheld — and
+nothing else.
+
+**The administrator is a safety role, not an editorial one** (§23.3). It gates quarantine and
+report handling and nothing else; a test asserts it has no reach into contribution at all. A
+non-administrator requesting the queue gets a 404, not a 403 — there is no reason to tell
+somebody a moderation queue exists and they are not allowed in.
+
+**Caught by an existing guard:** the first draft put the quarantine field-write in the safety
+service, and the model-classification test refused it — `Field` is revisioned, and only
+`src/server/revisions` may write one. Authorisation stayed in safety; execution moved beside
+`confirmField` and `archiveField`.
+
+**Two older guards were rescoped rather than deleted.** The approval-gate scan now reads the
+contribution block rather than the whole dictionary, because "Withheld pending review" is
+honest copy about a quarantine. And "no report action exists" became a **separation** guard,
+which is the property that mattered all along.
+
+**Gate: verified in full.** GitHub Actions run #39, commit `e3dea2b` — lint, typecheck, 508
+unit/architecture tests, build, migrations onto an empty database, schema-drift check, the
+integration suite, and 52 E2E assertions, all on a `postgres:18` container.
+
+**FRs:** FR-35, FR-36, FR-37, FR-68, FR-71, FR-73 · **Invariants:** 1, 4, 12, 13, 14
 
 ---
 

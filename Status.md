@@ -7,6 +7,117 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Session 12 — 2026-09-03
+
+**Goal:** Phase 9 — safety: reporting and quarantine. Plus Germany research pass 3, and wiring
+Google sign-in.
+
+### Phase 9 — reporting and quarantine
+
+**Gate green on run #39, `e3dea2b`:** lint, typecheck, 508 unit/architecture tests, build,
+migrations onto an empty database, schema-drift check, the integration suite, and 52 E2E
+assertions — all on a container.
+
+### Decisions taken
+
+**1. The threshold question dissolved rather than being answered.** §23.2 leaves quarantine
+thresholds open and §11 lists them as undecided — but FR-71 and invariant 14 independently
+forbid a raw count being the *sole automatic determinant* of a state change. So automatic
+quarantine was never available in the first place, and making quarantine an administrator
+action means **no number has to be guessed**. This was the one place I expected to have to stop
+and ask; the requirements had already answered it.
+
+**2. Reports are not public.** A challenge is a claim about information and belongs beside it.
+A report is an accusation about *conduct*, and a public accusation board would be a defamation
+surface and a brigading target. Readers see the outcome — whether content is withheld — and
+nothing else.
+
+**3. Quarantine withholds server-side.** A phishing URL that reaches the page has already done
+most of its work; `display: none` is not containment. The value never leaves the server, and
+the browser suite proves it by reading the raw HTML.
+
+**4. A fourth model class gained a third member.** `Report` joins `Confirmation` and
+`Challenge` as a `communitySignal` — community-authored, never deleted by a normal user.
+Classification governs *write* rules; visibility is separate, which is how reports can be
+undeletable and private at once.
+
+**5. The administrator is a safety role only** (§23.3). A non-administrator asking for the
+queue gets a 404, not a 403.
+
+### Things that went wrong, and what they taught
+
+**An existing guard caught a real mistake.** The first draft put the quarantine field-write in
+the safety service; the model-classification test refused it, because `Field` is revisioned and
+only `src/server/revisions` may write one. Authorisation stayed in safety, execution moved. The
+Phase 3 boundary earning its keep three phases later.
+
+**Two of my own assertions were too blunt for shared fixtures.** One asserted the public route
+projection did not match `/report/i` and matched its own fixture's title — "a route with
+something **report**able on it". The other matched copy shared by fields the seeded route has
+accumulated across CI runs. Both now assert against values unique to their own run.
+
+**Two older guards were rescoped rather than deleted.** The approval-gate scan reads the
+contribution block rather than the whole dictionary, because "Withheld pending review" is
+honest copy. And "no report action exists" became a *separation* guard — the property that
+mattered all along.
+
+### Also done this session
+
+**Germany research pass 3** (content track, no production data). uni-assist handling fees
+verified: €75 first course, €30 each additional, per semester, charged "regardless of the
+result". **This is the first verified `application_channel` fact** — Amendment 001 added that
+dimension on a hypothesis and pass 2 found no instance. RWTH uses its own portal, so a student
+on that route pays it zero times while one applying to three uni-assist universities pays €135.
+Five of six applicability values now have verified instances.
+
+**A scope correction:** insurance was filed under post-arrival formalities and asked whether
+those fall outside V1. Wrong stage — Embassy Dhaka requires travel health insurance *at the
+visa application*, before departure, inside V1. The statutory insurance after arrival is a
+different requirement. A word like "insurance" is not a step.
+
+**Google sign-in is live.** The owner supplied OAuth credentials; `AUTH_SECRET` was generated
+locally. Verified by driving the real handshake — CSRF → Auth.js → `accounts.google.com` —
+which returned Google's email-entry form with no `invalid_client` or `redirect_uri_mismatch`.
+Two of the three values had arrived as my own `.env.example` placeholder text, angle brackets
+included; the diagnosis was done by shape alone, without any value entering the transcript.
+
+### A question the owner raised, worth recording
+
+**"Nothing I see matches the visual references — is the frontend still pending?"**
+
+The observation is right and the answer is that the *structure* the references define exists
+and is tested, while the *visual* layer is Phase 12 and has not been started. Fifteen colour
+tokens exist — neutrals, brand, one attention colour — and **zero category colours**, because
+the six semantic category colours and the maturity palette are open decisions (§11) that
+inventing would answer by accident.
+
+Options were offered: hold the line, bring a slice of Phase 12 forward for the road, or do a
+full design pass now. **The owner chose to hold the line and follow the phases.** Recorded
+because the cost is real — the product looks like a wireframe until Phase 12 — and that is now
+a known, accepted trade rather than an oversight.
+
+### Blockers
+
+None for Phase 10. Standing owner actions, none blocking:
+
+- **Phases 7, 8 and 9 migrations are on no Neon branch yet** — all verified against CI's empty
+  Postgres. `npm run db:deploy` against `test` then `production` is deliberately a person's job.
+- **Vercel needs its own `AUTH_SECRET`, `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`** before
+  sign-in works on the deployment. Generate a *separate* secret there, so a local session
+  cannot be replayed against production.
+- The failing `Workers Builds: project-v` check from the Cloudflare app.
+
+### Next step
+
+**Phase 10 — change propagation and shadow route**, on approval. Change severity, announcement
+versus effective date, relevance scoped to a follower's progress, the shadow comparison, and
+temporary disruptions that expire without rewriting the route.
+
+Two things already recorded that Phase 10 owns: the **shadow overlay problem** from Phase 4 — an
+overlay at identical geometry is invisible, and VR-07 shows side-by-side rather than pure
+overlay — and **effective date beats edit date** when deciding whether a change affects a
+follower (FR-59, BR-26, D-39, invariant 21).
+
 ## Session 11 — 2026-09-03
 
 **Goal:** correct the overclaim about generated handles, then Phase 8 — the contribution loop.

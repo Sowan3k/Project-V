@@ -50,6 +50,15 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-03 | **Google sign-in works end to end** | Drove the real handshake: CSRF → Auth.js → `accounts.google.com`, following redirects | ✅ Google returned its email-entry form with no `invalid_client`, `deleted_client` or `redirect_uri_mismatch`. The credentials are live |
+| 2026-09-03 | **Phase 9 gate verified in full** | GitHub Actions run #39, commit `e3dea2b`, all three jobs | ✅ lint · typecheck · **508** unit/architecture tests · build · migrations onto an empty database · schema-drift check · integration suite · **52 E2E assertions** |
+| 2026-09-03 | **Ten reports from ten people change nothing** | Integration: burst of reports, then read the field back | ✅ Not quarantined, value intact, route projection carries no reporter id and no detail text (FR-71, invariant 14) |
+| 2026-09-03 | **A quarantined value never reaches the page** | Browser: quarantined a field, then read the raw HTML | ✅ Neither the text nor the URL appears anywhere in the HTML — withheld server-side, not styled away |
+| 2026-09-03 | **…and is still in the history** | Same field, history tab | ✅ The withheld text is returned by the history view, and its revision row is untouched (invariants 1, 4) |
+| 2026-09-03 | Quarantine creates no revision | Quarantine then release, counting revisions | ✅ Unchanged — a safety state is not an edit |
+| 2026-09-03 | The moderation queue does not exist for anyone else | Anonymous, member and admin all requested `/en/admin/reports` | ✅ 404, 404, 200. A non-administrator is not told the page exists |
+| 2026-09-03 | An administrator is shown evidence, never a verdict | `openReportsFor` return shape | ✅ Counts, dates and reasons only — no score, band or recommendation. **2 distinct reporters from 3 reports** |
+| 2026-09-03 | ⚠️ Two of my own assertions were too blunt for shared fixtures | Integration + E2E failures | ❗ One matched its own fixture's title (`/report/i` vs "something **report**able"); the other matched copy shared by fields accumulated across runs. §17 |
 | 2026-09-03 | **Phase 8 gate verified in full** | GitHub Actions run #34, commit `69132e2`, all three jobs | ✅ lint · typecheck · **480** unit/architecture tests · build · migrations onto an empty database · schema-drift check · integration suite · **46 E2E assertions** |
 | 2026-09-03 | **The Phase 8 exit criterion, walked end to end** | `e2e/contribute.spec.ts` in a browser | ✅ A new user creates a route → it renders through the ordinary renderer → publishes `experimental` → a **different** user corrects a field → the old value is still in history |
 | 2026-09-03 | **No approval gate anywhere** | Source + schema + dictionary guards, and the browser body text after every contribution | ✅ No `pendingApproval`/`reviewQueue`/`isApproved` in `src/` or the schema; no "pending", "awaiting approval" or "will be reviewed" on screen after creating or correcting |
@@ -420,7 +429,29 @@ weights open and §25 warns against a points game.
 - *"confirmations count people, not clicks."* A count that cannot tell fifty people from one
   person fifty times is not a signal (invariant 14, BR-32).
 
-### 4.7 Product feature coverage
+### 4.7 Phase 9 — reporting and quarantine (landed 2026-09-03)
+
+20 new architecture tests, an integration suite covering the exit criteria, and 3 browser
+tests × 2 viewports.
+
+| Area | Tests | State | File |
+|---|---|---|---|
+| No threshold, no auto-quarantine, report/challenge separation, admin check, no upload, no leaderboard | 20 | ✅ | `tests/architecture/safety.test.ts` |
+| Report → quarantine → withheld but in history → release; role enforcement | ✅ | ✅ | `tests/db/safety.db.test.ts` |
+| Reporting offered as a distinct action; queue invisible to non-admins; value absent from HTML | 3 | ✅ | `e2e/safety.spec.ts` |
+
+**The threshold question was dissolved rather than answered.** §23.2 leaves quarantine
+thresholds open and CLAUDE.md §11 lists them as undecided — but FR-71 and invariant 14
+independently forbid a raw count being the sole automatic determinant of a state change. So
+automatic quarantine was never available, and making it an administrator action means no
+number has to be guessed. A guard asserts the safety module never compares a report count to
+anything at all, in either `src/` or the schema.
+
+**Invariant 12 survived the phase that could have broken it.** `RouteTrustInput` still cannot
+observe a report. What Phase 9 added is `quarantinedCount` — a count of *administrator
+actions*, which is a caution and never a reassurance.
+
+### 4.8 Product feature coverage
 
 Populated as phases land. One row per feature area.
 
@@ -435,7 +466,7 @@ Populated as phases land. One row per feature area.
 | Journey follow and progress | ✅ | ✅ | ✅ | Private by construction; unfollow archives, delete is separate |
 | Change propagation to followers | ⬜ | ⬜ | ⬜ | |
 | Shadow route diff | ⬜ | ⬜ | ⬜ | |
-| Reporting and quarantine | ⬜ | ⬜ | ⬜ | |
+| Reporting and quarantine | ✅ | ✅ | ✅ | Report distinct from challenge; quarantine hides without deleting; no threshold anywhere |
 | Link trust classification | ✅ | ✅ | ⬜ | Host always shown; trust can only fall. Assigning `trusted`/`quarantined` is Phase 8/9 |
 | Route lifecycle and freshness | ✅ | ✅ | ⬜ | Displayed and explained. Lifecycle *transitions* are Phase 11 |
 | Auth and session | ✅ | ✅ | ✅ | Google OAuth, database sessions, generated handle. **Needs `AUTH_SECRET` and Google credentials to work on a deployment** |
