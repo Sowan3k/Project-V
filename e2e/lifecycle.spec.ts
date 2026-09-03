@@ -125,13 +125,16 @@ test.describe('lifecycle and merge', () => {
     const page = await (await browser.newContext()).newPage()
 
     await page.goto(`/en/routes/${quiet.slug}`)
-    await expect(page.getByText(/that is not a sign of a problem/i)).toBeVisible()
+    // Evidential, not reassuring: quiet describes what was recorded, and says outright that
+    // it is not a statement about accuracy.
+    await expect(page.getByText(/no recent changes have been recorded/i)).toBeVisible()
+    await expect(page.getByText(/describes its activity, not its accuracy/i)).toBeVisible()
     // FR-39: no caution, no warning language, nothing implying the route is wrong.
     const quietBody = (await page.locator('body').innerText()).toLowerCase()
     expect(quietBody).not.toMatch(/out of date|no longer valid|unreliable|abandoned/)
 
     await page.goto(`/en/routes/${dormant.slug}`)
-    await expect(page.getByText(/created and then nothing happened/i)).toBeVisible()
+    await expect(page.getByText(/no followers, confirmations or edits have been recorded/i)).toBeVisible()
     // Set aside, not deleted — the road and its steps are still here.
     await expect(page.getByText(/nothing has been deleted/i)).toBeVisible()
     const titles = await page.getByRole('img').locator('title').allTextContents()

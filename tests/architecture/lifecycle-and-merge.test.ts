@@ -207,7 +207,21 @@ describe('invariant 23, FR-39, BR-10 — quiet is not a defect', () => {
   it('explains a quiet route rather than warning about it', () => {
     const dictionary = read('src/i18n/dictionaries/en.ts')
     expect(dictionary).toMatch(/quietExplainer/)
-    expect(dictionary).toMatch(/That is not a sign of a problem/)
+
+    /**
+     * **Quiet is an activity description, and the copy must not turn it into a claim.**
+     *
+     * Corrected twice. The first draft read as neglect; the second read "no one has needed to
+     * change this route recently", which is not something the platform knows — the absence of
+     * recorded changes does not establish that no change was needed. Both are asserted
+     * against here: the opening must be evidential, and the disclaimer must be present.
+     */
+    expect(dictionary).toMatch(/No recent changes have been recorded/)
+    expect(dictionary).toMatch(/describes its activity, not its accuracy/)
+    // The wording that made a claim out of a record. Checked against the **code**: the note
+    // above `quietExplainer` quotes the rejected phrase to explain why it was rejected, and
+    // a raw scan reports that explanation as the violation. Fifth time (Test.md §22).
+    expect(stripComments(dictionary)).not.toMatch(/no one has needed to change/i)
     /**
      * No copy in the lifecycle vocabulary calls a route wrong for being quiet — scanned with
      * **comments stripped**, for the third time in this project. The schema prose in Phase 10
@@ -223,6 +237,17 @@ describe('invariant 23, FR-39, BR-10 — quiet is not a defect', () => {
     const start = code.indexOf('lifecycle: {')
     const block = code.slice(start, code.indexOf('\n  admin: {', start))
     expect(block).not.toMatch(/out of date|no longer valid|unreliable|abandoned/i)
+
+    /**
+     * And no claim in the other direction either. A lifecycle state describes activity; it
+     * must not imply accuracy, safety or confidence any more than it implies neglect.
+     *
+     * `accuracy` is deliberately not in this list — the copy uses it to *deny* a claim
+     * ("describes its activity, not its accuracy"), and forbidding the word would forbid the
+     * disclaimer along with the claim.
+     */
+    expect(block).not.toMatch(/\b(accurate|reliable|trustworthy|verified|dependable|safe)\b/i)
+
     // Not vacuous: the block really is the lifecycle vocabulary.
     expect(block).toMatch(/dormantExplainer/)
   })

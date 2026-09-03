@@ -307,6 +307,35 @@ describe('the application presents itself as a finished product', () => {
     expect(robots).toMatch(/\/en\/journeys/)
   })
 
+  /**
+   * **`noindex` on every private surface, not only a `robots.txt` disallow.**
+   *
+   * The two do different jobs and are routinely confused. A disallow asks a crawler not to
+   * *fetch* a page; it does not stop the URL appearing in an index when something links to
+   * it, and an indexed journey URL advertises that a private page sits at a guessable
+   * address. `noindex` is the directive that actually keeps it out.
+   *
+   * Listed explicitly, so a new private surface is a decision rather than an omission.
+   */
+  it('marks every private surface noindex', () => {
+    for (const page of [
+      'src/app/[locale]/journeys/page.tsx',
+      'src/app/[locale]/routes/[slug]/journey/page.tsx',
+      'src/app/[locale]/signin/page.tsx',
+      'src/app/[locale]/admin/reports/page.tsx',
+      'src/app/[locale]/admin/routes/page.tsx',
+    ]) {
+      expect(read(page), page).toMatch(/robots: \{ index: false/)
+    }
+  })
+
+  it('exposes no sitemap that could list a private URL', () => {
+    // None exists. If one is ever added it must exclude /journeys and /admin, and this test
+    // is where that requirement is recorded rather than in a comment nobody reads.
+    const sitemaps = walk('src/app', ['.ts']).filter((file) => file.endsWith('sitemap.ts'))
+    expect(sitemaps).toEqual([])
+  })
+
   it('has an error boundary that leaks nothing about what failed', () => {
     expect(read('src/app/[locale]/error.tsx')).toMatch(/reset/)
     const boundary = stripComments(read('src/app/[locale]/error.tsx'))
@@ -356,5 +385,57 @@ describe('the application presents itself as a finished product', () => {
     expect(/userScalable:\s*false/.test('export const viewport = { userScalable: false }')).toBe(
       true,
     )
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   The shared application canvas — CLAUDE.md §7.2
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+describe('every page sits on the shared canvas', () => {
+  /**
+   * §7.2: "One canvas width and one gutter, shared by the header, every page and the footer.
+   * That shared edge is what gives the interface a stable vertical axis at every viewport
+   * size." `PageCanvas` is named as "the single owner of page width and gutters."
+   *
+   * **Six of eleven pages did not use it.** `PageCanvas` supplies both the max-width and the
+   * gutters, so those pages had *no gutter at all*: their content sat flush against x=0 while
+   * the header and footer above and below were inset. Sign-in was the worst of them — a form
+   * pinned to the top-left corner of a 1440px page — and it is the page a reader sees at the
+   * moment they decide whether this looks like a real product.
+   *
+   * This was not a matter of taste. The rule already existed and was written down; nothing
+   * checked it. Now something does.
+   */
+  it('wraps every page in PageCanvas, directly or through RouteContext', () => {
+    const pages = walk('src/app', ['.tsx']).filter((file) => file.endsWith('page.tsx'))
+    expect(pages.length).toBeGreaterThan(8)
+
+    const offenders = pages.filter((file) => {
+      const code = stripComments(read(file))
+      // RouteContext renders PageCanvas itself, and is the persistent shell for route views.
+      return !code.includes('<PageCanvas') && !code.includes('<RouteContext')
+    })
+
+    expect(
+      offenders,
+      'These pages render outside the shared canvas, so they have no gutter and no common ' +
+        'left axis with the header and footer (CLAUDE.md §7.2).',
+    ).toEqual([])
+  })
+
+  /**
+   * And the canvas is defined once. Two definitions of "the page width" is how a header and
+   * the content beneath it end up on different axes, which is the failure §7.2 opens with.
+   */
+  it('defines the canvas width and gutter in exactly one place', () => {
+    const layout = read('src/components/layout.tsx')
+    expect(layout).toMatch(/export const PAGE_CANVAS = /)
+    expect(layout).toMatch(/export const PAGE_GUTTER = /)
+
+    const offenders = walk('src', ['.tsx'])
+      .filter((file) => file !== 'src/components/layout.tsx')
+      .filter((file) => /max-w-\[\d+px\]/.test(stripComments(read(file))))
+    expect(offenders, 'A page-width literal outside layout.tsx is a second canvas').toEqual([])
   })
 })

@@ -853,20 +853,30 @@ export const en = {
    */
   lifecycle: {
     /**
-     * Reviewed in Phase 12 against the question that actually decides whether FR-39 worked:
-     * does a reader seeing this conclude "settled" or "abandoned"?
+     * **Quiet describes activity. It says nothing about accuracy, and must not.**
+     *
+     * Two rounds of correction got here, and the second is the important one.
      *
      * The first draft opened "Nothing has changed on this route recently", which a skimmer
-     * reads as neglect and stops. Three changes: it now leads with **agency** ("no one has
-     * needed to change it") rather than absence, it names the two ordinary reasons so the
-     * benign reading is offered rather than merely permitted, and it ends by pointing at the
-     * last-confirmed date — which is FR-39's own remedy, and which the passport now shows
-     * outside its disclosure for exactly this state.
+     * reads as neglect. That was replaced with "no one has needed to change this route
+     * recently" — which reads better and is **not something the platform knows**. The absence
+     * of recorded changes does not establish that no change was needed; a route can be badly
+     * out of date precisely because nobody has looked at it. That wording quietly turned an
+     * activity record into a claim about correctness, which is the one thing this state must
+     * never do.
+     *
+     * So the sentence is now strictly evidential: what was recorded, and nothing inferred
+     * from it. The three examples deliberately include the unfavourable one — an overlooked
+     * route looks identical from here — because listing only the benign readings is a way of
+     * implying confidence without claiming it.
+     *
+     * It ends by pointing at the last-confirmed date, which is FR-39's own remedy and which
+     * the passport shows outside its disclosure for exactly this state.
      */
     quietExplainer:
-      'No one has needed to change this route recently. That is not a sign of a problem — a settled process and a seasonal intake both look like this. Its last confirmation date is shown with its standing, so you can judge for yourself.',
+      'No recent changes have been recorded for this route. That describes its activity, not its accuracy — a settled process, a seasonal intake and an overlooked route can all look the same from here. Its last confirmation date is shown with its standing.',
     dormantExplainer:
-      'This route was created and then nothing happened to it — no followers, no confirmations and no edits. It has been set aside so it does not crowd routes people are using. Nothing has been deleted, and it comes back if anyone uses it.',
+      'No followers, confirmations or edits have been recorded for this route since it was created. It has been set aside so it does not crowd routes people are using. Nothing has been deleted, and it returns the moment anyone uses it.',
     staleExplainer:
       'Some information on this route has passed a review or expiry date that a contributor set for it. That is a request to check, not a claim that it is wrong.',
     archivedExplainer:

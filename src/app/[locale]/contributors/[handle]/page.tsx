@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 
-import { ContentColumn } from '@/components/layout'
+import { ContentColumn, PageCanvas } from '@/components/layout'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { getContributorHistory } from '@/server/contributors/read'
@@ -33,30 +33,32 @@ export default async function ContributorPage({
   const isNew = history.contributionCount === 0 || history.firstContributionAt === null
 
   return (
-    <ContentColumn width="normal">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{history.handle}</h1>
-      <ContentColumn width="reading">
-        <p className="mt-2 text-sm leading-6 text-ink-500">{t.auth.handleExplainer}</p>
-      </ContentColumn>
+    <PageCanvas className="py-8">
+      <ContentColumn width="normal">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{history.handle}</h1>
+        <ContentColumn width="reading">
+          <p className="mt-2 text-sm leading-6 text-ink-500">{t.auth.handleExplainer}</p>
+        </ContentColumn>
 
-      {isNew ? (
-        <div className="mt-6 rounded-xl border border-hairline bg-surface p-4">
-          <p className="text-sm font-medium text-ink-900">{t.contribute.newContributor}</p>
-          <ContentColumn width="reading">
-            <p className="mt-1 text-sm leading-6 text-ink-700">{t.contribute.newContributorNote}</p>
-          </ContentColumn>
-        </div>
-      ) : (
-        <ul className="mt-6 space-y-1 text-sm text-ink-700">
-          <li>{t.contribute.contributions(history.contributionCount)}</li>
-          <li>{t.contribute.contributionsConfirmed(history.confirmedContributionCount)}</li>
-          <li>{t.contribute.confirmedCount(history.confirmationsGiven)}</li>
-          <li>
-            {t.contribute.contributorSince}:{' '}
-            {history.firstContributionAt?.toISOString().slice(0, 10) ?? ''}
-          </li>
-        </ul>
-      )}
-    </ContentColumn>
+        {isNew ? (
+          <div className="mt-6 rounded-xl border border-hairline bg-surface p-4">
+            <p className="text-sm font-medium text-ink-900">{t.contribute.newContributor}</p>
+            <ContentColumn width="reading">
+              <p className="mt-1 text-sm leading-6 text-ink-700">{t.contribute.newContributorNote}</p>
+            </ContentColumn>
+          </div>
+        ) : (
+          <ul className="mt-6 space-y-1 text-sm text-ink-700">
+            <li>{t.contribute.contributions(history.contributionCount)}</li>
+            <li>{t.contribute.contributionsConfirmed(history.confirmedContributionCount)}</li>
+            <li>{t.contribute.confirmedCount(history.confirmationsGiven)}</li>
+            <li>
+              {t.contribute.contributorSince}:{' '}
+              {history.firstContributionAt?.toISOString().slice(0, 10) ?? ''}
+            </li>
+          </ul>
+        )}
+      </ContentColumn>
+    </PageCanvas>
   )
 }

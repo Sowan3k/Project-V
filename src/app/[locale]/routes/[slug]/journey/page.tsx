@@ -75,7 +75,14 @@ export async function generateMetadata({
   const t = await getDictionary(locale)
   const route = await getRouteBySlug(slug)
   if (route === null) return { title: t.notPublished.title }
-  return { title: t.meta.routeJourney(route.title), description: route.summary ?? t.meta.description }
+  return {
+    title: t.meta.routeJourney(route.title), description: route.summary ?? t.meta.description,
+    // **noindex, and not only a robots.txt disallow.** A disallow asks a crawler not to
+    // *fetch* the page; it does not stop the URL being indexed from a link elsewhere, and an
+    // indexed journey URL would advertise that a private page exists at a guessable address.
+    // This is the directive that actually keeps it out of a search index (invariant 5).
+    robots: { index: false, follow: false },
+  }
 }
 
 export default async function JourneyPage({

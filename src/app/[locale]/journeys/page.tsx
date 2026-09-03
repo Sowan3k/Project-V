@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { ContentColumn } from '@/components/layout'
+import { ContentColumn, PageCanvas } from '@/components/layout'
 import { JourneyStepStatus } from '@/domain/enums'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
@@ -37,7 +37,14 @@ export async function generateMetadata({
   const { locale } = await params
   if (!isLocale(locale)) return {}
   const t = await getDictionary(locale)
-  return { title: t.meta.journeysTitle }
+  return {
+    title: t.meta.journeysTitle,
+    // **noindex, and not only a robots.txt disallow.** A disallow asks a crawler not to
+    // *fetch* the page; it does not stop the URL being indexed from a link elsewhere, and an
+    // indexed journey URL would advertise that a private page exists at a guessable address.
+    // This is the directive that actually keeps it out of a search index (invariant 5).
+    robots: { index: false, follow: false },
+  }
 }
 
 export default async function JourneysPage({
@@ -69,36 +76,38 @@ export default async function JourneysPage({
   const journeys = await listJourneys(viewer.id)
 
   return (
-    <ContentColumn width="wide">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{t.journey.indexTitle}</h1>
-      <ContentColumn width="reading">
-        <p className="mt-2 text-sm leading-6 text-ink-700">{t.journey.indexLede}</p>
-      </ContentColumn>
+    <PageCanvas className="py-8">
+      <ContentColumn width="wide">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{t.journey.indexTitle}</h1>
+        <ContentColumn width="reading">
+          <p className="mt-2 text-sm leading-6 text-ink-700">{t.journey.indexLede}</p>
+        </ContentColumn>
 
-      {journeys.length === 0 ? (
-        <p className="mt-6 text-sm text-ink-700">{t.journey.indexEmpty}</p>
-      ) : (
-        <ul className="mt-6 space-y-3">
-          {journeys.map((journey) => {
-            const done = journey.progress.filter(
-              (row) => row.status === JourneyStepStatus.completed,
-            ).length
-            return (
-              <li key={journey.id} className="rounded-xl border border-hairline bg-surface">
-                <Link href={`/${locale}/routes/${journey.routeSlug}/journey`} className="block p-4">
-                  <p className="font-medium text-ink-900">{journey.routeTitle}</p>
-                  <p className="mt-1 text-xs text-ink-500">
-                    {t.journey.overall(done, journey.progress.length)}
-                    {journey.selfReportedCompletedAt === null
-                      ? ''
-                      : ` · ${t.journeyStepStatus.completed}`}
-                  </p>
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-    </ContentColumn>
+        {journeys.length === 0 ? (
+          <p className="mt-6 text-sm text-ink-700">{t.journey.indexEmpty}</p>
+        ) : (
+          <ul className="mt-6 space-y-3">
+            {journeys.map((journey) => {
+              const done = journey.progress.filter(
+                (row) => row.status === JourneyStepStatus.completed,
+              ).length
+              return (
+                <li key={journey.id} className="rounded-xl border border-hairline bg-surface">
+                  <Link href={`/${locale}/routes/${journey.routeSlug}/journey`} className="block p-4">
+                    <p className="font-medium text-ink-900">{journey.routeTitle}</p>
+                    <p className="mt-1 text-xs text-ink-500">
+                      {t.journey.overall(done, journey.progress.length)}
+                      {journey.selfReportedCompletedAt === null
+                        ? ''
+                        : ` · ${t.journeyStepStatus.completed}`}
+                    </p>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </ContentColumn>
+    </PageCanvas>
   )
 }

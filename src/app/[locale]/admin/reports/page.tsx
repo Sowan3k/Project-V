@@ -1,6 +1,7 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
-import { ContentColumn, GridRegion, PageGrid } from '@/components/layout'
+import { ContentColumn, GridRegion, PageCanvas, PageGrid } from '@/components/layout'
 import { REPORT_OUTCOMES } from '@/domain/enums'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
@@ -32,6 +33,18 @@ import { handleReportAction, quarantineFieldAction, releaseFieldAction } from '.
  * The role is checked in the service, server-side, and this page shows a plain not-found to
  * anyone else — it does not reveal that the page exists (§23.3, CLAUDE.md §9).
  */
+/**
+ * Never indexed, and never crawled.
+ *
+ * The page already answers 404 to anyone who is not an administrator, so this is not what
+ * keeps it private — but an indexed moderation URL advertises that the surface exists and
+ * invites people to try it. `robots.ts` disallows the path; this keeps it out of the index
+ * even if it is linked from somewhere.
+ */
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
+
 export const dynamic = 'force-dynamic'
 
 const INPUT =
@@ -60,110 +73,112 @@ export default async function AdminReportsPage({
   }
 
   return (
-    <ContentColumn width="wide">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{t.admin.title}</h1>
-      <ContentColumn width="reading">
-        <p className="mt-2 text-sm leading-6 text-ink-700">{t.admin.lede}</p>
-        <p className="mt-2 text-sm leading-6 text-ink-500">{t.admin.noRecommendation}</p>
-      </ContentColumn>
+    <PageCanvas className="py-8">
+      <ContentColumn width="wide">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{t.admin.title}</h1>
+        <ContentColumn width="reading">
+          <p className="mt-2 text-sm leading-6 text-ink-700">{t.admin.lede}</p>
+          <p className="mt-2 text-sm leading-6 text-ink-500">{t.admin.noRecommendation}</p>
+        </ContentColumn>
 
-      {queue.length === 0 ? (
-        <p className="mt-6 text-sm text-ink-700">{t.admin.empty}</p>
-      ) : (
-        <ul className="mt-6 space-y-4">
-          {queue.map((summary) => (
-            <li key={summary.fieldId} className="rounded-xl border border-hairline bg-surface p-4">
-              <PageGrid>
-                <GridRegion span={5}>
-                  <h2 className="text-sm font-semibold text-ink-900">{t.admin.evidence}</h2>
-                  <ul className="mt-2 space-y-0.5 text-sm text-ink-700">
-                    <li>{t.admin.openReports(summary.openReports)}</li>
-                    {/* The number that resists gaming: people, not reports (invariant 14). */}
-                    <li>{t.admin.distinctReporters(summary.distinctReporters)}</li>
-                    <li>
-                      {t.admin.firstReported}:{' '}
-                      {summary.firstReportedAt?.toISOString().slice(0, 16).replace('T', ' ') ?? '—'}
-                    </li>
-                    <li>
-                      {t.admin.lastReported}:{' '}
-                      {summary.lastReportedAt?.toISOString().slice(0, 16).replace('T', ' ') ?? '—'}
-                    </li>
-                  </ul>
-                  <ul className="mt-2 flex flex-wrap gap-1.5">
-                    {summary.reasons.map((reason) => (
-                      <li
-                        key={reason}
-                        className="rounded-full border border-caution-500/40 bg-caution-50 px-2 py-0.5 text-xs text-caution-900"
-                      >
-                        {t.reportReason[reason]}
+        {queue.length === 0 ? (
+          <p className="mt-6 text-sm text-ink-700">{t.admin.empty}</p>
+        ) : (
+          <ul className="mt-6 space-y-4">
+            {queue.map((summary) => (
+              <li key={summary.fieldId} className="rounded-xl border border-hairline bg-surface p-4">
+                <PageGrid>
+                  <GridRegion span={5}>
+                    <h2 className="text-sm font-semibold text-ink-900">{t.admin.evidence}</h2>
+                    <ul className="mt-2 space-y-0.5 text-sm text-ink-700">
+                      <li>{t.admin.openReports(summary.openReports)}</li>
+                      {/* The number that resists gaming: people, not reports (invariant 14). */}
+                      <li>{t.admin.distinctReporters(summary.distinctReporters)}</li>
+                      <li>
+                        {t.admin.firstReported}:{' '}
+                        {summary.firstReportedAt?.toISOString().slice(0, 16).replace('T', ' ') ?? '—'}
                       </li>
-                    ))}
-                  </ul>
-                </GridRegion>
+                      <li>
+                        {t.admin.lastReported}:{' '}
+                        {summary.lastReportedAt?.toISOString().slice(0, 16).replace('T', ' ') ?? '—'}
+                      </li>
+                    </ul>
+                    <ul className="mt-2 flex flex-wrap gap-1.5">
+                      {summary.reasons.map((reason) => (
+                        <li
+                          key={reason}
+                          className="rounded-full border border-caution-500/40 bg-caution-50 px-2 py-0.5 text-xs text-caution-900"
+                        >
+                          {t.reportReason[reason]}
+                        </li>
+                      ))}
+                    </ul>
+                  </GridRegion>
 
-                <GridRegion span={7}>
-                  <h2 className="text-sm font-semibold text-ink-900">{t.admin.actions}</h2>
+                  <GridRegion span={7}>
+                    <h2 className="text-sm font-semibold text-ink-900">{t.admin.actions}</h2>
 
-                  <form action={quarantineFieldAction} className="mt-2 grid gap-2">
-                    <input type="hidden" name="locale" value={locale} />
-                    <input type="hidden" name="fieldId" value={summary.fieldId} />
-                    <label className="text-xs text-ink-700">
-                      {t.admin.quarantineReason}
-                      <input type="text" name="quarantineNote" className={INPUT} />
-                      <span className="mt-0.5 block text-ink-500">{t.admin.quarantineReasonHint}</span>
-                    </label>
-                    <button
-                      type="submit"
-                      className="justify-self-start rounded-lg bg-caution-900 px-3 py-1.5 text-xs font-medium text-white"
-                    >
-                      {t.admin.quarantine}
-                    </button>
-                  </form>
+                    <form action={quarantineFieldAction} className="mt-2 grid gap-2">
+                      <input type="hidden" name="locale" value={locale} />
+                      <input type="hidden" name="fieldId" value={summary.fieldId} />
+                      <label className="text-xs text-ink-700">
+                        {t.admin.quarantineReason}
+                        <input type="text" name="quarantineNote" className={INPUT} />
+                        <span className="mt-0.5 block text-ink-500">{t.admin.quarantineReasonHint}</span>
+                      </label>
+                      <button
+                        type="submit"
+                        className="justify-self-start rounded-lg bg-caution-900 px-3 py-1.5 text-xs font-medium text-white"
+                      >
+                        {t.admin.quarantine}
+                      </button>
+                    </form>
 
-                  <form action={releaseFieldAction} className="mt-3">
-                    <input type="hidden" name="locale" value={locale} />
-                    <input type="hidden" name="fieldId" value={summary.fieldId} />
-                    <button type="submit" className="text-xs text-brand-700 underline">
-                      {t.admin.release}
-                    </button>
-                  </form>
+                    <form action={releaseFieldAction} className="mt-3">
+                      <input type="hidden" name="locale" value={locale} />
+                      <input type="hidden" name="fieldId" value={summary.fieldId} />
+                      <button type="submit" className="text-xs text-brand-700 underline">
+                        {t.admin.release}
+                      </button>
+                    </form>
 
-                  <form action={handleReportAction} className="mt-4 grid gap-2 border-t border-hairline pt-3">
-                    <input type="hidden" name="locale" value={locale} />
-                    <input type="hidden" name="fieldId" value={summary.fieldId} />
-                    <label className="text-xs text-ink-700">
-                      {t.admin.outcome}
-                      <select name="outcome" className={INPUT}>
-                        {REPORT_OUTCOMES.map((outcome) => (
-                          <option key={outcome} value={outcome}>
-                            {t.reportOutcome[outcome]}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="text-xs text-ink-700">
-                      {t.admin.outcomeNote}
-                      <input type="text" name="outcomeNote" className={INPUT} />
-                    </label>
-                    <button
-                      type="submit"
-                      className="justify-self-start rounded-lg border border-brand-700 px-3 py-1.5 text-xs font-medium text-brand-700"
-                    >
-                      {t.admin.recordDecision}
-                    </button>
-                  </form>
+                    <form action={handleReportAction} className="mt-4 grid gap-2 border-t border-hairline pt-3">
+                      <input type="hidden" name="locale" value={locale} />
+                      <input type="hidden" name="fieldId" value={summary.fieldId} />
+                      <label className="text-xs text-ink-700">
+                        {t.admin.outcome}
+                        <select name="outcome" className={INPUT}>
+                          {REPORT_OUTCOMES.map((outcome) => (
+                            <option key={outcome} value={outcome}>
+                              {t.reportOutcome[outcome]}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="text-xs text-ink-700">
+                        {t.admin.outcomeNote}
+                        <input type="text" name="outcomeNote" className={INPUT} />
+                      </label>
+                      <button
+                        type="submit"
+                        className="justify-self-start rounded-lg border border-brand-700 px-3 py-1.5 text-xs font-medium text-brand-700"
+                      >
+                        {t.admin.recordDecision}
+                      </button>
+                    </form>
 
-                  <p className="mt-3 text-xs leading-5 text-ink-500">{t.admin.quarantineIsNotDeletion}</p>
-                </GridRegion>
-              </PageGrid>
-            </li>
-          ))}
-        </ul>
-      )}
+                    <p className="mt-3 text-xs leading-5 text-ink-500">{t.admin.quarantineIsNotDeletion}</p>
+                  </GridRegion>
+                </PageGrid>
+              </li>
+            ))}
+          </ul>
+        )}
 
-      <ContentColumn width="reading" className="mt-8 border-t border-hairline pt-4">
-        <p className="text-xs leading-5 text-ink-500">{t.admin.roleScope}</p>
+        <ContentColumn width="reading" className="mt-8 border-t border-hairline pt-4">
+          <p className="text-xs leading-5 text-ink-500">{t.admin.roleScope}</p>
+        </ContentColumn>
       </ContentColumn>
-    </ContentColumn>
+    </PageCanvas>
   )
 }

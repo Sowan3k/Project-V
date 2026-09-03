@@ -1,7 +1,8 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 
-import { ContentColumn, GridRegion, PageGrid } from '@/components/layout'
+import { ContentColumn, GridRegion, PageCanvas, PageGrid } from '@/components/layout'
 import { ROUTE_LIFECYCLE_STATES } from '@/domain/enums'
 import { isLocale } from '@/i18n/config'
 import type { Dictionary } from '@/i18n/dictionaries/en'
@@ -45,6 +46,18 @@ import {
  * gets a plain not-found rather than a forbidden. There is no reason to tell somebody that an
  * administration page exists and they are not allowed in (§23.3, CLAUDE.md §9).
  */
+/**
+ * Never indexed, and never crawled.
+ *
+ * The page already answers 404 to anyone who is not an administrator, so this is not what
+ * keeps it private — but an indexed moderation URL advertises that the surface exists and
+ * invites people to try it. `robots.ts` disallows the path; this keeps it out of the index
+ * even if it is linked from somewhere.
+ */
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
+
 export const dynamic = 'force-dynamic'
 
 const INPUT =
@@ -72,100 +85,102 @@ export default async function AdminRoutesPage({
   const [routes, flags] = await Promise.all([routesForMaintenance(), openDuplicateFlags()])
 
   return (
-    <ContentColumn width="wide">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{t.admin.routesTitle}</h1>
-      <ContentColumn width="reading">
-        <p className="mt-2 text-sm leading-6 text-ink-700">{t.admin.routesLede}</p>
-        {/* The direction rule, stated where the person exercising it can read it. */}
-        <p className="mt-2 text-xs leading-5 text-ink-500">{t.admin.routesDirection}</p>
-      </ContentColumn>
-
-      <form action={runPeriodicReviewAction} className="mt-4">
-        <input type="hidden" name="locale" value={locale} />
-        <button
-          type="submit"
-          className="rounded-lg border border-brand-700 px-3 py-1.5 text-xs font-medium text-brand-700"
-        >
-          {t.admin.runReview}
-        </button>
-        <span className="ml-3 text-xs text-ink-500">{t.admin.runReviewHint}</span>
-      </form>
-
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold tracking-tight text-ink-900">
-          {t.admin.duplicatesTitle}
-        </h2>
+    <PageCanvas className="py-8">
+      <ContentColumn width="wide">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{t.admin.routesTitle}</h1>
         <ContentColumn width="reading">
-          <p className="mt-1 text-xs leading-5 text-ink-500">{t.admin.duplicatesOldestFirst}</p>
+          <p className="mt-2 text-sm leading-6 text-ink-700">{t.admin.routesLede}</p>
+          {/* The direction rule, stated where the person exercising it can read it. */}
+          <p className="mt-2 text-xs leading-5 text-ink-500">{t.admin.routesDirection}</p>
         </ContentColumn>
 
-        {flags.length === 0 ? (
-          <p className="mt-3 text-sm text-ink-700">{t.admin.duplicatesEmpty}</p>
-        ) : (
-          <ul className="mt-3 space-y-3">
-            {flags.map((flag) => (
-              <li key={flag.id} className="rounded-xl border border-hairline bg-surface p-4">
-                <p className="text-sm text-ink-900">
-                  <Link
-                    href={`/${locale}/routes/${flag.routeSlug}`}
-                    className="text-brand-700 underline"
-                  >
-                    {flag.routeTitle}
-                  </Link>{' '}
-                  <span className="text-ink-500">↔</span>{' '}
-                  <Link
-                    href={`/${locale}/routes/${flag.duplicateOfSlug}`}
-                    className="text-brand-700 underline"
-                  >
-                    {flag.duplicateOfTitle}
-                  </Link>
-                </p>
-                {flag.note === null ? null : (
-                  <p className="mt-1 text-xs leading-5 text-ink-700">{flag.note}</p>
-                )}
-                <p className="mt-1 text-xs text-ink-500">
-                  {flag.flaggedByHandle ?? '—'} · {flag.createdAt.toISOString().slice(0, 10)}
-                </p>
+        <form action={runPeriodicReviewAction} className="mt-4">
+          <input type="hidden" name="locale" value={locale} />
+          <button
+            type="submit"
+            className="rounded-lg border border-brand-700 px-3 py-1.5 text-xs font-medium text-brand-700"
+          >
+            {t.admin.runReview}
+          </button>
+          <span className="ml-3 text-xs text-ink-500">{t.admin.runReviewHint}</span>
+        </form>
 
-                <form action={resolveDuplicateFlagAction} className="mt-3 flex flex-wrap items-end gap-2">
-                  <input type="hidden" name="locale" value={locale} />
-                  <input type="hidden" name="flagId" value={flag.id} />
-                  <label className={`${LABEL} flex-1`}>
-                    {t.admin.mergeNote}
-                    <input type="text" name="resolutionNote" className={INPUT} />
-                  </label>
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-hairline px-2.5 py-1.5 text-xs text-ink-900"
-                  >
-                    {t.admin.notDuplicate}
-                  </button>
-                </form>
-              </li>
+        <section className="mt-10">
+          <h2 className="text-lg font-semibold tracking-tight text-ink-900">
+            {t.admin.duplicatesTitle}
+          </h2>
+          <ContentColumn width="reading">
+            <p className="mt-1 text-xs leading-5 text-ink-500">{t.admin.duplicatesOldestFirst}</p>
+          </ContentColumn>
+
+          {flags.length === 0 ? (
+            <p className="mt-3 text-sm text-ink-700">{t.admin.duplicatesEmpty}</p>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {flags.map((flag) => (
+                <li key={flag.id} className="rounded-xl border border-hairline bg-surface p-4">
+                  <p className="text-sm text-ink-900">
+                    <Link
+                      href={`/${locale}/routes/${flag.routeSlug}`}
+                      className="text-brand-700 underline"
+                    >
+                      {flag.routeTitle}
+                    </Link>{' '}
+                    <span className="text-ink-500">↔</span>{' '}
+                    <Link
+                      href={`/${locale}/routes/${flag.duplicateOfSlug}`}
+                      className="text-brand-700 underline"
+                    >
+                      {flag.duplicateOfTitle}
+                    </Link>
+                  </p>
+                  {flag.note === null ? null : (
+                    <p className="mt-1 text-xs leading-5 text-ink-700">{flag.note}</p>
+                  )}
+                  <p className="mt-1 text-xs text-ink-500">
+                    {flag.flaggedByHandle ?? '—'} · {flag.createdAt.toISOString().slice(0, 10)}
+                  </p>
+
+                  <form action={resolveDuplicateFlagAction} className="mt-3 flex flex-wrap items-end gap-2">
+                    <input type="hidden" name="locale" value={locale} />
+                    <input type="hidden" name="flagId" value={flag.id} />
+                    <label className={`${LABEL} flex-1`}>
+                      {t.admin.mergeNote}
+                      <input type="text" name="resolutionNote" className={INPUT} />
+                    </label>
+                    <button
+                      type="submit"
+                      className="rounded-lg border border-hairline px-2.5 py-1.5 text-xs text-ink-900"
+                    >
+                      {t.admin.notDuplicate}
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="mt-10">
+          <h2 className="text-lg font-semibold tracking-tight text-ink-900">{t.admin.setState}</h2>
+          <ContentColumn width="reading">
+            <p className="mt-1 text-xs leading-5 text-ink-500">{t.admin.mergeExplainer}</p>
+          </ContentColumn>
+
+          <ul className="mt-4 space-y-4">
+            {routes.map((route) => (
+              <RouteMaintenanceRow
+                key={route.id}
+                route={route}
+                routes={routes}
+                locale={locale}
+                dictionary={t}
+              />
             ))}
           </ul>
-        )}
-      </section>
-
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold tracking-tight text-ink-900">{t.admin.setState}</h2>
-        <ContentColumn width="reading">
-          <p className="mt-1 text-xs leading-5 text-ink-500">{t.admin.mergeExplainer}</p>
-        </ContentColumn>
-
-        <ul className="mt-4 space-y-4">
-          {routes.map((route) => (
-            <RouteMaintenanceRow
-              key={route.id}
-              route={route}
-              routes={routes}
-              locale={locale}
-              dictionary={t}
-            />
-          ))}
-        </ul>
-      </section>
-    </ContentColumn>
+        </section>
+      </ContentColumn>
+    </PageCanvas>
   )
 }
 

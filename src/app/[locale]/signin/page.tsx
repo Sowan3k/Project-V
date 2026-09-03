@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 
-import { ContentColumn } from '@/components/layout'
+import { ContentColumn, PageCanvas } from '@/components/layout'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { currentViewer, signIn } from '@/server/auth'
@@ -33,7 +33,14 @@ export async function generateMetadata({
   const { locale } = await params
   if (!isLocale(locale)) return {}
   const t = await getDictionary(locale)
-  return { title: t.meta.signInTitle }
+  return {
+    title: t.meta.signInTitle,
+    // **noindex, and not only a robots.txt disallow.** A disallow asks a crawler not to
+    // *fetch* the page; it does not stop the URL being indexed from a link elsewhere, and an
+    // indexed journey URL would advertise that a private page exists at a guessable address.
+    // This is the directive that actually keeps it out of a search index (invariant 5).
+    robots: { index: false, follow: false },
+  }
 }
 
 export default async function SignInPage({
@@ -58,35 +65,37 @@ export default async function SignInPage({
   const configured = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET)
 
   return (
-    <ContentColumn width="reading">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{t.auth.signInTitle}</h1>
-      <p className="mt-3 text-base leading-7 text-ink-700">{t.auth.signInLede}</p>
+    <PageCanvas className="py-12">
+      <ContentColumn width="reading">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{t.auth.signInTitle}</h1>
+        <p className="mt-3 text-base leading-7 text-ink-700">{t.auth.signInLede}</p>
 
-      {configured ? (
-        <form
-          action={async () => {
-            'use server'
-            await signIn('google', { redirectTo: next })
-          }}
-          className="mt-6"
-        >
-          <button
-            type="submit"
-            className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white"
+        {configured ? (
+          <form
+            action={async () => {
+              'use server'
+              await signIn('google', { redirectTo: next })
+            }}
+            className="mt-6"
           >
-            {t.auth.withGoogle}
-          </button>
-        </form>
-      ) : (
-        <p className="mt-6 rounded-lg border border-hairline bg-surface p-4 text-sm text-ink-700">
-          {t.auth.notConfigured}
-        </p>
-      )}
+            <button
+              type="submit"
+              className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white"
+            >
+              {t.auth.withGoogle}
+            </button>
+          </form>
+        ) : (
+          <p className="mt-6 rounded-lg border border-hairline bg-surface p-4 text-sm text-ink-700">
+            {t.auth.notConfigured}
+          </p>
+        )}
 
-      <section className="mt-8 rounded-xl border border-hairline bg-surface p-4">
-        <h2 className="text-sm font-semibold text-ink-900">{t.auth.whatWeStore}</h2>
-        <p className="mt-1 text-sm leading-6 text-ink-700">{t.auth.whatWeStoreBody}</p>
-      </section>
-    </ContentColumn>
+        <section className="mt-8 rounded-xl border border-hairline bg-surface p-4">
+          <h2 className="text-sm font-semibold text-ink-900">{t.auth.whatWeStore}</h2>
+          <p className="mt-1 text-sm leading-6 text-ink-700">{t.auth.whatWeStoreBody}</p>
+        </section>
+      </ContentColumn>
+    </PageCanvas>
   )
 }
