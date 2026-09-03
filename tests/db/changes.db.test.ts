@@ -16,6 +16,7 @@ import {
 } from '../../src/domain/enums'
 import { generateHandle } from '../../src/server/auth/handle'
 import {
+  changesForRoute,
   disruptionsForRoute,
   lastChangePoint,
   shadowSince,
@@ -572,6 +573,11 @@ describe.skipIf(!url)('FR-81, §13.3 — a narrow change is not presented as uni
     const route = await makeRoute()
     await followRoute({ userId: follower, routeId: route.routeId })
     await followRoute({ userId: other, routeId: route.routeId })
+    // A follower sees changes announced strictly *after* they started, and both follows above
+    // can land in the same millisecond as the announcement below. That 1ms window is harmless
+    // in the product — a change announced the instant you follow is part of the route you
+    // chose — but it makes a test that depends on it non-deterministic.
+    await new Promise((resolve) => setTimeout(resolve, 25))
 
     const change = await announceChange({
       authorId: author,
@@ -588,12 +594,24 @@ describe.skipIf(!url)('FR-81, §13.3 — a narrow change is not presented as uni
       stance: FollowerChangeStance.already_handled,
     })
 
+    // The change itself is public and both followers see it. The *answer* to it is not.
     const theirs = await followerChangeReport(other, route.routeId)
-    expect(theirs?.changes.find((c) => c.change.id === change.changeId)?.stance).toBeNull()
+    const entry = theirs?.changes.find((c) => c.change.id === change.changeId)
+    expect(entry).toBeDefined()
+    expect(entry?.stance).toBeNull()
 
-    // And it is not in the public projection at all.
-    const publicView = JSON.stringify(await disruptionsForRoute(route.routeId))
+    // Asserted structurally as well, which does not depend on either report being fetched:
+    // the note exists once, and belongs to exactly one person (invariant 5).
+    const notes = await prisma.journeyChangeNote.findMany({
+      where: { changeId: change.changeId },
+      select: { journey: { select: { userId: true } } },
+    })
+    expect(notes.map((note) => note.journey.userId)).toEqual([follower])
+
+    // And nothing about the stance reaches the public projection of the route's changes.
+    const publicView = JSON.stringify(await changesForRoute(route.routeId))
     expect(publicView).not.toContain(follower)
+    expect(publicView).not.toContain(FollowerChangeStance.already_handled)
   })
 
   it('refuses to attach a stance to a change on a different route', async () => {

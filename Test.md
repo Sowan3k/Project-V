@@ -1201,10 +1201,23 @@ the encoding is defensible and the alternative is proven bad, but the design has
 front of a reader. Phase 12 should look at it on a real route with a real diff before treating
 it as settled.
 
-**Timestamp granularity in the point-in-time reconstruction.** `loadRouteGraphAt` compares
-`createdAt <= at`. Revisions written inside one transaction share a timestamp closely enough
-that a cut taken in the same millisecond could include or exclude them together. The
-integration tests insert a 25ms pause before the "after" writes for exactly this reason. It has
-no product consequence — a comparison is always drawn against a journey start or a change
-point, never against a moment mid-transaction — but a future test that omits the pause will
-look flaky and will not be.
+**Timestamp granularity, in two places.** `loadRouteGraphAt` compares `createdAt <= at`, and
+`followerChangeReport` shows changes announced strictly after `startedAt`. Both are correct and
+both have a one-millisecond edge.
+
+Run #43 found the second one: a test followed a route with two users and announced a change on
+the next line, and in CI the second `followRoute` and the `announceChange` landed in the same
+millisecond, so the change fell outside the follower's window and an assertion about its
+*stance* received `undefined` instead of `null`.
+
+There is **no product consequence**. A change announced in the same millisecond somebody starts
+following is part of the route they chose, not news that arrived under them. But it makes a
+test non-deterministic, and the fix was worth more than a pause: the assertion now checks the
+property directly — the note exists once and belongs to exactly one journey — which does not
+depend on either report being fetched at all. The pause was added as well, with a comment
+saying why.
+
+**Standing rule: a test that depends on `announcedAt > startedAt` must space the two writes,
+and should prefer asserting the underlying row over the rendered projection where both are
+available.** The integration tests insert a 25ms pause before "after" writes for the same
+reason.

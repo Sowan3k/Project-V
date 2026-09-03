@@ -113,6 +113,10 @@ export async function followerChangeReport(
   if (journey === null) return null
 
   const [changes, disruptions] = await Promise.all([
+    // The default cap applies, and it is the newest changes that survive it. A follower on a
+    // very active route who started long ago therefore sees the most recent fifty rather than
+    // every change ever announced — which is the right end to keep, since relevance decays
+    // with age and the full record is always on the History tab (FR-31).
     changesForRoute(routeId),
     disruptionsForRoute(routeId, { now }),
   ])
