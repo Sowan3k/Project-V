@@ -10,6 +10,8 @@ import { getDictionary } from '@/i18n/get-dictionary'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 import { Road } from '@/renderer'
 import { currentViewer } from '@/server/auth'
+import { shadowSince } from '@/server/changes/read'
+import { followerChangeReport } from '@/server/journeys/changes'
 import { getJourneyForRoute, type JourneyView } from '@/server/journeys/read'
 import { getRouteBySlug, type RouteDetail } from '@/server/routes/read'
 
@@ -84,7 +86,14 @@ export default async function JourneyPage({
           slug={slug}
         />
       ) : (
-        <JourneyBoard dictionary={t} route={route} journey={journey} slug={slug} locale={locale} />
+        <JourneyBoard
+          dictionary={t}
+          route={route}
+          journey={journey}
+          slug={slug}
+          locale={locale}
+          userId={viewer.id}
+        />
       )}
     </RouteContext>
   )
@@ -152,12 +161,14 @@ function JourneyBoard({
   journey,
   slug,
   locale,
+  userId,
 }: {
   dictionary: Dictionary
   route: RouteDetail
   journey: JourneyView
   slug: string
   locale: string
+  userId: string
 }) {
   const byStep = new Map(journey.progress.map((row) => [row.stepId, row]))
   const done = journey.progress.filter((row) => row.status === JourneyStepStatus.completed).length
@@ -183,6 +194,14 @@ function JourneyBoard({
         </div>
         <p className="mt-2 text-xs text-ink-500">{t.journey.routeChangedNote}</p>
       </section>
+
+      <ChangesSinceStarted
+        userId={userId}
+        routeId={route.id}
+        slug={slug}
+        locale={locale}
+        dictionary={t}
+      />
 
       <PageGrid className="mt-8">
         <GridRegion span={8}>
@@ -456,6 +475,108 @@ function LeavePanel({
         </button>
       </form>
       <p className="mt-1 text-xs text-ink-500">{t.journey.deleteExplainer}</p>
+    </section>
+  )
+}
+
+/**
+ * What has changed since this follower started — Phase 10. FR-28, FR-29, FR-61, FR-76, §13.1.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **Relevance, not volume.** §13.1: the platform "should emphasize changes affecting
+ * unfinished or upcoming steps rather than forcing the user to reread the entire route." So
+ * this panel shows only what carries a caution — a change or a disruption touching a step
+ * they have not finished — and sends everything else to the Changes tab.
+ *
+ * A follower with twelve changes, eleven of them on steps they completed months ago, sees
+ * one. That is the whole point of scoping relevance to progress: a notice that fires on every
+ * edit is a notice nobody reads, and the one that mattered goes with it.
+ *
+ * It is also the only place this phase touches the journey page, and it touches it read-only.
+ * Nothing here writes progress, and there is no code path from a route change to a journey row
+ * anywhere in the application (FR-30, BR-17, D-12, invariant 8).
+ */
+async function ChangesSinceStarted({
+  userId,
+  routeId,
+  slug,
+  locale,
+  dictionary: t,
+}: {
+  userId: string
+  routeId: string
+  slug: string
+  locale: string
+  dictionary: Dictionary
+}) {
+  const now = new Date()
+  const report = await followerChangeReport(userId, routeId, { now })
+  if (report === null) return null
+
+  // The comparison is public data drawn against a private date — see the note in
+  // src/server/journeys/changes.ts on why those two live on opposite sides of the boundary.
+  const shadow = await shadowSince(routeId, report.startedAt)
+
+  const pressing = report.changes.filter((entry) => entry.relevance.weight === 'caution')
+  const disrupting = report.disruptions.filter((entry) => entry.relevance.weight === 'caution')
+  const nothingToSee =
+    pressing.length === 0 && disrupting.length === 0 && !shadow.comparison.structureChanged
+
+  return (
+    <section className="mt-8 rounded-xl border border-hairline bg-surface p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold text-ink-900">{t.changes.yourPositionTitle}</h2>
+        <Link
+          href={`/${locale}/routes/${slug}/changes`}
+          className="text-xs text-brand-700 underline"
+        >
+          {t.changes.title}
+        </Link>
+      </div>
+
+      <p className="mt-1 text-sm text-ink-700">{t.changes.needsAttention(report.needsAttention)}</p>
+
+      {nothingToSee ? null : (
+        <ul className="mt-3 space-y-2">
+          {disrupting.map((entry) => (
+            <li
+              key={entry.disruption.id}
+              className="rounded-lg border border-caution-500/40 bg-caution-50 px-3 py-2"
+            >
+              <p className="text-xs font-medium text-caution-900">{entry.disruption.title}</p>
+              <p className="mt-0.5 text-xs leading-5 text-ink-700">
+                {t.changes.disruptionBearing[entry.relevance.bearing]}
+              </p>
+            </li>
+          ))}
+          {pressing.map((entry) => (
+            <li
+              key={entry.change.id}
+              className="rounded-lg border border-caution-500/40 bg-caution-50 px-3 py-2"
+            >
+              <p className="text-xs font-medium text-caution-900">{entry.change.title}</p>
+              <p className="mt-0.5 text-xs leading-5 text-ink-700">
+                {t.changes.bearing[entry.relevance.bearing]}
+                {entry.change.stepLabel === null ? '' : ` · ${entry.change.stepLabel}`}
+              </p>
+            </li>
+          ))}
+          {shadow.comparison.structureChanged ? (
+            <li className="text-xs leading-5 text-ink-700">
+              {t.changes.note.shape_changed}{' '}
+              <Link
+                href={`/${locale}/routes/${slug}/changes`}
+                className="text-brand-700 underline"
+              >
+                {t.changes.title}
+              </Link>
+            </li>
+          ) : null}
+        </ul>
+      )}
+
+      {/* The reassurance a follower actually came for, stated whether or not anything moved. */}
+      <p className="mt-3 text-xs leading-5 text-ink-500">{t.changes.progressUntouched}</p>
     </section>
   )
 }

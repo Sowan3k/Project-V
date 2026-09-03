@@ -1,17 +1,26 @@
 import type {
   ChallengeReason,
+  ChangeSeverity,
   FieldApplicability,
   FieldCategory,
+  FollowerChangeStance,
   JourneyStepStatus,
   LinkTrustClass,
   ReportOutcome,
   ReportReason,
   SourceClass,
+  RouteChangeKind,
   RouteLifecycleState,
   RouteMechanism,
   StepCategory,
   StudyLevel,
 } from '@/domain/enums'
+import type {
+  ChangeBearing,
+  ChangeNote,
+  DisruptionBearing,
+  StepChangeMark,
+} from '@/domain/changes'
 import type { LinkCautionId } from '@/domain/links'
 import type { FieldGroupId, FieldSignalId, RouteCautionId } from '@/domain/trust'
 
@@ -601,6 +610,173 @@ export const en = {
     recordDecision: 'Record this decision',
     roleScope:
       'This role exists for safety, disputes, abuse and exceptional cases. Ordinary contributions are not reviewed here and never need approval — they go live when they are made, and the community corrects them.',
+  },
+
+  /**
+   * Change propagation, shadow route and disruptions — Phase 10.
+   *
+   * Wording rules specific to this section:
+   *   - A change **never** tells somebody their completed step is wrong. It says what changed
+   *     and when it took effect, and lets them judge (FR-30, BR-17, §41.3).
+   *   - Severity words read as meaning-to-the-reader, which is how §41.2 defines them, rather
+   *     than as an alarm scale.
+   *   - Nothing here promises an alert, a notification or a subscription. In-product
+   *     visibility is the first-release mechanism (CLAUDE.md §8.6, §35).
+   */
+  changes: {
+    tab: 'Changes',
+    title: 'What has changed',
+    lede: 'How this route has changed over time, and where. Contributors maintain it, so it moves.',
+    nothingYet: 'Nothing has changed on this route yet.',
+    nothingYetHint:
+      'This route has had only one state so far. That is normal for a new route and is not a sign of quality either way.',
+    since: 'Comparing with',
+    sinceYouStarted: 'The route when you started',
+    sinceLastChange: 'The route before the most recent change',
+    currentRoute: 'The route now',
+    asOf: (date: string) => `as it stood on ${date}`,
+    today: 'today',
+
+    summaryTitle: 'Scale of change',
+    stepsAdded: (n: number) => `${n} ${n === 1 ? 'step' : 'steps'} added`,
+    stepsArchived: (n: number) => `${n} ${n === 1 ? 'step' : 'steps'} archived`,
+    stepsReordered: (n: number) => `${n} ${n === 1 ? 'step' : 'steps'} reordered`,
+    stepsRelabelled: (n: number) => `${n} ${n === 1 ? 'step' : 'steps'} renamed`,
+    stepsRetimed: (n: number) => `${n} ${n === 1 ? 'step' : 'steps'} retimed`,
+    fieldsChanged: (n: number) =>
+      `${n} ${n === 1 ? 'information element' : 'information elements'} changed`,
+    stepsUnchanged: (n: number) => `${n} unchanged`,
+    archivedIsNotDeleted:
+      'Archived steps leave the current route and stay in its history. Nothing is deleted.',
+
+    mark: {
+      step_added: 'Added',
+      step_archived: 'Archived',
+      step_reordered: 'Moved',
+      step_relabelled: 'Renamed',
+      step_retimed: 'Timing changed',
+    } satisfies Record<StepChangeMark, string>,
+    noChangeRow: 'No change',
+    notPresentThen: 'Was not part of the route then',
+    notPresentNow: 'No longer part of the route',
+
+    announcedTitle: 'Announced changes',
+    announcedLede:
+      'Changes a contributor thought followers should know about, with how much it matters and when it starts to apply. A change nobody announced still appears in the comparison above.',
+    noAnnouncements: 'No changes have been announced on this route.',
+    announcedOn: 'Recorded',
+    effectiveFrom: 'Takes effect',
+    effectiveUnknown: 'No start date given',
+    effectiveExplainer:
+      'Where a change has a start date, it is the start date that decides whether it affects what you have already done — not the date somebody typed it here.',
+    concerns: 'Concerns',
+    wholeRoute: 'The whole route',
+    announcedBy: 'Recorded by',
+
+    kind: {
+      structural: 'Route structure',
+      field_correction: 'Information corrected',
+    } satisfies Record<RouteChangeKind, string>,
+
+    severity: {
+      informational: 'Information',
+      relevant: 'May affect planning',
+      important: 'May need action',
+      critical: 'Could disrupt your path',
+    } satisfies Record<ChangeSeverity, string>,
+    severityExplainer:
+      'Set by the contributor who recorded the change, describing what it means for someone following this route. It is a judgement, not a measurement.',
+
+    bearing: {
+      not_following: 'About this route',
+      ahead: 'Ahead of you',
+      underway: 'On the step you are working on',
+      completed_before_effective: 'Came after you finished this step',
+      already_done: 'On a step you have finished',
+      set_aside: 'On a step you set aside',
+      whole_route: 'Affects the whole route',
+    } satisfies Record<ChangeBearing, string>,
+
+    note: {
+      not_yet_effective: 'Not in force yet — it starts on the date shown.',
+      effective_after_your_date:
+        'This took effect after the date you recorded, so what you did still stands.',
+      completion_preserved: 'Your record of finishing this step is unchanged.',
+      scope_narrower_than_route:
+        'This concerns information that does not apply to everyone on this route, so it may not apply to you.',
+      shape_changed: 'This changes the shape of the route, so later steps may have moved.',
+      you_marked_this: 'You have already said what this means for you.',
+    } satisfies Record<ChangeNote, string>,
+
+    yourPositionTitle: 'How this affects you',
+    needsAttention: (n: number) =>
+      n === 0
+        ? 'Nothing here is waiting on you.'
+        : `${n} ${n === 1 ? 'change needs' : 'changes need'} a look`,
+    startedFollowing: (date: string) => `You started following this route on ${date}.`,
+    progressUntouched:
+      'Nothing on this page has changed your progress. Your completed steps, dates, tasks and notes are exactly as you left them.',
+
+    stanceQuestion: 'Does this apply to your case?',
+    stanceHint:
+      'Only you can tell. We do not know which university, programme or intake you applied for, and we do not ask.',
+    stance: {
+      applies: 'Yes, this applies to me',
+      already_handled: 'I have already handled this',
+      not_applicable: 'This does not apply to me',
+    } satisfies Record<FollowerChangeStance, string>,
+    stanceSaved: 'Saved. Only you can see this.',
+    stanceClear: 'Change my answer',
+
+    disruptionsTitle: 'Temporary disruptions',
+    disruptionsLede:
+      'Short-term interruptions — a closure, a strike, a suspended service. These sit on top of the route and expire on their own. They never change the route itself.',
+    noDisruptions: 'No temporary disruptions are recorded on this route.',
+    activeNow: 'Happening now',
+    disruptionEnded: 'Ended',
+    disruptionUpcoming: 'Starts later',
+    disruptionResolved: 'Resolved early',
+    disruptionWindow: (from: string, to: string) => `${from} to ${to}`,
+    disruptionOpenEnded: (from: string) => `From ${from}, no end date given`,
+    disruptionWhere: 'Where',
+    disruptionAffects: 'Affects',
+    disruptionEverywhere: 'Not limited to one place',
+    daysLeft: (n: number) => (n === 1 ? '1 more day' : `${n} more days`),
+    disruptionNotARouteChange:
+      'This is a temporary condition, not a change to the route. When it ends it stops showing here and the route is exactly as it was.',
+    disruptionBearing: {
+      inactive: 'Not in effect',
+      active: 'In effect now',
+      affects_your_next_steps: 'Touches a step you have not finished',
+      affects_your_planned_date: 'Overlaps the date you planned for this step',
+      already_past_it: 'On a step you have finished',
+    } satisfies Record<DisruptionBearing, string>,
+
+    recordTitle: 'Record a change or a disruption',
+    recordLede:
+      'Anyone signed in can do this. There is no approval queue — it goes live when you record it, and the community corrects it afterwards.',
+    announceHeading: 'Announce a permanent change',
+    announceHint:
+      'Use this when the route itself has changed for good — a new requirement, a corrected fee, a step that no longer applies.',
+    disruptHeading: 'Record a temporary disruption',
+    disruptHint:
+      'Use this for something that will pass — a closure, a flood, a suspended appointment system. It expires on its own and leaves the route alone.',
+    fieldTitle: 'What happened',
+    fieldDetail: 'Anything a follower should understand',
+    fieldSeverity: 'What does this mean for someone following this route?',
+    fieldKind: 'What kind of change',
+    fieldStep: 'Which step (optional)',
+    fieldEffective: 'When does it start to apply? (optional)',
+    fieldStarts: 'Starts',
+    fieldEnds: 'Ends (optional)',
+    fieldLocation: 'Where it applies (optional)',
+    locationPlaceholder: 'Dhaka, Bangladesh',
+    submitAnnounce: 'Record this change',
+    submitDisrupt: 'Record this disruption',
+    resolveDisruption: 'It has ended',
+    signInToRecord: 'Sign in to record a change or a disruption.',
+    noAlerts:
+      'We do not send emails or push notifications. Changes appear here and on your journey when you next look.',
   },
 
   routeLifecycle: {

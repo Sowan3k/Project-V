@@ -616,6 +616,75 @@ base route; shadow diff reports added/archived/reordered/changed counts.
 
 **FRs:** FR-28, FR-29, FR-30, FR-32, FR-59, FR-60, FR-61, FR-63, FR-76, FR-77, FR-22
 
+### Phase 10 result (2026-09-03)
+
+**The design decision the whole phase rests on: a change has a derived half and a declared
+half, and they are never mixed.**
+
+*Derived* — which steps were added, archived, reordered, relabelled or retimed, and where — is
+a fact about the append-only ledger. It needs no contributor and no judgement, so it is
+**always available**: every follower can see that the route moved and where, even if nobody
+wrote a word about it. *Declared* — severity and effective date — is a judgement about the
+world that no diff contains, so a contributor states it or it is absent, and absent renders as
+absent. The failure this avoids is inferring "important" from "three fields changed", which
+FR-71 forbids and which is wrong in both directions.
+
+**Severity is therefore carried, never computed.** A test asserts that two changes identical
+but for severity produce *identical* relevance, and that the domain module never assigns a
+`ChangeSeverity` at all. No threshold was invented; CLAUDE.md §11 stays open.
+
+**Relevance is a position, not a score.** `ChangeBearing` is a closed set of checkable
+situations — ahead, underway, completed-before-effective, already-done, set-aside, whole-route,
+not-following — and a test asserts the returned object contains no number of any kind. There is
+deliberately no member meaning "your progress is now invalid", because no such conclusion is
+ever ours to draw.
+
+**The shadow route is reconstructed, not stored.** No snapshot table, no version pointer on a
+journey: `loadRouteGraphAt(routeId, at)` asks the ledger what the route looked like on a date,
+reading existence, archival and content each as of that moment. It works for any date, cannot
+drift from the ledger, and needed no schema support because Phase 3 had already bought it.
+
+**Phase 4's overlap problem, resolved deliberately.** Phase 4 proved that drawing the previous
+version underneath the current one makes it invisible whenever the shapes are similar — which
+is the common case, since a route with one new step is 90% identical. That is the wrong
+encoding, not a tuning problem. So the comparison is **side by side, aligned by step identity
+on a shared numbered spine**, which is what VR-07 shows. Crucially each side is the ordinary
+`Road` from the ordinary layout pass: **no second renderer exists**, and a guard asserts the
+comparison component contains no `<svg>`, `<path>` or `viewBox` of its own. The Phase 4 overlay
+primitives are kept for ribbon density, where there is no room for two columns.
+
+**A disruption expires by arithmetic.** There is no `active` column and no status field, so
+expiry is a comparison against `endsAt` evaluated at read time — it cannot fail to happen, run
+twice, or leave a closure showing a month late. Guards forbid a status column on the model and
+any cron or sweeper in `src/`. The integration suite counts route revisions before, during and
+after a disruption's whole life and asserts the number never moves.
+
+**Applicability is reported, never resolved.** Where a change concerns a fact scoped narrower
+than the route, the platform says the scope is narrow and **asks** — §13.3's "applicable /
+already handled / not applicable" — rather than guessing which programme somebody applied to.
+An answer is believed: `not_applicable` silences the change entirely, and the control stops
+asking.
+
+**Caught by an existing guard, twice.** The first draft loaded both sides of the comparison
+inside `src/server/journeys/`, which pulled the revision engine into the journey directory —
+refused by the Phase 7 privacy guard. Following the rule produced the better design: **the
+comparison is public and only the date is private**, so a follower and an anonymous reader now
+run identical comparison code. And `promoteDisruptionToChange` was refused by the invariant-13
+monetisation guard reading "promote" as paid placement; renamed to `disruptionBecamePermanent`,
+which is BR-08's own wording and a better name regardless.
+
+**Deliberately not built:** any notification infrastructure. VR-10's "Subscribe to Alerts",
+"Get instant alerts" and "Manage Alert Settings" are §8.6 exceptions; a guard forbids mailers,
+push channels and subscription tables, and the page says outright that nothing is sent. VR-10's
+second "Impact: High/Medium/Low" axis was also dropped — §41.2 defines exactly four levels, and
+two scales for one judgement is one too many. A cross-route Updates feed is not in this phase's
+scope and was not added.
+
+**Schema:** three additive models — `RouteChange`, `TemporaryDisruption` (both
+`communitySignal`: editable, never deletable) and `JourneyChangeNote` (`privateUserState`).
+Migration `20260903210000_change_propagation_and_disruptions` is `CREATE`-only; no `DROP`, no
+`ALTER` of an existing column, nothing touching a revision table.
+
 ---
 
 ## Phase 11 — Lifecycle, dormancy, merge, admin

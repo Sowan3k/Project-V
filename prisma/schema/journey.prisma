@@ -63,6 +63,8 @@ model Journey {
 
   progress JourneyStepProgress[]
   tasks    JourneyTask[]
+  // Phase 10, §13.3 — this follower's own view of whether a change applies to them.
+  changeNotes JourneyChangeNote[]
 
   @@unique([userId, routeId])
   @@index([routeId])

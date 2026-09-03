@@ -63,6 +63,10 @@ export const PRIVATE_USER_STATE_MODELS = [
   'Journey',
   'JourneyStepProgress',
   'JourneyTask',
+  // Phase 10, §13.3. A follower's own answer to "does this change apply to me?" is a note
+  // about their own case, not a contribution — nobody else may read it, and it must never
+  // reach a public history (invariant 5).
+  'JourneyChangeNote',
 ] as const
 export type PrivateUserStateModel = (typeof PRIVATE_USER_STATE_MODELS)[number]
 
@@ -87,7 +91,22 @@ export type PrivateUserStateModel = (typeof PRIVATE_USER_STATE_MODELS)[number]
  * defamation surface and a brigading target (§23.1, §23.3). The public sees the *outcome* — 
  * whether content is quarantined — not who reported it or what they wrote.
  */
-export const COMMUNITY_SIGNAL_MODELS = ['Confirmation', 'Challenge', 'Report'] as const
+export const COMMUNITY_SIGNAL_MODELS = [
+  'Confirmation',
+  'Challenge',
+  'Report',
+  // Phase 10. Both are community-authored statements about a route that are corrected rather
+  // than rewritten — a severity can be revised, an effective date learned later, a disruption
+  // resolved early — so `update` is right and `delete` is not. An announcement that could be
+  // deleted is a change that could vanish from under the followers it reached; a disruption
+  // that could be deleted is a closure that could be denied afterwards (invariant 1).
+  //
+  // Note especially that `TemporaryDisruption` is *not* revisioned. That is invariant 19
+  // expressed in the registry: an overlay is not an edit to the route, so it must not travel
+  // through the revision engine and must not appear in the route's revision history.
+  'RouteChange',
+  'TemporaryDisruption',
+] as const
 export type CommunitySignalModel = (typeof COMMUNITY_SIGNAL_MODELS)[number]
 
 export function isCommunitySignal(model: string): model is CommunitySignalModel {

@@ -79,6 +79,17 @@ enum ChangeSeverity {
   critical
 }
 
+enum RouteChangeKind {
+  structural
+  field_correction
+}
+
+enum FollowerChangeStance {
+  applies
+  already_handled
+  not_applicable
+}
+
 enum LinkTrustClass {
   trusted
   community_submitted

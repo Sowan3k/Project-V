@@ -71,6 +71,9 @@ model User {
   // because they are community knowledge about a field rather than personal data.
   confirmations Confirmation[]
   challenges    Challenge[]
+  changesAnnounced    RouteChange[]         @relation("ChangesAnnounced")
+  disruptionsRecorded TemporaryDisruption[] @relation("DisruptionsRecorded")
+
   reportsFiled      Report[] @relation("ReportsFiled")
   reportsHandled    Report[] @relation("ReportsHandled")
   fieldsQuarantined Field[]  @relation("FieldsQuarantined")
@@ -120,6 +123,10 @@ model Route {
   edges     StepEdge[]
   /// Private follower journeys. The link is live: following does not fork a copy (FR-27).
   journeys  Journey[]
+
+  // Phase 10 — announcements and overlays. Neither is a revision.
+  changes     RouteChange[]
+  disruptions TemporaryDisruption[]
 
   @@index([originCountry, destinationCountry, studyLevel])
   @@index([lifecycleState])
@@ -172,6 +179,9 @@ model Step {
   // to delete a step somebody is tracking (invariant 8).
   journeyProgress JourneyStepProgress[]
   journeyTasks    JourneyTask[]
+
+  changes     RouteChange[]
+  disruptions TemporaryDisruption[]
 
   @@index([routeId])
   @@map("steps")
@@ -311,6 +321,9 @@ model Field {
   confirmations Confirmation[]
   challenges    Challenge[]
   reports       Report[]
+
+  // Phase 10 — announcements naming this field as what changed (changes.prisma).
+  changes RouteChange[]
 
   @@index([stepId])
   @@index([quarantinedAt])

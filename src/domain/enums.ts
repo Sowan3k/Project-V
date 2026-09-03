@@ -57,9 +57,48 @@ export const ROUTE_LIFECYCLE_STATES = [
 ] as const
 export type RouteLifecycleState = (typeof ROUTE_LIFECYCLE_STATES)[number]
 
-/** Change severity — FR-60, REQUIREMENTS.md §41.2. */
+/**
+ * Change severity — FR-60, REQUIREMENTS.md §41.2.
+ *
+ * **Declared by the contributor announcing a change, never derived.** §41.2 defines each
+ * level by its *meaning to the follower* — "may require action before the user reaches that
+ * stage", "can invalidate or seriously disrupt the planned path". Those are judgements about
+ * consequence in the world, and no diff of the revision ledger contains them. A system that
+ * guessed would be inventing exactly the opaque heuristic FR-71 and CLAUDE.md §11 forbid.
+ *
+ * What *is* derived is the structural half — which steps were added, archived, reordered or
+ * relabelled — because that is a fact about stored data. See `src/domain/changes.ts`.
+ */
 export const CHANGE_SEVERITIES = ['informational', 'relevant', 'important', 'critical'] as const
 export type ChangeSeverity = (typeof CHANGE_SEVERITIES)[number]
+
+/**
+ * What kind of permanent change is being announced — REQUIREMENTS.md §15.
+ *
+ * §15 lists five change types at the product level. Only two are announcements of a lasting
+ * change to the public route, and they are these. The other three are modelled elsewhere and
+ * deliberately not here: a **Temporary Disruption** is `TemporaryDisruption`, an overlay with
+ * its own expiry that never rewrites the route (invariant 19, BR-27); a **Historical
+ * Revision** is the append-only revision ledger itself; and **Community Experience** is a
+ * property of a field — its category and source class already say so — not an event.
+ */
+export const ROUTE_CHANGE_KINDS = ['structural', 'field_correction'] as const
+export type RouteChangeKind = (typeof ROUTE_CHANGE_KINDS)[number]
+
+/**
+ * A follower's own answer to "does this change apply to me?" — REQUIREMENTS.md §13.3.
+ *
+ * "Where the platform cannot confidently determine whether a rule change applies to a
+ * follower, the follower should be shown the change and allowed to mark it as applicable,
+ * already handled, or not applicable to their case."
+ *
+ * This is the honest alternative to a relevance score. Where scope is genuinely uncertain —
+ * a change to a `programme`-specific fact, say — the platform says so and hands the judgement
+ * to the person who actually knows their own case, rather than guessing with a percentage.
+ * Private journey state: nobody else ever sees it (invariant 5).
+ */
+export const FOLLOWER_CHANGE_STANCES = ['applies', 'already_handled', 'not_applicable'] as const
+export type FollowerChangeStance = (typeof FOLLOWER_CHANGE_STANCES)[number]
 
 /** Link trust classes — FR-34, REQUIREMENTS.md §22.1. Invariants 9 and 10. */
 export const LINK_TRUST_CLASSES = ['trusted', 'community_submitted', 'quarantined'] as const
@@ -255,6 +294,8 @@ export const FieldCategory = valueMap(FIELD_CATEGORIES)
 export const SourceClass = valueMap(SOURCE_CLASSES)
 export const RouteLifecycleState = valueMap(ROUTE_LIFECYCLE_STATES)
 export const ChangeSeverity = valueMap(CHANGE_SEVERITIES)
+export const RouteChangeKind = valueMap(ROUTE_CHANGE_KINDS)
+export const FollowerChangeStance = valueMap(FOLLOWER_CHANGE_STANCES)
 export const LinkTrustClass = valueMap(LINK_TRUST_CLASSES)
 export const FieldApplicability = valueMap(FIELD_APPLICABILITIES)
 export const JourneyStepStatus = valueMap(JOURNEY_STEP_STATUSES)
@@ -276,6 +317,8 @@ export const DOMAIN_ENUMS = {
   SourceClass: SOURCE_CLASSES,
   RouteLifecycleState: ROUTE_LIFECYCLE_STATES,
   ChangeSeverity: CHANGE_SEVERITIES,
+  RouteChangeKind: ROUTE_CHANGE_KINDS,
+  FollowerChangeStance: FOLLOWER_CHANGE_STANCES,
   LinkTrustClass: LINK_TRUST_CLASSES,
   FieldApplicability: FIELD_APPLICABILITIES,
   JourneyStepStatus: JOURNEY_STEP_STATUSES,

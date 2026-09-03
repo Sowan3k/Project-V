@@ -216,6 +216,7 @@ acceptable is shipping the phase without them.**
 | 6 | No file-upload path exists anywhere in the journey flow | ✅ |
 | 7 | No schema field accepts passport, transcript, certificate, bank or address data | ✅ |
 | 8 | Revising a route does not cascade-delete or reset JourneyStepProgress | ✅ |
+| 8b | No change module writes journey progress, and no cascade reaches it from shared knowledge | ✅ |
 
 ### Trust and truth
 
@@ -269,9 +270,13 @@ rendering it guards is not written yet.
 | # | Test | State |
 |---|---|---|
 | 18 | Following a route does not create a detached copy; route edits surface in the journey | ✅ |
-| 19 | A temporary disruption expires without mutating the base route | ⬜ |
+| 19 | A temporary disruption expires without mutating the base route | ✅ |
+| 19b | The disruption model has no status/active column, and `src/` has no cron or sweeper | ✅ |
+| 19c | Nothing in the change modules writes a Route, Step, StepEdge or Field | ✅ |
 | 20 | Merging two routes preserves both follower sets and both revision histories | ⬜ |
-| 21 | Change relevance is computed from effective date, not edit date | ⬜ |
+| 21 | Change relevance is computed from effective date, not edit date | ✅ |
+| 21b | A step completed before a change's effective date stays completed and reads as context | ✅ |
+| 21c | No module compares a follower's recorded date against the *announcement* date | ✅ |
 | 22 | The route model represents a branch that diverges and reconnects | ✅ |
 | 23 | 30-day dormancy applies to unused new routes only; established routes go quiet/stale | ⬜ |
 
@@ -1106,3 +1111,73 @@ on "attested by the ministry" was the field's paragraph *and* the update form's 
 holding the same words — the form correctly prefilled with the current value. And a text match
 for a newly added step found the SVG's own `<title>`, which is the renderer having drawn it.
 The spec now asserts that directly rather than by accident.
+
+---
+
+## 18. Phase 10 — what the guards caught, and one thing they could not
+
+### The privacy guard produced a better design than the one it rejected
+
+The first draft of `followerChangeReport` loaded both sides of the shadow comparison itself,
+which meant `src/server/journeys/changes.ts` imported `@/server/revisions/read`. The Phase 7
+guard `never imports the revision service from the journey modules` refused it.
+
+The instinct was to narrow the guard to the *write* service, since a read is harmless. That
+would have been wrong, and following the rule instead produced the insight the phase needed:
+**the comparison is public and only the date is private.** Two versions of a route are public
+knowledge anybody can read; what nobody else may see is that this person started following on
+the 10th. So the journey module returns `startedAt` and the page asks `shadowSince` in the
+public read layer — and a follower and an anonymous reader now run *identical* comparison
+code, differing only in which date they pass.
+
+A guard that only ever confirms what you already did is decoration. This one changed the
+design.
+
+### A guard fired on a word, correctly, for the wrong reason
+
+`promoteDisruptionToChange` failed the invariant-13 monetisation scan, whose regex includes
+`promoted` — as in a promoted listing. The function had nothing to do with money.
+
+Renaming was still right, and not merely to appease the test. BR-08's own wording is "unless
+they become structural changes", so `disruptionBecamePermanent` is the domain's word; and
+"promote" implied an elevation in standing that does not happen. The false positive found a
+bad name.
+
+The general point: when a broad guard fires on a false positive, the cheap fix is to narrow
+the guard and the right question is usually whether the name was good.
+
+### Five enum-literal collisions, and why the union types had to be renamed
+
+The Phase 0 single-source guard forbids any `DOMAIN_ENUMS` value appearing as a quoted string
+outside `src/domain/enums.ts`. Phase 10's presentation unions collided five times — `archived`,
+`structural`, `route_wide`, `in_progress` and `completed` are all values of *other* enums.
+
+They were renamed (`step_archived`, `shape_changed`, `whole_route`, `underway`,
+`already_done`) rather than the guard being scoped. Two reasons: the guard is what stops a
+hardcoded `=== 'official'` drifting away from the enum, and it is worth more than a naming
+preference. And the renames are clearer anyway — `step_archived` says which kind of thing was
+archived, which the bare word never did.
+
+A standing note for later phases: **check new string unions against the enum registry before
+writing them**, not after. The check is three lines of Node against the `as const` arrays.
+
+### What the guards cannot prove, and what covers it instead
+
+**That the side-by-side comparison is actually comprehensible.** Tests can assert that both
+roads render, that the rows align on a shared ordinal, that an added step has nothing opposite
+it and that no second renderer exists. None of that proves a student looking at two columns
+understands what changed — which was the entire failure of the Phase 4 overlay, and it was
+found by *looking at it*, not by a test.
+
+This remains a judgement call resting on VR-07 and on the Phase 4 finding. The honest status:
+the encoding is defensible and the alternative is proven bad, but the design has not been in
+front of a reader. Phase 12 should look at it on a real route with a real diff before treating
+it as settled.
+
+**Timestamp granularity in the point-in-time reconstruction.** `loadRouteGraphAt` compares
+`createdAt <= at`. Revisions written inside one transaction share a timestamp closely enough
+that a cut taken in the same millisecond could include or exclude them together. The
+integration tests insert a 25ms pause before the "after" writes for exactly this reason. It has
+no product consequence — a comparison is always drawn against a journey start or a change
+point, never against a moment mid-transaction — but a future test that omits the pause will
+look flaky and will not be.

@@ -19,7 +19,7 @@ import type { RouteDetail } from '@/server/routes/read'
  * (persistent context, meaningful URL changes, tabs for major sibling views), not
  * one-page-per-click.
  */
-export type RouteTab = 'overview' | 'history' | 'journey'
+export type RouteTab = 'overview' | 'history' | 'journey' | 'changes'
 
 export function RouteContext({
   route,
@@ -45,6 +45,10 @@ export function RouteContext({
   const tabs: { id: RouteTab; label: string; href: string }[] = [
     { id: 'overview', label: t.route.tabOverview, href: base },
     { id: 'journey', label: t.journey.tab, href: `${base}/journey` },
+    // Phase 10. Sits between the journey and the full history on purpose: "what changed
+    // recently, and does it touch me" is a different and far more common question than
+    // "show me every revision ever made" (FR-28 vs FR-31).
+    { id: 'changes', label: t.changes.tab, href: `${base}/changes` },
     { id: 'history', label: t.route.tabHistory, href: `${base}/history` },
   ]
 

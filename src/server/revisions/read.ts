@@ -134,3 +134,106 @@ export async function loadRouteGraph(
     })),
   }
 }
+
+/**
+ * The same route as it stood at a moment in the past — Phase 10. FR-22, FR-77, §14.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **The shadow route is reconstructed, not stored.**
+ *
+ * There is no snapshot table and no version pointer on a journey, because Phase 3 already
+ * bought the ability to answer this question: revisions are append-only, every one carries
+ * `createdAt`, and nothing is ever overwritten or deleted. So "what did this route look like
+ * on 10 August?" is a query, not a record — which means it can be asked of *any* date, stays
+ * correct if a revision is added later, and cannot drift from the ledger the way a second
+ * copy of the truth eventually does.
+ *
+ * Three rules, one per thing that can vary over time:
+ *
+ *   **Existence.** A step or edge is in the graph only if it had been created by then. Rows
+ *   created afterwards did not exist and must not appear, or the older version would be shown
+ *   containing steps that had not been invented yet.
+ *
+ *   **Archival.** `archivedAt` is a column rather than a revision, so archival is read the
+ *   same way: archived *as of that date*, not archived now. A step archived last week was
+ *   still live in a comparison drawn against a date before that.
+ *
+ *   **Content.** Label, category and timing come from the newest revision that existed by
+ *   then — not from `currentRevision`, which is today's answer to a question about the past.
+ *
+ * Rows the caller has no business seeing are not a concern here: this is public revision
+ * history, readable anonymously like the rest of the read path (FR-31, FR-45, invariant 4).
+ */
+export async function loadRouteGraphAt(routeId: string, at: Date): Promise<RouteGraph> {
+  const [steps, edges] = await Promise.all([
+    prisma.step.findMany({
+      where: { routeId, createdAt: { lte: at } },
+      select: {
+        id: true,
+        archivedAt: true,
+        revisions: {
+          where: { createdAt: { lte: at } },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: {
+            label: true,
+            category: true,
+            earliestStartOffsetDays: true,
+            typicalDurationDays: true,
+          },
+        },
+      },
+      orderBy: { id: 'asc' },
+    }),
+    prisma.stepEdge.findMany({
+      where: { routeId, createdAt: { lte: at } },
+      select: {
+        id: true,
+        fromStepId: true,
+        toStepId: true,
+        archivedAt: true,
+        revisions: {
+          where: { createdAt: { lte: at } },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { kind: true },
+        },
+      },
+      orderBy: { id: 'asc' },
+    }),
+  ])
+
+  const archivedBy = (archivedAt: Date | null): boolean =>
+    archivedAt !== null && archivedAt.getTime() <= at.getTime()
+
+  // A step whose every revision postdates `at` cannot be rendered — there is no label to draw
+  // and no category to colour it by. That is a genuine "did not exist yet", so it is dropped
+  // rather than shown blank, which would read as a step that had no name.
+  const knownSteps = steps.filter((step) => step.revisions.length > 0)
+  const known = new Set(knownSteps.map((step) => step.id))
+
+  return {
+    steps: knownSteps.map((step) => {
+      const revision = step.revisions[0]
+      return {
+        id: step.id,
+        label: revision?.label ?? '',
+        category: revision?.category ?? StepCategory.documents_preparation,
+        archived: archivedBy(step.archivedAt),
+        earliestStartOffsetDays: revision?.earliestStartOffsetDays ?? null,
+        typicalDurationDays: revision?.typicalDurationDays ?? null,
+      }
+    }),
+    // An edge is only meaningful if both its ends existed then. Keeping a dangling edge would
+    // hand the layout pass a connector to nowhere.
+    edges: edges
+      .filter((edge) => known.has(edge.fromStepId) && known.has(edge.toStepId))
+      .map((edge) => ({
+        id: edge.id,
+        fromStepId: edge.fromStepId,
+        toStepId: edge.toStepId,
+        kind: edge.revisions[0]?.kind ?? StepEdgeKind.sequential,
+        archived: archivedBy(edge.archivedAt),
+      })),
+  }
+}

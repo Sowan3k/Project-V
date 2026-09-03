@@ -13,6 +13,8 @@ import {
   LINK_TRUST_CLASSES,
   JOURNEY_STEP_STATUSES,
   REPORT_OUTCOMES,
+  ROUTE_CHANGE_KINDS,
+  FOLLOWER_CHANGE_STANCES,
   USER_ROLES,
   REPORT_REASONS,
   ROUTE_LIFECYCLE_STATES,
@@ -119,8 +121,10 @@ describe('domain vocabulary matches the requirements baseline', () => {
         JOURNEY_STEP_STATUSES,
         USER_ROLES,
         REPORT_OUTCOMES,
+        ROUTE_CHANGE_KINDS,
+        FOLLOWER_CHANGE_STANCES,
       ]),
     )
-    expect(Object.keys(DOMAIN_ENUMS)).toHaveLength(15)
+    expect(Object.keys(DOMAIN_ENUMS)).toHaveLength(17)
   })
 })

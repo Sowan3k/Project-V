@@ -73,7 +73,10 @@ describe('invariant 5 — a journey cannot be reached without a user id', () => 
    * another user's journey and asserting nothing moves. The two halves are the guarantee.
    */
   const OWNERSHIP_ROOT = 'journey'
-  const JOURNEY_OWNED = ['journeyStepProgress', 'journeyTask']
+  // Phase 10 added `journeyChangeNote` — a follower's private answer to whether a change
+  // applies to them (§13.3). Extending this list rather than letting a new private model
+  // sit outside the guard is the point of the guard.
+  const JOURNEY_OWNED = ['journeyStepProgress', 'journeyTask', 'journeyChangeNote']
 
   it('scopes every query it makes against a private model', () => {
     const offenders: string[] = []
@@ -215,7 +218,12 @@ describe('private state stays out of the public revision engine', () => {
    * recoverable way — the leak would be in the ledger, and the ledger is append-only.
    */
   it('classifies every journey model as private user state', () => {
-    for (const model of ['Journey', 'JourneyStepProgress', 'JourneyTask']) {
+    for (const model of [
+      'Journey',
+      'JourneyStepProgress',
+      'JourneyTask',
+      'JourneyChangeNote',
+    ]) {
       expect(PRIVATE_USER_STATE_MODELS).toContain(model)
     }
   })

@@ -1,0 +1,157 @@
+/// Change propagation and temporary disruptions — Phase 10.
+///
+/// FR-28, FR-29, FR-30, FR-32, FR-59, FR-60, FR-61, FR-63, FR-76, FR-77.
+/// §13, §14, §15, §41. BR-08, BR-17, BR-26, BR-27. Invariants 8, 19, 21.
+///
+/// ─────────────────────────────────────────────────────────────────────────────────────────
+/// **What is here, and what is deliberately not.**
+///
+/// The shadow route needs no table. It is reconstructed from the append-only revision ledger
+/// by asking what the graph looked like at a point in time, which Phase 3 already made
+/// possible by never overwriting anything. Storing a snapshot of each version would be a
+/// second copy of the truth, free to drift from the first.
+///
+/// So these three models store only what the ledger cannot know:
+///
+///   `RouteChange`          a contributor's judgement — severity and effective date (§41.1,
+///                          §41.2). Never derived; see `src/domain/enums.ts`.
+///   `TemporaryDisruption`  an overlay with its own scope and expiry, which by construction
+///                          cannot touch the route it is laid over (invariant 19).
+///   `JourneyChangeNote`    the follower's own answer to "does this apply to me?" (§13.3).
+///                          Private, per-user, never seen by anyone else (invariant 5).
+
+/// A contributor's announcement that the public route changed in a way followers should know
+/// about — FR-59, FR-60, §41.1, §41.2.
+///
+/// **Not a revision, and not a substitute for one.** The revision ledger already records every
+/// edit; this records the *meaning* of one. A route can change without an announcement — the
+/// shadow comparison still shows it, because that half is derived — and an announcement adds
+/// severity, an effective date and plain words on top.
+///
+/// `stepId` and `fieldId` are the "where". Both null means the change is route-wide.
+///
+/// Classified `communitySignal` in src/domain/models.ts: community-authored, editable (a
+/// severity can be corrected, an effective date can be learned later), never deletable. A
+/// change announcement that could be deleted is a change that could be made to disappear from
+/// under the followers it affected (invariant 1).
+model RouteChange {
+  id      String @id @default(cuid())
+  routeId String
+  route   Route  @relation(fields: [routeId], references: [id], onDelete: Restrict)
+
+  kind     RouteChangeKind
+  /// Declared by the contributor. No default — §41.2 severity is a judgement, and a default
+  /// would let one be recorded without anybody having made it.
+  severity ChangeSeverity
+
+  title  String
+  detail String?
+
+  /// When this was recorded here. The edit date (§41.1).
+  announcedAt DateTime @default(now())
+  /// When it begins to apply in the world, where known. Null is honest, not missing data —
+  /// most real changes have no published start date, and BR-26 says "where known".
+  effectiveAt DateTime?
+
+  /// Where in the route. Restrict, never Cascade: an announcement outliving nothing is the
+  /// point, and archiving a step must not silently erase the record that it changed.
+  stepId  String?
+  step    Step?   @relation(fields: [stepId], references: [id], onDelete: Restrict)
+  fieldId String?
+  field   Field?  @relation(fields: [fieldId], references: [id], onDelete: Restrict)
+
+  authorId String?
+  author   User?   @relation("ChangesAnnounced", fields: [authorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  followerNotes JourneyChangeNote[]
+
+  @@index([routeId, announcedAt])
+  @@index([routeId, effectiveAt])
+  @@index([stepId])
+  @@map("route_changes")
+}
+
+/// A time-, location- and process-scoped overlay — FR-32, FR-63, BR-08, BR-27, §41.5,
+/// invariant 19.
+///
+/// **This model exists so that a two-week test-centre closure never becomes a route edit.**
+/// §31.4 is explicit: contributors "add a temporary disruption with date/location scope rather
+/// than permanently modifying the normal IELTS process", and "after the disruption expires,
+/// the normal route remains unchanged".
+///
+/// Note there is no `active` column and no status. **Expiry is a comparison against
+/// `endsAt`, evaluated at read time** — see `isDisruptionActive` in src/domain/changes.ts. A
+/// stored flag would need something to flip it, that something would be a scheduled job, and
+/// a scheduled job that edits rows is exactly the machinery BR-08 is trying to avoid. With no
+/// flag, expiry cannot fail to happen, cannot happen twice, and cannot leave anything behind.
+///
+/// The three scope dimensions the baseline names, one column each:
+///   date      `startsAt` / `endsAt`
+///   location  `locationScope` — free text, because "Dhaka", "Bangladesh" and "Schengen Area"
+///             are all legitimate and no closed list would hold them
+///   process   `stepId` — VR-10's "Affects: IELTS Test step"
+model TemporaryDisruption {
+  id      String @id @default(cuid())
+  routeId String
+  route   Route  @relation(fields: [routeId], references: [id], onDelete: Restrict)
+
+  severity ChangeSeverity
+  title    String
+  detail   String?
+
+  /// Date scope.
+  startsAt DateTime
+  /// Null means open-ended: running until somebody records that it ended.
+  endsAt   DateTime?
+  /// Ended early, or found never to have applied. Distinct from `endsAt` so that "it stopped
+  /// sooner than announced" stays legible as a fact rather than overwriting the original.
+  resolvedAt DateTime?
+  resolvedNote String?
+
+  /// Location scope — "Dhaka, Bangladesh".
+  locationScope String?
+  /// Process scope — which step of the route this touches.
+  stepId String?
+  step   Step?   @relation(fields: [stepId], references: [id], onDelete: Restrict)
+
+  authorId String?
+  author   User?   @relation("DisruptionsRecorded", fields: [authorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([routeId, startsAt])
+  @@index([routeId, endsAt])
+  @@index([stepId])
+  @@map("temporary_disruptions")
+}
+
+/// One follower's answer to "does this change apply to me?" — §13.3.
+///
+/// The baseline's own remedy for uncertain applicability: rather than the platform guessing
+/// with a score, "the follower should be shown the change and allowed to mark it as
+/// applicable, already handled, or not applicable to their case".
+///
+/// Private user state. Scoped to a journey, which is scoped to a user; no other reader ever
+/// sees it, and it never enters any public history (FR-26, BR-16, D-10, invariant 5). Cascade
+/// from the journey because it is that person's own note about their own journey — and
+/// Restrict to the change, because a follower's note must not be able to remove the public
+/// record it refers to.
+model JourneyChangeNote {
+  id        String  @id @default(cuid())
+  journeyId String
+  journey   Journey @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+
+  changeId String
+  change   RouteChange @relation(fields: [changeId], references: [id], onDelete: Restrict)
+
+  stance FollowerChangeStance
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([journeyId, changeId])
+  @@index([changeId])
+  @@map("journey_change_notes")
+}

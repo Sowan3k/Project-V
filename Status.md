@@ -7,6 +7,58 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Session 13 — 2026-09-03
+
+**Goal:** Phase 10 — change propagation and shadow route. Plus verifying the Vercel deployment
+after the OAuth env vars were added.
+
+### Done
+
+**Deployment verified.** The redeploy took: `/api/auth/providers` returns the Google provider
+(was a 500), `/en/signin` offers "Continue with Google" (was "not configured"), and the health
+endpoint reaches Neon in ~190ms. The production OAuth callback was already registered — driving
+the real handshake lands on Google's sign-in page with no `redirect_uri_mismatch`.
+
+**Phase 10 implemented.** `RouteChange`, `TemporaryDisruption` and `JourneyChangeNote`; a pure
+`src/domain/changes.ts`; public reads in `src/server/changes/`; follower-scoped reads in
+`src/server/journeys/changes.ts`; a Changes tab with the side-by-side shadow comparison; change
+surfacing on the journey tab. Full write-up in [Phases.md](Phases.md).
+
+### Decisions taken
+
+| Decision | Why |
+|---|---|
+| **Severity is declared by a contributor, never derived** | §41.2 defines each level by consequence to the follower. No diff of the ledger contains that, and inferring it from a count is the opaque heuristic FR-71 forbids. |
+| **Relevance is a closed set of positions, never a number** | A "73% relevant" implies a precision nobody has. `ChangeBearing` has seven members, each a checkable fact, and none means "your progress is invalid". |
+| **Shadow comparison is side by side, not an overlay** | Phase 4 proved an overlay is invisible whenever the two shapes are similar — the common case. Aligned columns on a shared ordinal spine, which is what VR-07 shows. Both sides still use the one generic `Road`. |
+| **The shadow is reconstructed from the ledger, not stored** | A snapshot would be a second copy of the truth, free to drift. `loadRouteGraphAt` works for any date and needed no schema support. |
+| **A disruption expires by comparison, with no status column** | A stored flag needs a job to flip it, and a job that edits rows is exactly what BR-08 avoids. With no flag, expiry cannot fail, run twice, or arrive late. |
+| **Applicability is reported, never resolved** | We do not know which programme somebody applied to. §13.3's "applicable / already handled / not applicable" hands the judgement to the person who knows, and the answer is believed. |
+| **No cross-route Updates feed** | Not in Phase 10's scope, and VR-10's page carries the deferred alerts concept with it. Route-scoped visibility satisfies FR-28/FR-76. |
+
+### Blockers
+
+**None for development.** Two items need the owner, neither blocking:
+
+1. **Production is three migrations behind** — Phase 7, 8 and 9 are committed but unapplied,
+   and Phase 10 adds a fourth. `users` on production still lacks `email`, and `accounts` and
+   `sessions` do not exist, so **the first person to complete Google sign-in gets a 500.**
+   All four migrations are purely additive and production is empty (0 rows), so applying is
+   zero-risk: `npm run db:deploy`. Deliberately a person's action per CLAUDE.md §4.
+2. **The local unpooled path to Neon is down again** — five consecutive `P1001` timeouts, the
+   same instability recorded in Test.md §12 and §14. Vercel reaches the pooled endpoint fine,
+   so it is the local network path, not the database. Schema inspection went through the Neon
+   API instead; the migration was generated offline by diffing the committed schema against the
+   working tree, which needs no database at all.
+
+### Next step
+
+Phase 11 — lifecycle, dormancy, merge and admin — **awaiting approval.** It inherits invariant
+20 (a merge preserves both follower sets and both revision histories) and invariant 23 (30-day
+dormancy applies only to unused new routes; established routes go quiet or stale).
+
+---
+
 ## Session 12 — 2026-09-03
 
 **Goal:** Phase 9 — safety: reporting and quarantine. Plus Germany research pass 3, and wiring
