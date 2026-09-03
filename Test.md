@@ -1282,3 +1282,35 @@ is no snapshot table*. `SCHEMA` strips `///` documentation but keeps `//` notes.
 Fixed by stripping both comment forms for that assertion — the same rule the enum single-source
 guard already follows, for the same reason: prose cannot drift into behaviour, so scanning it
 as if it could produces findings that are pure noise. **An absence guard must read code only.**
+
+---
+
+## 20. Production migration and authentication verification (owner, 2026-09-03)
+
+Recorded from the owner's run, not re-verified from this environment. The distinction matters:
+everything else in this file is a machine-checked result, and this is a report.
+
+**The procedure that was followed:** rehearse on Neon `test`, verify, then apply to
+`production`, verify again. Five migrations — `private_journeys_and_identity`,
+`community_signals`, `safety_reports_and_quarantine`,
+`change_propagation_and_disruptions`, `change_revision_link`.
+
+| Check | Result |
+|---|---|
+| `test` migrated (52 users, 359 routes, 713 field revisions present) | ✅ |
+| `production` migrated | ✅ |
+| Production schema drift (`migrate diff --exit-code`) | ✅ clean |
+| `/api/health` reaches the production database | ✅ |
+| Google sign-in end to end on the Vercel deployment | ✅ |
+
+**Why the `test` branch was the load-bearing rehearsal.** Production held no rows, so applying
+to it could not have exercised the two `ADD COLUMN`s against existing data — `users.email`
+(nullable) and `users.role` (`DEFAULT 'member'`). `test` had 52 user rows and did exercise
+them. A rehearsal on an empty branch would have proved nothing that production did not already
+prove by being empty.
+
+**What this closes.** The deployment had OAuth wired since the redeploy, but the tables Auth.js
+writes on sign-in did not exist on production — `users.email`, `accounts` and `sessions` all
+arrived in the Phase 7 migration. Anyone completing the Google handshake would have got a 500
+at the last step. That gap is now shut, and shut in the order that catches problems: data-
+bearing branch first.

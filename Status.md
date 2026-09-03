@@ -77,11 +77,26 @@ and belongs to the formal change process (CLAUDE.md §2, BR-35, §46.3): amend t
 regenerate `REQUIREMENTS.md` *and* the MHT in the same commit, and record it here. Logged as an
 open traceability item for the owner to decide, not a defect in the implementation.
 
+### Migrations applied and authentication verified (owner, 2026-09-03)
+
+The five pending migrations — Phases 7, 8, 9, 10 and the Phase 10 review follow-up — were
+applied by the owner to **Neon `test` first, then `production`**, following the rehearsal
+procedure. Owner-reported outcome:
+
+- Both branches migrated successfully; `test` carried real data (52 users, 359 routes, 713
+  field revisions) through the `ADD COLUMN`s, which is the case production could not exercise.
+- **Production drift check clean** — the schema matches the Prisma models exactly.
+- `/api/health` confirms the production database is reachable.
+- **Google authentication tested end to end on the Vercel deployment and works.**
+
+This closes the two long-standing blockers. The deployment now has the tables Auth.js writes
+on sign-in (`users.email`, `accounts`, `sessions`), so the 500 that would have met the first
+person to sign in is gone. Recorded, not re-verified from here — the reads above are the
+owner's.
+
 ### Next step
 
-Phase 11 — lifecycle, dormancy, merge and admin — **awaiting approval.** It inherits invariant
-20 (a merge preserves both follower sets and both revision histories) and invariant 23 (30-day
-dormancy applies only to unused new routes; established routes go quiet or stale).
+Phase 11 — lifecycle, dormancy, merge and admin.
 
 ---
 
