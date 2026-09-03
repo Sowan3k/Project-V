@@ -132,7 +132,10 @@ test.describe('reporting and quarantine', () => {
     // A note unique to this run. The seeded route accumulates quarantined fields across CI
     // runs — the database is append-only by design — so asserting on shared copy hits several
     // elements at once. The note is this test's own handle on its own subject.
-    const note = `Shortened link impersonating an embassy ${secret}`
+    // Deliberately does NOT contain `secret`: the note is rendered on the page, and the
+    // assertion below is that `secret` appears nowhere in the HTML. Two tokens, two jobs.
+    const noteToken = `note-${randomUUID().slice(0, 8)}`
+    const note = `Shortened link impersonating an embassy — ${noteToken}`
     const { quarantineField } = await import('../src/server/safety/service')
     await quarantineField({ adminId: admin.userId, fieldId: added.id, note })
 
@@ -145,7 +148,7 @@ test.describe('reporting and quarantine', () => {
     expect(html).not.toContain('bit.ly/definitely-not-real')
 
     // And the reader is told, and told why — located by this run's own note.
-    await expect(page.getByText(note, { exact: false })).toBeVisible()
+    await expect(page.getByText(noteToken, { exact: false })).toBeVisible()
     await expect(page.getByText(/withheld pending review/i).first()).toBeVisible()
     // Withholding one thing is not a safety claim about everything else (§42.5).
     await expect(page.getByText(/containment, not a safety check/i).first()).toBeVisible()
