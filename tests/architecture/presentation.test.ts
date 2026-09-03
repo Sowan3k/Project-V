@@ -307,12 +307,35 @@ describe('the application presents itself as a finished product', () => {
     expect(robots).toMatch(/\/en\/journeys/)
   })
 
-  it('has an error boundary and a loading state', () => {
+  it('has an error boundary that leaks nothing about what failed', () => {
     expect(read('src/app/[locale]/error.tsx')).toMatch(/reset/)
-    expect(read('src/app/[locale]/loading.tsx')).toMatch(/aria-busy/)
-    // An error page must not leak what failed.
     const boundary = stripComments(read('src/app/[locale]/error.tsx'))
     expect(boundary).not.toMatch(/error\.message|error\.stack/)
+  })
+
+  /**
+   * **The loading state is inside the page, not at the segment — deliberately.**
+   *
+   * A `loading.tsx` under `[locale]` was written first and removed: it replaces everything
+   * inside the layout, including the persistent route header and tabs that CLAUDE.md §7.1
+   * exists to keep on screen. Every tab click would have blanked the route a reader was
+   * looking at, which is worse than the brief wait it hid.
+   *
+   * A Suspense boundary around the part that is actually slow does the opposite — the filters
+   * stay put and usable while the results stream in underneath them.
+   *
+   * Asserted as an absence as well as a presence, so a future `loading.tsx` at the segment
+   * level is a decision somebody has to make against this note rather than an accident.
+   */
+  it('streams results inside the page rather than blanking the segment', () => {
+    const search = read('src/app/[locale]/routes/page.tsx')
+    expect(search).toMatch(/<Suspense fallback=/)
+    expect(search).toMatch(/aria-busy/)
+
+    const segmentWide = walk('src/app', ['.tsx']).filter((file) =>
+      /\/\[locale\]\/loading\.tsx$/.test(file.replace(/\\/g, '/')),
+    )
+    expect(segmentWide, 'a segment-wide loading.tsx would blank the route context').toEqual([])
   })
 
   /**

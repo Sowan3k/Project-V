@@ -17,6 +17,8 @@ import {
   type RouteTrustInput,
   type RouteTrustSnapshot,
 } from '@/domain/trust'
+import { cache } from 'react'
+
 import { prisma } from '@/server/db/client'
 
 /**
@@ -477,7 +479,19 @@ async function routeActivity(routeId: string, now: Date): Promise<ActivityRow> {
   return rows[0] ?? { contributorCount: 0, recentChangeCount: 0, lastChangedAt: null }
 }
 
-export async function getRouteBySlug(
+/**
+ * Deduplicated per request — Phase 12.
+ *
+ * `generateMetadata` and the page body both need the route, and without this each one issued
+ * its own set of queries: every route page was doing twice the database work it needed, and
+ * against a Neon compute that can be cold that is the difference between a page and a wait.
+ *
+ * `cache` keys on arguments, so both callers must pass the same ones — which is why `now` is
+ * left to its default rather than being passed explicitly by either.
+ */
+export const getRouteBySlug = cache(_getRouteBySlug)
+
+async function _getRouteBySlug(
   slug: string,
   now: Date = new Date(),
 ): Promise<RouteDetail | null> {

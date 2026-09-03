@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
 
 import { ROUTE_MECHANISMS, STUDY_LEVELS } from '@/domain/enums'
 import type { RouteMechanism, StudyLevel } from '@/domain/enums'
 import { GridRegion, PageCanvas, PageGrid } from '@/components/layout'
 import { isLocale } from '@/i18n/config'
+import type { Dictionary } from '@/i18n/dictionaries/en'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { RouteRibbon } from '@/components/route-ribbon'
 import { availableFilters, searchRoutes, type RouteSearchFilters } from '@/server/routes/read'
@@ -72,7 +74,9 @@ export default async function RouteSearchPage({
   }
 
   const hasFilters = Object.keys(filters).length > 0
-  const [routes, options] = await Promise.all([searchRoutes(filters), availableFilters()])
+  // Only the filters are awaited here. The results stream into the Suspense boundary below,
+  // so the form a reader is about to use paints immediately instead of waiting on a query.
+  const options = await availableFilters()
 
   return (
     <PageCanvas className="py-10">
@@ -164,16 +168,64 @@ export default async function RouteSearchPage({
         </GridRegion>
 
         <GridRegion span={8}>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="text-sm text-ink-500" role="status">
-          {t.search.resultCount(routes.length)}
-        </p>
-        {/* FR-13, where a student actually notices the gap: at the moment their own route is
-            not in the results. Offered to everyone; signing in happens when they act. */}
-        <Link href={`/${locale}/routes/new`} className="text-sm text-brand-700 hover:underline">
-          {t.contribute.createRoute}
-        </Link>
-      </div>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            {/* FR-13, where a student actually notices the gap: at the moment their own route
+                is not in the results. Outside the boundary, so it is there to click before
+                the results have arrived. */}
+            <Link
+              href={`/${locale}/routes/new`}
+              className="ml-auto text-sm text-brand-700 hover:underline"
+            >
+              {t.contribute.createRoute}
+            </Link>
+          </div>
+
+          <Suspense fallback={<ResultsSkeleton dictionary={t} />}>
+            <SearchResults
+              filters={filters}
+              hasFilters={hasFilters}
+              locale={locale}
+              dictionary={t}
+            />
+          </Suspense>
+        </GridRegion>
+      </PageGrid>
+    </PageCanvas>
+  )
+}
+
+/**
+ * The results, streamed — Phase 12.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **Why the loading state lives here rather than in a `loading.tsx`.**
+ *
+ * A segment-level `loading.tsx` was written first and then removed, because under `[locale]`
+ * it replaces everything inside the layout — including the persistent route header and tabs
+ * that CLAUDE.md §7.1 exists to keep on screen. Every tab click would have blanked the route
+ * a reader was looking at, which is a worse experience than the brief wait it was hiding.
+ *
+ * A boundary around the part that is actually slow does the opposite: the filters stay put,
+ * stay usable, and the results appear underneath them. That is what a loading state is for.
+ */
+async function SearchResults({
+  filters,
+  hasFilters,
+  locale,
+  dictionary: t,
+}: {
+  filters: RouteSearchFilters
+  hasFilters: boolean
+  locale: string
+  dictionary: Dictionary
+}) {
+  const routes = await searchRoutes(filters)
+
+  return (
+    <>
+      <p className="text-sm text-ink-500" role="status">
+        {t.search.resultCount(routes.length)}
+      </p>
 
       {routes.length === 0 ? (
         <div className="mt-3 rounded-xl border border-hairline bg-surface p-6">
@@ -191,8 +243,27 @@ export default async function RouteSearchPage({
           ))}
         </ul>
       )}
-        </GridRegion>
-      </PageGrid>
-    </PageCanvas>
+    </>
+  )
+}
+
+/**
+ * The shape of the results while they load.
+ *
+ * A skeleton rather than a spinner: it says "a list is coming and this is roughly its shape",
+ * so nothing jumps when the ribbons arrive. `aria-busy` and a visually hidden line carry the
+ * same information to a screen reader, which sees none of the shapes.
+ */
+function ResultsSkeleton({ dictionary: t }: { dictionary: Dictionary }) {
+  return (
+    <div aria-busy="true" aria-live="polite" className="mt-3 space-y-3">
+      <span className="sr-only">{t.common.loading}</span>
+      {[0, 1, 2].map((row) => (
+        <div
+          key={row}
+          className="h-28 animate-pulse rounded-xl border border-hairline bg-surface"
+        />
+      ))}
+    </div>
   )
 }

@@ -95,8 +95,13 @@ test.describe('the contribution loop', () => {
     await expect(page.getByRole('link', { name: /collect and attest documents/i })).toBeVisible()
 
     // 5. It draws through the ordinary renderer.
-    await expect(page.locator('svg[role="img"]')).toBeVisible()
-    await expect(page.locator('svg title', { hasText: /collect and attest documents/i })).toHaveCount(1)
+    // `getByRole` reads the accessibility tree, so it sees only the road the viewport
+    // actually paints. Phase 12 renders both densities and hides one with CSS; a raw
+    // `svg[role="img"]` selector matches the hidden one too.
+    await expect(page.getByRole('img').first()).toBeVisible()
+    await expect(
+      page.getByRole('img').locator('title').filter({ hasText: /collect and attest documents/i }),
+    ).toHaveCount(1)
 
     // 6. Add information to the step (FR-15).
     await openFirstStep(page)
@@ -222,7 +227,7 @@ test.describe('the contribution loop', () => {
     expect(await page.getByText(/^flag a problem$/i).count()).toBe(0)
 
     // Reading is entirely unaffected: the road, the steps and the fields are all there.
-    await expect(page.locator('svg[role="img"]')).toBeVisible()
+    await expect(page.getByRole('img').first()).toBeVisible()
     await expect(page.getByText(/information in/i)).toBeVisible()
   })
 

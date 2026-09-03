@@ -214,7 +214,7 @@ test.describe('change propagation', () => {
     await expect(page.getByText(/the route when you started/i).first()).toBeVisible()
 
     // Invariant 24 — two roads, both from the generic renderer. Same component, twice.
-    expect(await page.locator('svg[role="img"]').count()).toBeGreaterThanOrEqual(2)
+    expect(await page.getByRole('img').count()).toBeGreaterThanOrEqual(2)
 
     // BR-26, §41.3 — the change on the finished step reads as context, not invalidation.
     await expect(
@@ -360,7 +360,7 @@ test.describe('change propagation', () => {
     // Invariant 19 — the road itself is untouched. Same three steps, same labels, read from
     // the rendered road's accessible titles rather than by visible-text matching.
     await page.goto(`/en/routes/${route.slug}`)
-    const roadTitles = await page.locator('svg[role="img"] title').allTextContents()
+    const roadTitles = await page.getByRole('img').locator('title').allTextContents()
     for (const label of ['Documents', 'Language test', 'Visa application']) {
       expect(roadTitles.some((title) => title.includes(label)), label).toBe(true)
     }

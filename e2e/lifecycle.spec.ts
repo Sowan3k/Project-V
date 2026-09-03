@@ -134,7 +134,7 @@ test.describe('lifecycle and merge', () => {
     await expect(page.getByText(/created and then nothing happened/i)).toBeVisible()
     // Set aside, not deleted — the road and its steps are still here.
     await expect(page.getByText(/nothing has been deleted/i)).toBeVisible()
-    const titles = await page.locator('svg[role="img"] title').allTextContents()
+    const titles = await page.getByRole('img').locator('title').allTextContents()
     expect(titles.some((title) => title.includes('dormant documents'))).toBe(true)
 
     await admin.context.close()
@@ -182,7 +182,7 @@ test.describe('lifecycle and merge', () => {
     await expect(page.getByText(/nothing was moved or deleted/i)).toBeVisible()
 
     // The route itself still works — steps, road and all.
-    const titles = await page.locator('svg[role="img"] title').allTextContents()
+    const titles = await page.getByRole('img').locator('title').allTextContents()
     expect(titles.some((title) => title.includes('dup documents'))).toBe(true)
 
     // The link goes to the survivor, which is an ordinary route page.
