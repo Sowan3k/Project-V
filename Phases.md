@@ -39,7 +39,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 5 | Anonymous read path | Search → ribbon → road → step → field | ✅ |
 | 6 | Trust, provenance and freshness surface | Uncertainty is visible | ✅ |
 | 7 | Identity and private journeys | Follow a route, track privately | ✅ |
-| 8 | Contribution loop | ADD / UPDATE / CONFIRM / CHALLENGE | ⬜ |
+| 8 | Contribution loop | ADD / UPDATE / CONFIRM / CHALLENGE | ✅ |
 | 9 | Safety: reporting and quarantine | Abuse containment | ⬜ |
 | 10 | Change propagation and shadow route | Followers see what changed | ⬜ |
 | 11 | Lifecycle, dormancy, merge, admin | Maintenance without data loss | ⬜ |
@@ -484,7 +484,58 @@ mockup exception in CLAUDE.md §8.6.
 improvable by a different user; every action produces a revision; new routes publish as
 `experimental`.
 
+### Phase 8 result (2026-09-03)
+
+Four distinct contribution actions, a create-route flow, the post-completion prompt, and
+contributor history.
+
+**The most important thing this phase did not build is the approval gate**, and its absence is
+now guarded rather than merely intended. Source scans forbid `pendingApproval`, `reviewQueue`,
+`isApproved` and their relatives in `src/` **and** in the schema; the dictionary is asserted to
+say "goes live immediately"; and the browser suite checks the page body after creating a route
+and after correcting a field for any word suggesting a wait. VR-08's "All updates are reviewed"
+is a mockup exception (§8.6), and a review queue would have inverted the product — a student
+with a corrected deadline told to wait, by a platform asserting an authority it does not have.
+
+**CHALLENGE gained storage; CONFIRM gained an author.** Both are a new fourth model class,
+`communitySignal`: public and community-authored but not revisioned, so they do not belong in
+the revision engine — while still being shared knowledge, so the write guard refuses `delete`
+on them exactly as it does for revisioned models. A deletable challenge is a deletable safety
+signal.
+
+**A revision resolves a challenge; a confirmation never does.** Somebody vouching that a field
+is fine is a competing signal, not an answer, and letting it clear a challenge is how a dispute
+gets buried under reassurance (FR-70). The challenge row survives resolution carrying its
+reason, its author, and a pointer to the revision that answered it.
+
+**Confirmations count people, not clicks** — one row per person per field, so a count cannot be
+inflated by one enthusiastic contributor (invariant 14, BR-32).
+
+**Contributor history is evidence, not a score.** §11 leaves reputation weights open and §25
+warns against a competitive points game, so there is no score, level, rank or badge; a guard
+forbids `leaderboard`, `reputationScore`, `karma`, `trustScore` and friends. A further test
+asserts the summary is imported by exactly one page and by nothing that orders, gates or
+promotes anything.
+
+**VR-09's five-stage wizard became one form and then the route itself.** Only the basics need a
+page, because until the route exists there is nothing to add steps to; "Review" is looking at
+the route, and "Publish" already happened. Every other contribution control is a `<details>`
+disclosure containing a plain form — the route stays on screen (§7.1) and the whole loop works
+with JavaScript disabled.
+
+**The completion prompt introduces no new contribution type**: "yes" is CONFIRM, and "something
+changed" opens the step where UPDATE and CHALLENGE already live.
+
+**Gate: verified in full.** GitHub Actions run #34, commit `69132e2` — lint, typecheck, 480
+unit/architecture tests, build, migrations onto an empty database, schema-drift check, the
+integration suite, and 46 E2E assertions, all on a `postgres:18` container.
+
+**Two testing findings recorded in Test.md §17**, both of which will recur: E2E specs that
+create public content race specs that read it, and Playwright's accessible name for a control
+includes the control's own content.
+
 **FRs:** FR-13, FR-14, FR-15, FR-16, FR-17, FR-18, FR-42, FR-43, FR-50, FR-55, FR-69
+**Invariants:** 1, 2, 3, 11, 14, 15
 
 ---
 

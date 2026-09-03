@@ -50,6 +50,17 @@ Manual and automated checks actually performed, newest first.
 
 | Date | What was verified | Method | Result |
 |---|---|---|---|
+| 2026-09-03 | **Phase 8 gate verified in full** | GitHub Actions run #34, commit `69132e2`, all three jobs | ✅ lint · typecheck · **480** unit/architecture tests · build · migrations onto an empty database · schema-drift check · integration suite · **46 E2E assertions** |
+| 2026-09-03 | **The Phase 8 exit criterion, walked end to end** | `e2e/contribute.spec.ts` in a browser | ✅ A new user creates a route → it renders through the ordinary renderer → publishes `experimental` → a **different** user corrects a field → the old value is still in history |
+| 2026-09-03 | **No approval gate anywhere** | Source + schema + dictionary guards, and the browser body text after every contribution | ✅ No `pendingApproval`/`reviewQueue`/`isApproved` in `src/` or the schema; no "pending", "awaiting approval" or "will be reviewed" on screen after creating or correcting |
+| 2026-09-03 | A revision resolves a challenge; a confirmation never does | `tests/db/contribution.db.test.ts` | ✅ Confirming leaves the challenge open; revising closes it and records **which revision** answered it. The challenge row survives with its reason and author |
+| 2026-09-03 | Confirmations count people, not clicks | Same person confirmed twice, another once | ✅ `confirmationCount` is 2, and **no revision was created** — confirming is not editing |
+| 2026-09-03 | A challenge changes nothing about the value | Challenged a field and re-read it | ✅ Value, source class and revision count all identical; the reason and note render against the field |
+| 2026-09-03 | Concurrent corrections both survive, through the contribution path | Two users revising from one base | ✅ 3 revisions, `hasForkedHistory` true, both texts still in the ledger |
+| 2026-09-03 | Confirmations never promote a community claim | Two confirmations on a `community_experience` field | ✅ Still `community_submission`. Agreement is not provenance (invariant 14) |
+| 2026-09-03 | Community signals cannot be deleted | `prisma.confirmation.deleteMany`, `prisma.challenge.deleteMany` | ✅ Both refused by the write guard, in and out of a revision context |
+| 2026-09-03 | ⚠️ E2E specs that **create** public content raced ones that **read** it | 10 failures across two spec files | ❗ Search is newest-first and Playwright runs fully parallel, so "click the first result" landed on a route another spec had just made. §17 |
+| 2026-09-03 | ⚠️ Playwright's accessible name includes a control's own content | `getByLabel(/^information$/)` stopped matching once the field had a value | ❗ A prefilled textarea contributes its value and a select contributes every option. Locate form controls by `name`. §17 |
 | 2026-09-03 | **Phase 7 gate verified in full** | GitHub Actions run #28, commit `cc42268`, all three jobs | ✅ lint · typecheck · **460** unit/architecture tests · build · migrations onto an empty database · schema-drift check · integration suite · **38 E2E assertions** |
 | 2026-09-03 | **One user cannot reach another's journey** | `tests/db/journeys.db.test.ts` — Nadia holding Rahim's journey id | ✅ Read returns nothing; four separate writes all reject; his journey is byte-for-byte as he left it |
 | 2026-09-03 | **And not in a browser either** | Two fabricated sessions, same route, same URL | ✅ The second follower's page never contains the first's note, before or after following |
@@ -384,7 +395,32 @@ different writes, and asserts his journey is untouched. Neither half is sufficie
 demanding a `userId` on it would be cargo cult. A blanket rule would have needed an exception
 list, and an exception list is where a rule like this goes to die.
 
-### 4.6 Product feature coverage
+### 4.6 Phase 8 — the contribution loop (landed 2026-09-03)
+
+18 new architecture tests, an integration suite covering the exit criteria, and 4 browser
+tests × 2 viewports.
+
+| Area | Tests | State | File |
+|---|---|---|---|
+| No approval gate, four distinct actions, no gamification, experimental on publish | 18 | ✅ | `tests/architecture/contribution-loop.test.ts` |
+| Create → render → improve; UPDATE, CONFIRM, CHALLENGE semantics; contributor history | ✅ | ✅ | `tests/db/contribution.db.test.ts` |
+| The loop in a browser, signed in and anonymous | 4 | ✅ | `e2e/contribute.spec.ts` |
+
+**The guards are mostly about what must never appear.** An approval queue, a report action, a
+leaderboard, a reputation score — none of these can be caught by testing behaviour, because
+the behaviour is their absence. Each guard therefore carries a planted-violation check, and
+each is scoped to say why: `reviewQueue` is forbidden because VR-08's "All updates are
+reviewed" is a mockup exception (§8.6); `reputationScore` because §11 leaves reputation
+weights open and §25 warns against a points game.
+
+**Two assertions carry more weight than the rest:**
+
+- *"a revision resolves a challenge; a confirmation never does."* Letting somebody clear a
+  challenge by vouching for the field is how a dispute gets buried under reassurance (FR-70).
+- *"confirmations count people, not clicks."* A count that cannot tell fifty people from one
+  person fifty times is not a signal (invariant 14, BR-32).
+
+### 4.7 Product feature coverage
 
 Populated as phases land. One row per feature area.
 
@@ -394,8 +430,8 @@ Populated as phases land. One row per feature area.
 | Ribbon rendering | ✅ | ✅ | ✅ | Same renderer and graph as the road |
 | Ribbon → road expansion | ✅ | ✅ | ✅ | Visual continuity (D-33) — one component, two densities |
 | Step / field display | ✅ | ✅ | ✅ | `?step=` expansion; fields grouped by claim type, not badged |
-| Revision engine | ⬜ | ⬜ | ⬜ | Highest-risk area |
-| ADD / UPDATE / CONFIRM / CHALLENGE | ⬜ | ⬜ | ⬜ | |
+| Revision engine | ✅ | ✅ | ✅ | Exercised through the contributor's own path, not only the service API |
+| ADD / UPDATE / CONFIRM / CHALLENGE | ✅ | ✅ | ✅ | Four distinct actions; no approval gate, guarded |
 | Journey follow and progress | ✅ | ✅ | ✅ | Private by construction; unfollow archives, delete is separate |
 | Change propagation to followers | ⬜ | ⬜ | ⬜ | |
 | Shadow route diff | ⬜ | ⬜ | ⬜ | |
@@ -1002,3 +1038,40 @@ Sign-in also needs two secrets that are not and must never be in this repository
 `AUTH_SECRET`, and `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` from a Google Cloud OAuth client.
 Until they are set, `/en/signin` says so plainly rather than offering a button that fails —
 and reading the platform continues to work without any of it.
+
+---
+
+## 17. Two Phase 8 findings about testing itself
+
+Neither is a product defect. Both cost CI cycles and both will recur.
+
+### E2E specs that create public content race specs that read it
+
+Phase 8 gave the browser suite the ability to create real routes, and ten assertions in two
+files failed at once. Search is newest-first and Playwright runs `fullyParallel`, so
+`route-journey.spec.ts` clicking *"the first search result"* started landing on a route
+`contribute.spec.ts` had made a second earlier — brand new, no steps, therefore no
+"Open this step" link.
+
+**"The first result" was never a good locator; it only looked like one while exactly one route
+existed.** The reading journey now names the route it seeded, which is deterministic and a
+more honest test: it walks to a known destination rather than to whatever turned up.
+
+The general rule for this suite: **a spec that writes shared knowledge must not assume it is
+alone, and a spec that reads shared knowledge must name what it is reading.**
+
+### Playwright's accessible name includes the control's own content
+
+`getByLabel(/^information$/)` matched an empty textarea and stopped matching the moment the
+field had a value in it — which is precisely when an UPDATE form is under test. The accessible
+name of a control inside a wrapping `<label>` includes the control's content: a prefilled
+`<textarea>` contributes its value, and a `<select>` contributes **every option's text**, so
+`getByLabel(/^reason$/)` never matched the challenge select at all.
+
+Form controls in this suite are located by `[name="..."]` and scoped to their own form.
+
+Both failures were also, incidentally, evidence the product works. The strict-mode violation
+on "attested by the ministry" was the field's paragraph *and* the update form's textarea
+holding the same words — the form correctly prefilled with the current value. And a text match
+for a newly added step found the SVG's own `<title>`, which is the renderer having drawn it.
+The spec now asserts that directly rather than by accident.

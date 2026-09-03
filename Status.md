@@ -7,6 +7,95 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Session 11 — 2026-09-03
+
+**Goal:** correct the overclaim about generated handles, then Phase 8 — the contribution loop.
+
+### The handle wording, corrected
+
+The claim that dropping vowels means a generated handle "can never spell a word" was too
+absolute: consonant runs can still read as initialisms, abbreviations or words in other
+languages. Reworded in all four places to say it **reduces the likelihood** — worth doing
+because every handle lands on a real person who did not choose it, and the honest remedy for an
+unlucky one is to let that person change it. No behaviour changed, and the privacy property is
+untouched: handles are still generated and never derived from real identity data.
+
+### Phase 8 — ADD, UPDATE, CONFIRM, CHALLENGE
+
+**Gate green on run #34, `69132e2`:** lint, typecheck, 480 unit/architecture tests, build,
+migrations onto an empty database, schema-drift check, the integration suite, and 46 E2E
+assertions — all on a container.
+
+### Decisions taken
+
+**1. A fourth model class: `communitySignal`.** Confirmations and challenges are public and
+community-authored but not revisioned — a confirmation is not edited into a different
+confirmation, and a challenge is answered rather than rewritten. They do not belong in the
+revision engine, but they are still shared knowledge, so the write guard now refuses `delete`
+on them exactly as it does for revisioned models. A deletable challenge is a deletable safety
+signal, and invariant 12 already says a reader over-reads the absence of warnings.
+
+**2. A revision resolves a challenge; a confirmation never does.** The sharpest call in the
+phase. Someone vouching for a field is a competing signal, not an answer — and letting a
+confirmation clear a challenge is precisely how a dispute gets buried under reassurance
+(FR-70). The challenge row survives resolution with its reason, its author and a pointer to the
+revision that answered it.
+
+**3. Confirmations count people, not clicks.** One row per person per field. A count that
+cannot distinguish fifty people from one person fifty times is not a signal (invariant 14).
+
+**4. VR-09's five-stage wizard became one form and then the route.** Only the basics need a
+page, because until the route exists there is nothing to add steps to. "Review" is looking at
+the route; "Publish" already happened, as experimental. Everything else is a disclosure on the
+route itself — the route stays on screen, and the loop works with JavaScript disabled.
+
+**5. Contributor history is evidence, not a score.** CLAUDE.md §11 leaves reputation weights
+open and §25 warns against a points game, so there is no score, rank or badge. A guard forbids
+the vocabulary, and a second test asserts the summary is imported by exactly one page and by
+nothing that orders or gates anything.
+
+**6. The completion prompt invents no new action.** "Yes" is CONFIRM; "something changed" opens
+the step where UPDATE and CHALLENGE already live.
+
+### Things that went wrong, and what they taught
+
+**E2E specs that create public content race specs that read it.** Ten failures at once: search
+is newest-first, Playwright runs fully parallel, and the reading journey's "click the first
+result" started landing on a route the contribution spec had just made. "The first result" was
+never a good locator — it only looked like one while exactly one route existed.
+
+**Playwright's accessible name includes the control's own content.**
+`getByLabel(/^information$/)` stopped matching the moment the field had a value in it, and
+`getByLabel(/^reason$/)` never matched a select at all, because every option's text is part of
+the name. Form controls are now located by their `name` attribute.
+
+Both are in Test.md §17. Both failures were also evidence the product works — the strict-mode
+violation was the update form correctly prefilled with the current value, and a stray text
+match was the renderer having drawn a newly added step.
+
+### Blockers
+
+None for Phase 9. The same owner actions stand, none blocking development:
+
+- **The Phase 7 and Phase 8 migrations are on no Neon branch yet** — both verified against
+  CI's empty Postgres and nothing else. `npm run db:deploy` against `test` then `production` is
+  deliberately a person's job (CLAUDE.md §4).
+- **Sign-in needs `AUTH_SECRET` and Google OAuth credentials**, which must never live in this
+  repository. Until they are set, `/en/signin` says so and reading works without them.
+- Still outstanding: the failing `Workers Builds: project-v` check from the Cloudflare app,
+  which targets an architecture this project does not use.
+
+### Next step
+
+**Phase 9 — safety: reporting and quarantine**, on approval. REPORT as an action distinct from
+CHALLENGE, quarantine of high-risk content, admin review/restore/archive/remove, contact
+safety, burst detection. Reports are **structured and textual — no upload path** (§8.6, decided
+2026-09-02).
+
+One note to carry into it: invariant 12 currently holds because the route passport *cannot
+observe reports at all*. Phase 9 must add reporting to a caution path and must not add a report
+count to `RouteTrustInput`.
+
 ## Session 10 — 2026-09-03
 
 **Goal:** close the Phase 6 verification gap properly, then Phase 7 — identity and private
