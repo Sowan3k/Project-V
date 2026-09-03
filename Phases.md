@@ -833,6 +833,70 @@ code, no supporter flag, and no effect on any trust mechanism.
 
 **FRs:** FR-47, FR-78 · **Scope change:** §10.1
 
+### Phase 12 result (2026-09-04)
+
+A product-quality pass, not an architectural one. No domain, revision, trust, journey,
+contribution, safety, shadow-route or lifecycle behaviour changed; the guards that protect
+each of them still pass unmodified.
+
+**Four things were silently wrong, and "silently" is the point of all four.**
+
+**`ROAD_NARROW` had existed since Phase 4 and nothing ever selected it.** Every phone was
+served the 5-column, ~890px desktop road inside a horizontal scroller — exactly the "scaled
+desktop" §7 and VR-12 forbid. `ResponsiveRoad` renders both densities and lets a media query
+choose, so a 360px screen gets a road that wraps at 2 columns: a different composition, not a
+smaller one. It costs **no JavaScript** — the application still has exactly one client
+component, the error boundary Next requires to be one.
+
+**`ink-500` measured 4.28:1 against white — below WCAG AA for normal text.** It carries almost
+every explanatory line in the product, and those lines are `text-xs`, so the 3:1 large-text
+allowance never applied to them. The copy that was failing is the copy explaining what a source
+class means, why a route is quiet, and that a follower's progress is untouched. Darkened to
+L=0.55 (4.85:1). A test now recomputes every text token against every background it sits on,
+**reading the palette out of `globals.css`** so the numbers cannot drift from the theme.
+
+**`bg-canvas` and `bg-brand-50` were never defined.** Tailwind emits no CSS and no warning for
+an undefined utility, so those elements simply had no background — invisible on a white page.
+A guard now checks every colour utility inside every `className` resolves to a real token.
+
+**Indexing was still off.** Phase 0 set `robots: index: false` with a note that Phase 5 would
+open it; Phase 5 opened the read path and this was missed for six phases. Every public route
+page has been unlisted since. Now on for the read path, with `/admin` and `/journeys` excluded.
+
+**Tablets got the phone layout.** `PageGrid` jumped from one column straight to twelve at
+`lg`, so everything from 640px to 1023px stacked with half the screen unused. There is now a
+middle composition at `md` on a six-column grid — six rather than twelve because a tablet has
+room for two panels and not three.
+
+**Presentation:** an icon (the road, not a letterform — the public name is not frozen, D-32),
+a theme colour, per-page titles through a template (every page shared one title until now, so
+tabs, history and bookmarks were all useless), an error boundary that leaks nothing about what
+failed and says outright that saved progress is unaffected, and a loading skeleton for Neon's
+cold starts. A global `:focus-visible` ring at 7.81:1 replaces whatever the browser drew, which
+on a `<summary>` — this product's disclosure element everywhere — was easy to lose entirely.
+The dead Phase 0 "under construction" copy was removed.
+
+**The two judgement calls the review flagged, both acted on.**
+
+*The quiet wording.* The first draft opened "Nothing has changed on this route recently", which
+a skimmer reads as neglect and stops. It now leads with **agency** — "no one has needed to
+change this route recently" — names the two ordinary reasons so the benign reading is offered
+rather than merely permitted, and ends by pointing at the last-confirmed date. And that date is
+now shown **outside** the passport's disclosure for quiet routes specifically: FR-39 says such a
+route "shall instead expose freshness/last-confirmed information", and behind a click is not
+exposed. Only for `quiet`, so it does not become a date on every route.
+
+*The shadow comparison.* The roads carried no marking of which steps changed, so a reader had
+to compare two pictures by eye — the comprehension problem the side-by-side layout was supposed
+to solve. `RouteAnnotations` gained `archivedStepIds`, and the comparison now marks arriving
+steps on the current road and departing ones on the older road, using the primitives Phase 4
+already had. Both roads still come from the one generic renderer.
+
+**The §10.1 support link** is one line in the footer, in body text, next to a sentence saying it
+changes nothing. It is a link and nothing more: no API, no payment table, **no supporter flag**
+— so nothing *could* condition on one, which is a stronger form of invariant 13 than a rule
+about how a flag may be used.
+
 ---
 
 ## Phase 13 — Pre-launch gates and release

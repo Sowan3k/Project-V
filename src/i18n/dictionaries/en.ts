@@ -71,17 +71,6 @@ export const en = {
     routeJourney: (route: string) => `My journey — ${route}`,
   },
 
-  shell: {
-    /**
-     * Phase 0 is a foundation spine, not a product surface. The landing page, search and
-     * ribbons arrive in Phase 5 (Phases.md). This page says exactly that.
-     */
-    underConstructionTitle: 'This platform is being built',
-    underConstructionBody:
-      'Vindeshi Express will let you compare the ways to reach an overseas study destination, open a route to understand every step, and privately follow it as your own journey.',
-    underConstructionNote: 'Nothing here is a route yet. There is no content to rely on.',
-  },
-
   principles: {
     free: 'Free to use',
     communityMaintained: 'Community maintained',

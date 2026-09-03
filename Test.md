@@ -1414,3 +1414,59 @@ to compute it. A test can only confirm that nothing decides it automatically, wh
 caution and the absence of alarming words. Whether a student seeing "Quiet. Nothing has changed
 on this route recently" concludes "settled" or "abandoned" is a copy question that needs a
 reader, not an assertion. Flagged for the Phase 12 pass alongside the shadow comparison (§18).
+
+---
+
+## 22. Phase 12 — four bugs that never failed anything
+
+Every defect this phase found was **silent**. None broke a test, none logged a warning, and
+none looked wrong to the person who wrote it. That is worth recording as a category, because
+it is the category a phase of tests aimed at behaviour will never find.
+
+| Defect | Why nothing caught it | Now guarded by |
+|---|---|---|
+| `ROAD_NARROW` existed since Phase 4 and nothing selected it | The desktop road rendered correctly on a phone — inside a scroller. Every test passed; it was just wrong | An E2E assertion that the *painted* road is narrow at 360px and wide at 1280px |
+| `ink-500` at 4.28:1, below WCAG AA | Contrast is not something code can notice, and it looked fine to the eye that chose it | A test recomputing every text/background pair, reading the palette out of `globals.css` |
+| `bg-canvas` and `bg-brand-50` undefined | Tailwind emits no CSS and no warning for an unknown utility. The elements were simply transparent, on a white page | A test resolving every colour utility in every `className` against the theme |
+| `robots: index: false` left on since Phase 0 | A note said "Phase 5 opens this". Phase 5 opened the read path and did not open indexing. Six phases passed | A test asserting the read path is indexable and `/admin` and `/journeys` are not |
+
+The last one is the one to learn from: **a comment recording future work is not a mechanism.**
+It was accurate, it was in the right file, and it was read by nobody at the moment it mattered.
+The same note as a failing test would have taken one phase to notice instead of six.
+
+### Comment-stripping, the fourth time
+
+`presentation.test.ts` shipped with two guards that reported violations of themselves. The
+pinch-zoom guard matched the comment in `layout.tsx` explaining that `maximum-scale` must never
+be set; the quiet-wording guard matched the note above `quietExplainer` explaining that
+"abandoned" must never appear.
+
+This is now the fourth occurrence — Phase 10's schema prose (§19), Phase 11's "points readers"
+copy (§21), and both of these. The rule has earned a permanent place:
+
+> **An absence guard reads code, never comments.** `stripComments(read(file))`, always. The
+> documentation of a rule will otherwise be reported as a violation of it, and the more
+> carefully the rule is explained the more certainly the guard fails.
+
+### And one guard that had to be tuned rather than stripped
+
+The colour-utility check first reported 21 offenders, all `border-t`, `border-b`, `divide-y`.
+Those share a prefix with colour utilities and are not colours.
+
+The exclusion list is where that guard earns or loses its usefulness, and it can fail in two
+directions. Too permissive and a broken colour slips through — which is the bug it exists for.
+Too strict and it floods with `border-t`, and the next person deletes it. It is written out
+explicitly, grouped by *why* each entry is not a colour, so the next person extending it can
+tell which direction they are moving in.
+
+### What Phase 12 still cannot prove
+
+**That the shadow comparison is comprehensible**, and **that "quiet" reads as settled rather
+than abandoned.** Both were flagged after Phases 10 and 11 as needing a reader, and both were
+*acted on* here — arriving and departing steps are now marked on the compared roads, and the
+quiet copy leads with agency and points at the last-confirmed date, which is now shown outside
+the disclosure for that state.
+
+But acting on a judgement is not the same as validating it. Neither has been in front of a
+student, and no assertion in this repository can put one there. They remain the two places
+where the product's own reasoning is the only evidence.

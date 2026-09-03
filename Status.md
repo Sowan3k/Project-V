@@ -129,9 +129,29 @@ both routes keep rendering through the one generic renderer.
 No requirement was amended or renumbered — neither decision needed formal change control.
 Both are implementation interpretations recorded against existing requirements.
 
+### Phase 12 — responsive, accessibility, polish and support link (same session)
+
+Full write-up in [Phases.md](Phases.md). A product-quality pass; no domain, revision, trust,
+journey, contribution, safety, shadow-route or lifecycle behaviour changed.
+
+**Four silent defects found and fixed** — a phone road that was the desktop road in a
+scroller, `ink-500` below WCAG AA, two colour utilities that were never defined, and search
+indexing still switched off since Phase 0. None of them failed a test; all four now have one.
+
+**Both judgement calls from earlier reviews were acted on:** the shadow comparison now marks
+arriving and departing steps on the compared roads, and the quiet copy leads with agency and
+exposes the last-confirmed date outside the disclosure (FR-39's own remedy).
+
+**The §10.1 support link** is live in the footer — a link and nothing more, with no supporter
+flag for anything to condition on.
+
 ### Next step
 
-Phase 12 — responsive, accessibility, polish and the support link.
+**Phase 11's migration still needs applying** (`20260903235000_lifecycle_duplicates_and_merge`)
+— procedure supplied to the owner. Phase 11 is recorded as complete but **not yet
+operationally current**; that line gets written when the owner confirms the migration.
+
+Phase 13 — pre-launch gates and release — **awaiting approval.**
 
 Two items are already logged for it (Test.md §18 and §21): the Phase 10 shadow comparison and
 the Phase 11 "quiet" copy have both been reasoned about carefully and neither has been in front

@@ -94,10 +94,25 @@ export function ContentColumn({
 }
 
 /**
- * A desktop grid that reflows rather than shrinking.
+ * A grid that reflows through **three** compositions rather than two — Phase 12.
  *
- * At narrow widths the regions stack in source order; at `lg` they become columns. The point
- * is that a phone gets a different composition, not a squeezed copy of the desktop one.
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * Until Phase 12 this went straight from one column to twelve at `lg` (1024px), which meant
+ * everything from 640px to 1023px — every tablet in portrait, and a good many in landscape —
+ * got the *phone* layout: one column, panels full width, half the screen unused. That is the
+ * same failure as a scaled-down desktop, in the other direction, and CLAUDE.md §7.2 asks for
+ * regions that "reflow and stack", not for two states with a wasteland between them.
+ *
+ * So there is a middle composition at `md` (768px), on a **six**-column grid. Six rather than
+ * twelve is deliberate: a tablet has room for two panels side by side and not for three, and
+ * a twelve-column grid at that width would tempt a 7/5 split into columns too narrow to read.
+ *
+ * Each region maps its desktop span to a tablet one, and the mapping is a judgement about
+ * what needs width rather than arithmetic:
+ *
+ *   span 4, 5, 6  →  half the tablet width. Panels, summaries, side rails: they pair well.
+ *   span 7, 8, 12 →  the full tablet width. These are the regions holding a road, a step's
+ *                    detail or a comparison, and half a tablet is not enough for any of them.
  */
 export function PageGrid({
   children,
@@ -107,7 +122,9 @@ export function PageGrid({
   className?: string
 }) {
   return (
-    <div className={`grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10 ${className}`}>
+    <div
+      className={`grid grid-cols-1 gap-8 md:grid-cols-6 md:gap-8 lg:grid-cols-12 lg:gap-10 ${className}`}
+    >
       {children}
     </div>
   )
@@ -123,13 +140,15 @@ export function GridRegion({
   span: 4 | 5 | 6 | 7 | 8 | 12
   className?: string
 }) {
+  // Written out rather than computed, so both breakpoints are literal class names Tailwind
+  // can see. A template-built class name is a class name Tailwind does not generate.
   const spans: Record<number, string> = {
-    4: 'lg:col-span-4',
-    5: 'lg:col-span-5',
-    6: 'lg:col-span-6',
-    7: 'lg:col-span-7',
-    8: 'lg:col-span-8',
-    12: 'lg:col-span-12',
+    4: 'md:col-span-3 lg:col-span-4',
+    5: 'md:col-span-3 lg:col-span-5',
+    6: 'md:col-span-3 lg:col-span-6',
+    7: 'md:col-span-6 lg:col-span-7',
+    8: 'md:col-span-6 lg:col-span-8',
+    12: 'md:col-span-6 lg:col-span-12',
   }
   return <div className={`${spans[span] ?? ''} ${className}`}>{children}</div>
 }

@@ -66,6 +66,27 @@ body {
   color: var(--color-ink-900);
 }
 
+/*
+ * A visible focus ring on everything a keyboard can reach — Phase 12.
+ *
+ * Before this, focus rested on whatever the browser drew by default, which on custom-styled
+ * buttons and links is often a thin ring with poor contrast against a light surface — and on
+ * a `<summary>` element, which this product uses for every progressive disclosure, it is
+ * easy to lose entirely.
+ *
+ * `:focus-visible` rather than `:focus`, so a mouse click does not leave a ring behind: the
+ * ring appears for keyboard and assistive navigation, which is who it is for.
+ *
+ * `brand-700` is 7.81:1 against the page, so the ring itself passes the 3:1 that WCAG 1.4.11
+ * asks of a focus indicator with room to spare. The offset keeps it clear of the control's
+ * own border rather than merging with it.
+ */
+:focus-visible {
+  outline: 2px solid var(--color-brand-700);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 /* Meaning must never depend on colour, hover or fine visual detail (CLAUDE.md §7, §10.4). */
 @media (prefers-reduced-motion: reduce) {
   *,
