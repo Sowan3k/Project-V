@@ -1476,3 +1476,56 @@ the disclosure for that state.
 But acting on a judgement is not the same as validating it. Neither has been in front of a
 student, and no assertion in this repository can put one there. They remain the two places
 where the product's own reasoning is the only evidence.
+
+---
+
+## 23. Phase 12B–12D — what a guard caught, and what only a real database could
+
+Five defects in the visual phases were caught by a guard before they reached a browser, and
+two were not caught by anything until CI ran against a real Postgres. The split is the useful
+part: the first five are all *properties of source text*, and the last two are properties of a
+running system.
+
+### What the guards caught
+
+| Found by | Defect |
+|---|---|
+| Contrast guard | `text-hairline` on a breadcrumb separator — a border token at L=0.91, invisible as text to a good many readers |
+| Colour-literal guard (new) | Six hex colours still hardcoded in the renderer after the palette moved to tokens. The contrast test reads the CSS, so it would have been certifying values that were not being painted |
+| Enum single-source guard | `tone="quiet"` on a panel and `tone="quiet"` on a button, colliding with the `quiet` lifecycle state. Renamed `sunken` and `bare` |
+| Gamut test (new) | Three of eighteen category tones written 0.3% outside sRGB, because the chroma fit was rounded **up** afterwards. Invisible — and enough to make every contrast figure a fiction, since the browser clamps and the clamped colour is not the measured one |
+| Invariant-13 ordering guard | Caught the `id` tie-break being added to search ordering, which is exactly what it is for. Updated to match the new clause **exactly** rather than loosened to a pattern |
+
+### What only a real database caught (CI run #54)
+
+Both database-backed jobs failed while `lint · typecheck · test · build` was green. Neither
+failure was in the product.
+
+**`@db.Char(2)`.** The new pagination test generated a six-character destination code to
+isolate itself. Typecheck cannot see a column width, and no unit test touches Postgres, so it
+passed everything locally. **A column constraint is not visible to any check that does not
+connect to a database** — which is the argument for the integration job existing at all.
+
+**Pagination broke an assumption the E2E suite did not know it was making.** The reading specs
+searched unfiltered and picked the seeded route out of the results. `lifecycle.spec.ts` builds
+seven BD → DE Master's fixtures and `changes.spec.ts` six, all newer, so at twelve per page the
+seeded route moved to page two and the specs stopped finding it.
+
+This is the third appearance of the finding first recorded in §17: **specs that create public
+content race specs that read it.** Pagination did not introduce it; it made an existing latent
+coupling load-bearing. The fix was to make the fixture reachable — a distinctive intake, and
+specs that filter by it — rather than to raise the page size, which would have been tuning the
+product to suit the suite, or to assert on whichever ribbon came first, which would have passed
+while testing nothing in particular.
+
+**The rule worth carrying forward:** when a read path gains a limit, every test that reads
+"the list" has just acquired an assumption about ordering that nothing states. Search for the
+readers, not only for the writers.
+
+### Still untested
+
+- **Gate 4 does not exist yet.** Nothing in CI compares a screen to a visual reference; the
+  screenshots taken during 12B–12D were reviewed by eye and are not retained or asserted.
+  Phase 12G owns this, and until it lands the visual work is verified by inspection only.
+- The E2E assertion that a ribbon fills ≥85% of its row is written but had not completed a CI
+  run at the time of writing.
