@@ -43,7 +43,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 9 | Safety: reporting and quarantine | Abuse containment | ✅ |
 | 10 | Change propagation and shadow route | Followers see what changed | ✅ |
 | 11 | Lifecycle, dormancy, merge, admin | Maintenance without data loss | ✅ |
-| 12 | Responsive, accessibility, polish, support link | Launch-quality **mechanics** | 🟡 |
+| 12 | Responsive, accessibility, polish, support link | Launch-quality **mechanics** | ✅ |
 | 12B | Design system and visual foundation | Tokens, primitives, brand — what a screen is made of | ✅ |
 | 12C | Ribbon and road as drawn | A route looks like a route, still route-agnostic | ✅ |
 | 12D | Public read path composition | Landing, discovery, route, step | ✅ |
@@ -53,8 +53,10 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 13 | Pre-launch gates and release | Gates 1–4 pass | ⬜ |
 | — | **Content track** (parallel, from Phase 1) | Real seeded routes | 🟡 |
 
-**Phase 12 is 🟡, not ✅:** its implementation landed but one E2E assertion is still red — 4px
-of horizontal overflow at 360px on the route page (run #53, `e53794a`). Phase 12F owns the fix.
+**Phase 12 closed on 2026-09-04.** Its one outstanding E2E failure — 4px of horizontal overflow
+at 360px, red since run #53 — was the route page’s non-wrapping tab strip, fixed in 12D.
+Verified green in **CI run #56, commit `dace9cb`**: lint, typecheck, unit and architecture,
+build, migrations, drift, integration and end-to-end, all three jobs.
 
 **Why 12B–12G exist at all** is explained in full below, before Phase 12B. The short version:
 no phase in this plan ever had an exit criterion that a screen must *look* like anything, so

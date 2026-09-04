@@ -83,13 +83,41 @@ unexplained departure from a mockup is a defect and an explained one is a decisi
   unticked exit criterion, deliberately left ⬜ because it is not mine to tick. 12D and 12E
   build on it, so a rejection is cheapest now.
 
+### Gate verified — CI run #56, commit `dace9cb` (2026-09-04)
+
+**All three jobs green.** The first fully green gate since `e53794a`, and it closes Phase 12:
+the 4px horizontal overflow at 360px that had been red since run #53 was the route page's
+non-wrapping tab strip, fixed in 12D.
+
+It took three runs, and the two failures are worth keeping:
+
+- **#54** — both database-backed jobs. The new pagination test generated a six-character
+  destination code and `destinationCountry` is `@db.Char(2)`; typecheck cannot see a column
+  width. And pagination pushed the seeded E2E route onto page two, because the other specs
+  build thirteen newer BD → DE Master's fixtures between them.
+- **#55** — my own fix. `route-journey.spec.ts` imported a constant from
+  `seed-route.setup.ts`, and **Playwright refuses a spec importing a setup file** as a hard
+  error, so the file failed to load and the whole job died rather than one spec. Shared
+  constants moved to `e2e/fixtures.ts`.
+
+The intake-filter approach was then removed entirely. `intake` sits on the `Route` identity
+row, `Route` is revisioned, and no service function changes a route's intake — so a branch
+seeded before that field existed can never be brought up to date, and the specs became
+unrunnable against any long-lived database. **A fixture that only works on an empty database
+hides problems.** The specs address the route directly now, and the one claim that genuinely
+needs search is tested against whichever route search returns, which is stronger than naming
+one.
+
+**Process note:** #55 was pushed without running E2E locally, on the assumption that the
+pagination fix was sufficient. Two CI failures where one local run would have caught both.
+Verified locally before pushing `dace9cb` — route-journey 18 passed, presentation 20 passed,
+against the 359-route test branch, which is a harder case than CI's fresh container.
+
 **Known-open, non-blocking:**
 
-- CI run #54 on `5e76cd0` is the first full gate since `e53794a`. Everything has also been verified locally — `lint`, `typecheck`, 686 unit and
+- Everything has also been verified locally — `lint`, `typecheck`, 686 unit and
   architecture tests, clean production build, and screenshots at 360/768/1280/1440 showing
   every page 200 with zero horizontal overflow.
-- The E2E assertion that a ribbon fills ≥85% of its row, and the 360px overflow fix, both run
-  for the first time in run #54.
 - Content track untouched: Germany worksheet still has UNVERIFIED sections; Australia, USA and
   Malaysia not started. Gate 2 cannot pass until this is done, and it is calendar work.
 - `.shots.mjs` at the repo root is an untracked local screenshot helper, gitignored.
