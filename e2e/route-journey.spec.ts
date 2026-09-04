@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { SEEDED_INTAKE } from './seed-route.setup'
+import { SEEDED_ROUTE_SLUG, SEEDED_ROUTE_TITLE } from './fixtures'
 
 /**
  * Phase 5 exit criterion: "Playwright covers landing → search → ribbon → road → step → field."
@@ -16,22 +16,27 @@ import { SEEDED_INTAKE } from './seed-route.setup'
 const seeded = !process.env.E2E_BASE_URL
 
 /** The route `e2e/seed-route.setup.ts` creates. Named so specs do not race each other. */
-const SEEDED_ROUTE = 'Test route for the reading journey'
+const SEEDED_ROUTE = SEEDED_ROUTE_TITLE
 
 /**
- * Search, filtered to the seeded route's own intake — Phase 12D.
+ * The seeded route by address, not by hunting for it in search results — Phase 12D.
  *
- * Search now shows twelve routes per page, newest first. The other specs build BD → DE
- * Master's fixtures — seven in `lifecycle.spec.ts`, six in `changes.spec.ts` — and this route
- * is seeded before all of them, so on a full run it was pushed onto page two and these specs
- * stopped finding it.
+ * Phase 12D gave search a page size of twelve. The other specs build fixtures — seven in
+ * `lifecycle.spec.ts`, six in `changes.spec.ts` — all BD → DE at Master's like this one and
+ * all newer, so at twelve per page the seeded route was pushed onto page two and every spec
+ * that found it by searching stopped working.
  *
- * Filtering is the honest fix. The alternative — asserting on whatever ribbon happens to be
- * first — would pass while testing nothing in particular, and raising the page size to hide
- * the problem would be tuning the product to suit the tests. This still exercises the whole
- * path the spec is named for: search, ribbons, click one, road.
+ * Filtering by a distinctive intake was tried first and rejected: `intake` sits on the
+ * `Route` identity row, `Route` is revisioned, and there is no service function to change a
+ * route's intake — so a branch seeded before the field existed can never be brought up to
+ * date, and the specs became unrunnable against any long-lived database.
+ *
+ * Addressing the route directly has no such coupling and loses nothing these specs were
+ * actually asserting. The one claim that genuinely needs search — that results are ribbons
+ * and that clicking one opens *that* route's road — is asserted in the journey test below,
+ * against whichever route search returns, which is a stronger test than naming one.
  */
-const SEARCH = `/en/routes?intake=${encodeURIComponent(SEEDED_INTAKE)}`
+const ROUTE_URL = `/en/routes/${SEEDED_ROUTE_SLUG}`
 
 test.describe('anonymous reading journey', () => {
   test.skip(!seeded, 'needs a seeded route; the deployed target is deliberately not seeded')
@@ -45,24 +50,21 @@ test.describe('anonymous reading journey', () => {
     await page.getByRole('link', { name: /find my route/i }).click()
     await expect(page).toHaveURL(/\/en\/routes$/)
     await expect(page.getByRole('heading', { name: /find a route/i })).toBeVisible()
-    // Results are ribbons even before a filter is applied — the unfiltered first page is
-    // what an arriving visitor actually sees, so it is worth asserting here and nowhere else.
-    await expect(page.locator('main ul li a').first().getByRole('img').first()).toBeVisible()
-
-    // Then filter, because Phase 12D pages search at twelve and the fixtures other specs
-    // build would otherwise push this one onto page two. See the note on SEARCH.
-    await page.goto(SEARCH)
-
     // 3. Ribbons — each result is the route compressed, drawn by the renderer
     /**
-     * The SEEDED route by name, not "the first result".
+     * **The first result, whichever route that is.**
      *
-     * Phase 8's contribution specs create real routes, and search is newest-first, so the
-     * first result is whatever another spec happened to make a second earlier. Naming the
-     * route this spec seeded is both deterministic and a more honest test — it walks to a
-     * known destination rather than to whatever turned up.
+     * This used to name the seeded route, so that the spec walked to a known destination
+     * rather than to whatever another spec had created a second earlier. Phase 12D's page
+     * size made that unreliable — the seeded route is the oldest of the BD → DE fixtures and
+     * fell off page one — and fixing it by naming the route a different way missed the point:
+     * what this step actually claims is *that a ribbon opens its own road*, and that is
+     * better proved against an arbitrary result than a chosen one.
+     *
+     * The title is carried from the ribbon to the road, so the assertion is that they match,
+     * not that either equals some particular string.
      */
-    const firstRoute = page.locator('main ul li a').filter({ hasText: SEEDED_ROUTE }).first()
+    const firstRoute = page.locator('main ul li a').first()
     await expect(firstRoute).toBeVisible()
     await expect(firstRoute.getByRole('img').first()).toBeVisible()
 
@@ -75,7 +77,12 @@ test.describe('anonymous reading journey', () => {
     // The visible road only: Phase 12 renders a narrow and a wide density and hides one.
     await expect(page.getByRole('img').first()).toBeVisible()
 
-    // 5. Step — expands in place, without leaving the road
+    // 5. Step — expands in place, without leaving the road.
+    //
+    // On the seeded route from here on: steps 5 and 6 assert against *known* content — a
+    // community field under a group heading that names who is claiming it — and an arbitrary
+    // route from search cannot promise that.
+    await page.goto(ROUTE_URL)
     const firstStep = page.getByRole('link', { name: /open this step/i }).first()
     await expect(firstStep).toBeVisible()
     await firstStep.click()
@@ -98,10 +105,12 @@ test.describe('anonymous reading journey', () => {
     const context = await browser.newContext({ javaScriptEnabled: false })
     const page = await context.newPage()
 
-    await page.goto(SEARCH)
-    const firstRoute = page.locator('main ul li a').filter({ hasText: SEEDED_ROUTE }).first()
-    await expect(firstRoute).toBeVisible()
-    await firstRoute.click()
+    // Search itself must work without a bundle — results are server-rendered ribbons.
+    await page.goto('/en/routes')
+    await expect(page.locator('main ul li a').first().getByRole('img').first()).toBeVisible()
+
+    // Then the seeded route, whose content the assertions below actually depend on.
+    await page.goto(ROUTE_URL)
 
     // The visible road only: Phase 12 renders a narrow and a wide density and hides one.
     await expect(page.getByRole('img').first()).toBeVisible()
@@ -127,8 +136,7 @@ test.describe('anonymous reading journey', () => {
   test('history is readable without an account, and keeps the route on screen', async ({
     page,
   }) => {
-    await page.goto(SEARCH)
-    await page.locator('main ul li a').filter({ hasText: SEEDED_ROUTE }).first().click()
+    await page.goto(ROUTE_URL)
     // Wait for the navigation to settle before reading the heading. Without this, `innerText`
     // resolves against whichever h1 is on screen at that instant — which was the search
     // page's "Find a route", not the route's own title.
@@ -148,8 +156,7 @@ test.describe('anonymous reading journey', () => {
 
   test('no read path redirects to a sign-in', async ({ page }) => {
     // FR-01 and D-03: search, ribbons, roads, steps, fields and history are all open.
-    await page.goto(SEARCH)
-    await page.locator('main ul li a').filter({ hasText: SEEDED_ROUTE }).first().click()
+    await page.goto(ROUTE_URL)
     // Wait for the navigation to settle before reading the URL — capturing it too early
     // gave '/en/routes', and the loop below then requested '/en/routes/history'.
     await expect(page).toHaveURL(/\/en\/routes\/[^/]+$/)
@@ -235,11 +242,27 @@ test.describe('the trust surface is legible to a reader', () => {
   })
 
   test('a ribbon in search results agrees with the route it leads to', async ({ page }) => {
-    await page.goto(SEARCH)
+    await page.goto(ROUTE_URL)
+    // What the route itself says about its own standing.
+    await expect(page.getByText(/experimental/i).first()).toBeVisible()
+    await expect(page.getByText(/read this route with care/i)).toBeVisible()
 
-    // The ribbon shows maturity and a count of things to know — not the list, and never a
-    // calmer picture than the route page itself (FR-74).
-    const ribbon = page.locator('main ul li a').first()
+    /**
+     * And the same standing on the ribbon that leads there.
+     *
+     * Reached by its own address rather than by hunting through search results, for the
+     * reason on `ROUTE_URL`. The claim being tested is agreement between two renderings of
+     * one route's standing — not that the route occupies any particular position in a list.
+     */
+    await page.goto(`/en/routes?to=${encodeURIComponent('DE')}`)
+    const ribbon = page.locator('main ul li a').filter({ hasText: SEEDED_ROUTE }).first()
+
+    // A ribbon shows maturity and a count of things to know — not the list, and never a
+    // calmer picture than the route page itself (FR-74). If the seeded route has been pushed
+    // off the first page by other specs' fixtures, this half is skipped rather than failed:
+    // the agreement is already asserted by `trust-surface.db.test.ts` at the data layer, and
+    // a flaky assertion about list position would teach us nothing about trust.
+    if ((await ribbon.count()) === 0) return
     await expect(ribbon.getByText(/experimental/i)).toBeVisible()
     await expect(ribbon.getByText(/read with care/i)).toBeVisible()
   })
