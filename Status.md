@@ -7,6 +7,73 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Session 14 — 2026-09-04
+
+**Goal:** decide what happens to the frontend. The owner inspected the deployment after
+Phase 12 and found a functional product that does not look like the approved visual direction,
+then asked whether the remaining plan contained any frontend work at all.
+
+### Done
+
+- Read `REQUIREMENTS.md` in full and viewed **all thirteen** mockups in `Visual References/`.
+- Audited the remaining plan and answered the question: **it did not.** Phase 13's entire body
+  was *"Run the three gates below. Fix and re-run until all pass. Then release."* Gate 1 is
+  renderer *correctness*, Gate 2 is content research, Gate 3 is the end-to-end loop. The only
+  frontend work anywhere after Phase 12 was Phase 12B, which the owner had inserted by hand two
+  hours earlier and which existed only in conversation, not in `Phases.md`.
+- **Wrote six phases into `Phases.md` before Phase 13** — 12B design system, 12C ribbon and
+  road, 12D public read path, 12E signed-in and community surfaces, 12F mobile and tablet,
+  12G visual acceptance — each with exit criteria that name specific visual references.
+- **Added Gate 4 — Visual fidelity** to the pre-launch gates, and to `Test.md`'s gate table.
+  Phase 13 now runs four gates and states it cannot start while any of 12B–12G is open.
+- Marked Phases 10 and 11 ✅ in the overview table (stale) and Phase 12 🟡 with the reason:
+  one E2E assertion still red, 4px horizontal overflow at 360px, run #53 `e53794a`.
+
+### Decisions taken
+
+- **The root cause is recorded in `Phases.md` rather than treated as a one-off miss.** No phase
+  in twelve ever had an exit criterion that a screen must look like anything. Every other
+  dimension of this product is enforced by a test that fails the build; appearance was enforced
+  by intention. Every new phase names a visual reference, and Gate 4 blocks release on it.
+- **"A mockup is binding on arrangement, not on assertion."** CLAUDE.md §8.1's "the mockup
+  loses" is unchanged and unweakened — it is now made precise, because "design intent only" was
+  read as "optional". Layout, region composition, density and hierarchy are acceptance criteria.
+  Claims (`Verified Route`, `98%`, `4.8/5`, approval gates, alerts, leaderboards, uploads) are
+  not, and every §8.6 substitution must be **written down**, not silently dropped.
+- **Two CLAUDE.md §11 open decisions are now blocking and Phase 12B stops for owner approval on
+  both:** the six category colours, and the maturity palette and label wording. `globals.css`
+  defines fifteen colour tokens and zero category tokens today. Inventing either would answer an
+  open decision by accident.
+- **Presentation phases change no behaviour.** Invariants 24 and 25, the no-JavaScript
+  guarantee, the one-client-component budget and every existing guard must pass unmodified.
+  "Make it snappy" is explicitly not a licence to ship a single-page application.
+- **No fake data at any point.** A screen with nothing to show gets an honest empty state. This
+  is what keeps "looks like the mockups" compatible with §45 and Gate 2.
+
+### The measured gap, for whoever picks this up
+
+- `RIBBON.columnWidth` is **30px** → an eight-step ribbon draws ~160px inside a ~790px row.
+  VR-03 shows a full-width band of labelled chevrons. Single largest visual defect.
+- `ROAD` draws markers on straight connectors; VR-04 shows a road surface wrapping through three
+  rows with curved returns and step cards on it.
+- **15 colour tokens, 0 typography/spacing/radius/elevation tokens** — the mechanical reason
+  every screen reads as a uniform stack of grey cards.
+- Search has no pagination; 359 routes renders a page tens of thousands of pixels tall.
+- The landing page contains no route visualisation at all, which is VR-01's defining element.
+
+### Blockers
+
+- **Owner approval on the two palettes** gates Phase 12B, and 12B gates everything after it.
+- **`production` is six migrations behind** (Phases 7–11), which is why `/en/routes` 500s on
+  Vercel. Standing instruction is that I do not deploy to Neon; the owner runs
+  `npm run db:status` (expect 6 pending) then `npm run db:deploy`.
+
+### Next step
+
+Owner reviews the six phases and approves or amends the two palette decisions. Then Phase 12B.
+
+---
+
 ## Session 13 — 2026-09-03
 
 **Goal:** Phase 10 — change propagation and shadow route. Plus verifying the Vercel deployment

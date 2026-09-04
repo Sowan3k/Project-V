@@ -41,11 +41,24 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 7 | Identity and private journeys | Follow a route, track privately | ✅ |
 | 8 | Contribution loop | ADD / UPDATE / CONFIRM / CHALLENGE | ✅ |
 | 9 | Safety: reporting and quarantine | Abuse containment | ✅ |
-| 10 | Change propagation and shadow route | Followers see what changed | ⬜ |
-| 11 | Lifecycle, dormancy, merge, admin | Maintenance without data loss | ⬜ |
-| 12 | Responsive, accessibility, polish, support link | Launch-quality UI | ⬜ |
-| 13 | Pre-launch gates and release | Gates 1–3 pass | ⬜ |
+| 10 | Change propagation and shadow route | Followers see what changed | ✅ |
+| 11 | Lifecycle, dormancy, merge, admin | Maintenance without data loss | ✅ |
+| 12 | Responsive, accessibility, polish, support link | Launch-quality **mechanics** | 🟡 |
+| 12B | Design system and visual foundation | Tokens, primitives, brand — what a screen is made of | ⬜ |
+| 12C | Ribbon and road as drawn | A route looks like a route, still route-agnostic | ⬜ |
+| 12D | Public read path composition | Landing, discovery, route, step | ⬜ |
+| 12E | Signed-in and community surfaces | Journey, changes, contribution, safety | ⬜ |
+| 12F | Mobile and tablet as their own product | Phone IA, not a narrower desktop | ⬜ |
+| 12G | Visual acceptance | Gate 4 green, screenshots reviewed | ⬜ |
+| 13 | Pre-launch gates and release | Gates 1–4 pass | ⬜ |
 | — | **Content track** (parallel, from Phase 1) | Real seeded routes | 🟡 |
+
+**Phase 12 is 🟡, not ✅:** its implementation landed but one E2E assertion is still red — 4px
+of horizontal overflow at 360px on the route page (run #53, `e53794a`). Phase 12F owns the fix.
+
+**Why 12B–12G exist at all** is explained in full below, before Phase 12B. The short version:
+no phase in this plan ever had an exit criterion that a screen must *look* like anything, so
+appearance was the one dimension nothing could fail on.
 
 ---
 
@@ -899,9 +912,325 @@ about how a flag may be used.
 
 ---
 
+## The visual phases (12B–12G) — why they exist
+
+Phase 12 shipped and the deployed product still did not look like the product. The owner's
+inspection after it closed is the finding: *"still looks like an engineering prototype rather
+than the Vindeshi Express product represented by our visual references."*
+
+**The cause is in this file, and it is structural.** Search every phase above for a visual
+reference and you find them cited for *behavioural* lessons only — VR-07 taught side-by-side
+comparison, VR-10 taught disruption scope, VR-09 taught step grouping, VR-08 taught that there
+is no approval gate. Correct, all of them. But **no phase in this plan ever had an exit
+criterion that a screen must look like anything.** Twelve phases each passed their own gate
+honestly while the visual dimension went unbuilt, because nothing could fail on it.
+
+Everything else in this product is enforced by a test that fails the build. Appearance was
+enforced by intention. That asymmetry is the whole explanation, and these phases exist to
+remove it: **every phase below has at least one exit criterion naming a visual reference, and
+Gate 4 blocks release on it.**
+
+The goal, in the owner's words (2026-09-04): *when the real data is there, the platform shows
+exactly like those mockups.*
+
+### What a mockup is binding on, and what it is not
+
+CLAUDE.md §8.1 ranks the mockups third and says "if a mockup conflicts with the baseline or
+this file, the mockup loses." That stays true and is not being weakened. It is being made
+precise, because "design intent only" was read as "optional", and that reading is what these
+phases repair.
+
+| | Binding? | Example |
+|---|---|---|
+| **Arrangement** | **Yes — acceptance criteria now** | A ribbon spans its row as a segmented band; a road wraps with curved connectors; a route page has a left nav rail, a centre roadmap and a right rail; a step's fields are a table with source and freshness columns; a phone gets bottom tabs, not a narrower desktop |
+| **Assertion** | **No — the baseline and the §6 invariants win** | "Verified Route", "Community Verified 98%", "4.8/5", "28% confidence", "All updates are reviewed", "Safety Leaderboard", "Subscribe to Alerts", screenshot upload, "Share Progress" |
+| **Content** | **Never** | Every university, fee, IELTS score, visa rule, processing time, follower count and username in every mockup is illustrative (§8.6) |
+
+Where arrangement and assertion collide — a panel whose *layout* we want and whose *claim* we
+refuse — the phase **builds the panel and records the substitution in writing**. VR-14's "28%
+confidence" ring becomes the route passport's counted evidence, in the same position, at the
+same visual weight. Silently dropping the panel is how a screen ends up empty; silently keeping
+the claim is how the product starts lying. Neither is available.
+
+### Two open decisions become blocking here
+
+CLAUDE.md §11 has deferred both since Phase 0, correctly — nothing needed them until now.
+Phase 12B needs both and cannot proceed without them:
+
+- **The six category colours** (documents/preparation, language/tests, admission/university,
+  funding/scholarship, immigration/visa, travel/departure). Every mockup depends on them and
+  the ribbon is unreadable without them. `globals.css` currently defines **zero**.
+- **Route maturity label wording and its palette.** VR-14 is built almost entirely out of it.
+
+Phase 12B proposes both and **stops for owner approval before implementing them.** Inventing
+either would be answering an open decision by accident, which §11 exists to prevent.
+
+### What does not change
+
+These are presentation phases. None of them may alter the route graph, the revision ledger,
+trust derivation, journey privacy, lifecycle transitions, merge semantics or safety handling —
+the guards protecting each must pass **unmodified** at every gate. Specifically:
+
+- **Invariant 24 holds absolutely.** 12C makes the renderer look like the mockups by making the
+  *primitive library* richer. No route-specific artwork, no destination branching, no second
+  renderer. Structural equivalence, generative coverage, the import boundary and the identity
+  check all still pass.
+- **Invariant 25 holds.** Ribbon and road stay one representation at two densities.
+- **The no-JavaScript guarantee holds.** The whole read path works with JS disabled and the
+  application keeps exactly one client component. "Make it feel snappy" is not a licence to
+  ship a single-page application; server rendering *is* the performance strategy.
+- **No fake data, ever.** A screen with nothing to show gets an honest empty state, never a
+  plausible-looking sample route. §45's cold-start risk is answered by seeding real research
+  (content track), not by decoration.
+
+---
+
+## Phase 12B — Design system and visual foundation
+
+**Goal:** the vocabulary every later screen is built from. Nothing here is a screen; everything
+here is what a screen is made of.
+
+Today `globals.css` has **15 colour tokens and zero typography, spacing, radius or elevation
+tokens**, so every component invents its own sizes inline. That is the mechanical reason the
+product reads as a uniform stack of grey cards: there is no scale to build hierarchy with.
+
+**Scope**
+- **Type scale** — display, page title, section, panel title, body, small, micro — with line
+  heights and weights, as tokens. Most of the mockups' hierarchy comes from this alone.
+- **Spacing, radius and elevation scales.** The mockups use a consistent 8px-family rhythm, a
+  large panel radius and a very light shadow; all three are currently ad hoc per component.
+- **The six category colours** and their icons — *pending owner approval, see above.* Colour is
+  always paired with a label and an icon (§10.4).
+- **The maturity palette and label wording** — *pending owner approval.*
+- **Brand lockup**: the Bengali wordmark ভিনদেশী এক্সপ্রেস over VINDESHI EXPRESS with the
+  paper-plane mark. VR-01/03/04 all lead with it; we currently render plain text.
+- **Component primitives**, extracted from what the mockups actually repeat: `Button`
+  (primary/secondary/quiet), `Chip`, `Panel`, `PanelHeader`, `StatRow`, `Breadcrumb`, `Tabs`,
+  `Rail`, `FieldTable`, `EmptyState`, `Stepper`, contributor mark.
+- One dev-only component gallery route, so later phases compose rather than reinvent.
+
+**Exit criteria**
+- ⬜ Owner has approved the category palette and the maturity palette/wording; both recorded in
+  CLAUDE.md §11 as **closed**, with the date
+- ⬜ A test asserts every category colour resolves to a real token, and that no component
+  renders a category by colour alone — label and icon always present
+- ⬜ Contrast recomputation covers the new tokens; every text pair still passes WCAG AA
+- ⬜ A test asserts no arbitrary-value sizing utility (`text-[`, `p-[`, `rounded-[`) in
+  `src/components` or `src/app` — sizes come from the scale
+- ⬜ The brand lockup renders in the header at all four viewports and matches VR-01
+- ⬜ Zero new client components; zero new dependencies
+
+**Visual references:** VR-01 (brand, chips), VR-03/04/05 (panels, rails, tables), VR-14 (maturity)
+
+---
+
+## Phase 12C — Ribbon and road as drawn
+
+**Goal:** the two objects the product is named for finally look like themselves — still from one
+generic, data-driven renderer.
+
+This is the single largest visual defect and it is measurable. `RIBBON.columnWidth` is **30px**,
+so an eight-step ribbon draws about 160px wide inside a ~790px result row: a thumbnail, where
+VR-03 shows a full-width band of eight labelled chevrons carrying the route's whole shape. And
+`ROAD` draws plain markers on straight connectors where VR-04 shows an actual road surface
+wrapping through three rows with curved returns and step cards sitting on it.
+
+**Scope**
+- **Ribbon**: proportional to its container rather than a fixed 30px column — a segmented band
+  filling the row, one segment per step in the road's order, category-coloured, labelled where
+  width permits and icon-only where it does not. Still the compressed road (invariant 25).
+- **Road**: road-surface primitives — carriageway, centre line, curved return between wrapped
+  rows, junction, merge — and step *cards* rather than bare markers, carrying number, icon,
+  title and duration as VR-04 does.
+- **Category colour and icon** applied by the renderer from step category data.
+- **Step state** drawn on the road — completed / in progress / not started / optional — from
+  data the journey already holds (VR-04's legend).
+- **Compact horizontal stepper** as a third density, for step-detail headers (VR-05, VR-13).
+- Wrapping tuned per density so 3–20 steps read well at 360 / 768 / 1280 / 1440.
+
+**Exit criteria**
+- ⬜ **Structural equivalence still passes** — two routes, same graph, different destinations,
+  identical geometry. This is the invariant-24 proof and it is not negotiable
+- ⬜ **Generative coverage still passes** on random valid graphs, 3–20 steps
+- ⬜ **No identity branching** in `src/renderer/**`; the import boundary still holds
+- ⬜ Ribbon and road step counts and order still match for every fixture (invariant 25)
+- ⬜ A ribbon occupies **at least 85% of its row's width** at every viewport, asserted in E2E —
+  this is the defect that must not silently return
+- ⬜ Side-by-side screenshots of a real seeded route against VR-03 (ribbon) and VR-04 (road),
+  reviewed and accepted by the owner
+- ⬜ Renders with JavaScript disabled; zero client components added
+
+**Visual references:** VR-03 (ribbon band), VR-04 (wrapping road), VR-05/VR-13 (stepper)
+**Invariants:** 24, 25
+
+---
+
+## Phase 12D — Public read path composition
+
+**Goal:** the screens an anonymous visitor sees are composed the way the mockups compose them.
+
+**Scope**
+
+*Landing (VR-01).* Bilingual hero — Bengali headline, English subhead — the illustrated
+Bangladesh→destination route, `Find My Route` and `How It Works`, the three honest trust chips
+(Free / Community Maintained / No Document Upload), a three-step "how it works" strip, popular
+destinations. The route illustration comes from the **renderer**, drawn from real seeded route
+data — not a hand-drawn hero image. Invariant 24 applies to the homepage too.
+
+*Discovery and search (VR-12 desktop, VR-03 search bar).* The four controls as one horizontal
+band with flag-marked selects; results as full-width ribbons carrying duration, fly window,
+followers, activity and maturity on the row (VR-03); destination cards; a recently-updated rail.
+**Pagination**, which does not exist today — 359 routes currently renders a page tens of
+thousands of pixels tall.
+
+*Route (VR-04, VR-13).* Three regions: a left route-navigation rail (Roadmap / About /
+Requirements / Costs / Shadow Route / Updates), the centre roadmap, a right rail carrying the
+passport, fly window and recent updates. Breadcrumbs. A route header with origin→destination,
+level, intake, following count and maturity.
+
+*Step detail (VR-05).* The horizontal stepper, the step's header and status, and the **field
+table** — Field / Information / Source / Last Updated / Applicability / Action. Fields stay
+grouped by provenance (Phase 6) *within* the table rather than badged individually.
+
+*Low-trust route (VR-14).* The experimental/disputed presentation: caution banner, evidence row
+(contributors, following, recent confirmations, fields needing review, open challenges), "Use
+with Caution", and the route-state legend.
+
+**Substitutions to record, not silently omit:** VR-14's confidence ring and VR-13's 4.8/5 stars
+become the passport's counted evidence in the same position and at the same weight; VR-12's and
+VR-13's "Verified" / "98%" become source and last-confirmed language (BR-20, §8.6).
+
+**Exit criteria**
+- ⬜ Screenshots at 360/768/1280/1440 of landing, search, route and step reviewed side by side
+  against VR-01, VR-12, VR-04, VR-05 and VR-14, and accepted by the owner
+- ⬜ Search results paginate; no page exceeds a reasonable document height
+- ⬜ Every page uses `PageCanvas`; one left edge across header, content and footer (guarded)
+- ⬜ Breadcrumbs on every route-context page, each segment a real link
+- ⬜ Every §8.6 exception is absent, asserted by the existing guards, and each substitution is
+  recorded in this file
+- ⬜ The whole read path still works with JavaScript disabled
+- ⬜ A destination with no routes shows an honest empty state, not a sample route
+
+**Visual references:** VR-01, VR-03, VR-04, VR-05, VR-12, VR-13, VR-14
+**FRs:** FR-01, FR-02, FR-03, FR-04, FR-05, FR-06, FR-08, FR-09, FR-10, FR-11, FR-74
+
+---
+
+## Phase 12E — Signed-in and community surfaces
+
+**Goal:** the screens behind sign-in look like the same product as the ones in front of it.
+
+**Scope**
+
+*My Journey (VR-06).* Private badge and the privacy explainer panel, route summary card, the
+progress ring and fly window, a left section rail (Overview / All Steps / Calendar & Deadlines /
+Notes / Route Changes / Settings), per-step rows with status, target and completion dates and
+expandable private notes, an upcoming-deadlines rail and a recent-changes rail.
+*Substitution:* no "Share Progress" (FR-26, BR-16, D-10).
+
+*Route changes and shadow comparison (VR-07).* The two-column comparison on a shared numbered
+spine — built in Phase 10 and correct — recomposed to VR-07's density: change-summary counts,
+the most-recent-change panel, and the "How changes affect you" panel stating the follower's
+start date, whether the change applies, and that completed steps remain valid.
+
+*Contribution (VR-08, VR-09).* Update: current value beside proposed value with route/step/field
+context, applicability, reason and source. Create route: the basics form and then the route
+itself, composed as VR-09 composes it, with its step strip drawn by the renderer.
+*Substitution:* VR-08's "reviewed by the community / goes live when confirmed" staging is **not**
+built; the copy says updates go live immediately, and the Phase 8 guard enforces it.
+
+*Safety (VR-11).* Report category grid, detail form, "what happens next", quarantine explanation.
+*Substitutions:* no screenshot upload (§8.6, decided 2026-09-02), no Safety Leaderboard (§25),
+and the recently-quarantined list is not public (Phase 9 — reports are not a public board).
+
+*Updates (VR-10).* A route's own updates and disruptions surface, with the four severity levels
+and the permanent-change vs temporary-disruption distinction made visual. *Substitutions:* no
+"Subscribe to Alerts", no "Manage Alert Settings", no second Impact axis (§35, §41.2). **A
+cross-route updates feed is a scope question, not an assumption** — it was explicitly outside
+Phase 10's scope; if it is wanted it is a change request first.
+
+*Also:* sign-in, contributor page, admin queues and the 404, composed to the same system.
+
+**Exit criteria**
+- ⬜ Screenshots at all four viewports reviewed against VR-06, VR-07, VR-08, VR-09, VR-10 and
+  VR-11, and accepted by the owner
+- ⬜ Privacy, revision, safety, lifecycle and monetisation guards pass **unmodified**
+- ⬜ Every substitution above is present in this file and enforced by an existing guard
+- ⬜ No upload control exists anywhere in the application, asserted at the action boundary
+- ⬜ Contribution controls remain reachable in minimal interaction and work without JavaScript
+
+**Visual references:** VR-06, VR-07, VR-08, VR-09, VR-10, VR-11
+**FRs:** FR-13–FR-18, FR-23–FR-30, FR-35–FR-37, FR-42, FR-50, FR-55, FR-60, FR-61, FR-77
+
+---
+
+## Phase 12F — Mobile and tablet as their own product
+
+**Goal:** the phone gets the composition VR-12 and VR-13 draw, which is **not** the desktop
+composition at a smaller width.
+
+Phase 12 fixed the two mechanical failures — the road no longer scales down, tablets no longer
+get the phone layout. Neither delivered the mobile *product* the mockups show, which differs in
+its information architecture, not in its widths.
+
+**Scope**
+- **Bottom tab bar** — Explore / My Journey / Updates / Profile (VR-12, VR-13, VR-14 phones)
+- **Route as tabs on a phone** — Route / Details / Updates — with the horizontal step-chip strip
+  above them (VR-13)
+- Compact ribbons, stacked filters and a swipeable destination row on discovery (VR-12)
+- Step detail as its own phone view with its own tab strip (VR-13)
+- A tablet composition that is genuinely two-panel rather than one wide column
+- The 4px horizontal overflow at 360px on the route page, still open from Phase 12, fixed at its
+  actual cause — the non-wrapping four-tab nav in `route-context.tsx` is the next suspect
+
+**Exit criteria**
+- ⬜ Zero horizontal overflow on every page at 360px, 390px and 768px — the outstanding Phase 12
+  E2E failure is green and stays green
+- ⬜ Phone screenshots reviewed against the phone panels in VR-12, VR-13 and VR-14 and accepted
+- ⬜ A phone reaches every read-path destination in the same number of interactions as desktop,
+  or fewer
+- ⬜ Bottom navigation is server-rendered and keyboard reachable; no client component added
+- ⬜ Touch targets ≥ 44px; the whole phone path works with JavaScript disabled
+
+**Visual references:** VR-12, VR-13, VR-14
+**FRs:** FR-47 · **Quality expectation:** Mobile usefulness (§32)
+
+---
+
+## Phase 12G — Visual acceptance
+
+**Goal:** make the fidelity provable and keep it from decaying — so it never silently regresses
+the way it silently never arrived.
+
+**Scope**
+- A **screenshot suite** in CI: every screen at 360 / 768 / 1280 / 1440, published as build
+  artifacts so a human can compare them against `Visual References/` without running anything
+- A written **fidelity checklist per mockup** in `Test.md`: what matches, what is deliberately
+  substituted and why, what is genuinely outstanding
+- Performance: confirm everything is server-rendered, the client-component count is still
+  **one**, and record cold and warm navigation timings
+- A full keyboard pass and an automated accessibility pass over every screen
+- Empty, loading and error states for every screen, including Neon's 25–30s cold start
+- Remove every remaining prototype characteristic: placeholder copy, unstyled controls, default
+  browser widgets, debug text
+
+**Exit criteria**
+- ⬜ **Gate 4 passes** (below)
+- ⬜ The whole project gate is green on one commit — lint, typecheck, unit, architecture, build,
+  migrations, drift, integration and E2E
+- ⬜ Owner has reviewed the screenshot artifact set and accepted it
+- ⬜ The client-component count is still exactly one
+- ⬜ `Test.md`, `Status.md` and this file record the verified run and commit
+
+---
+
 ## Phase 13 — Pre-launch gates and release
 
-Run the three gates below. Fix and re-run until all pass. Then release.
+Run the four gates below. Fix and re-run until all pass. Then release.
+
+**Phase 13 cannot start while any of 12B–12G is open.** A product that works and does not look
+like itself is not releasable, and this phase previously implied otherwise by following Phase 12
+directly.
 
 **FRs:** FR-75, FR-79, FR-80
 
@@ -948,7 +1277,12 @@ fly window. Not every route needs every item.
 
 ## Pre-launch gates
 
-All three must pass before public launch. Each has an owner artifact in `Test.md`.
+All four must pass before public launch. Each has an owner artifact in `Test.md`.
+
+Note the division of labour between Gate 1 and Gate 4, because conflating them is what let the
+visual dimension go missing: **Gate 1 is renderer *correctness*** — every graph shape draws,
+with no route-specific code and no overflow. It would pass on a renderer that draws grey boxes.
+**Gate 4 is whether the product looks like the product.** Neither substitutes for the other.
 
 ### Gate 1 — Visualisation scalability
 
@@ -992,6 +1326,31 @@ One test user completes the entire cycle end to end:
 - [ ] **Private progress remains intact throughout**
 
 If this loop works, the product concept is implemented — not merely screened.
+
+### Gate 4 — Visual fidelity
+
+The product looks like the product. This gate is **human-judged and cannot be automated away**,
+in the same way and for the same reason as Gate 2's last line.
+
+- [ ] A screenshot exists for every screen at 360, 768, 1280 and 1440, produced by CI
+- [ ] Each is reviewed against its visual reference and accepted by the owner:
+      VR-01 landing · VR-03 ribbon-to-road · VR-04 full road · VR-05 step and fields ·
+      VR-06 My Journey · VR-07 shadow comparison · VR-08 update flow · VR-09 create route ·
+      VR-10 updates and disruptions · VR-11 report and safety · VR-12 responsive search ·
+      VR-13 responsive road and step · VR-14 experimental/disputed route
+- [ ] Every deliberate departure from a mockup is **written down** in the fidelity checklist
+      with the rule that forced it — an unexplained difference is a defect, not a decision
+- [ ] Every §8.6 exception is genuinely absent, asserted by an existing guard
+- [ ] The design system is used throughout: no arbitrary-value sizing utilities remain
+- [ ] Category colour is never the only carrier of meaning; contrast passes WCAG AA everywhere
+- [ ] No horizontal page overflow at any of the four viewports
+- [ ] Server-rendered throughout; the client-component count is still exactly one; the whole
+      read path works with JavaScript disabled
+- [ ] **No screen contains invented sample data.** Where content is absent, the empty state is
+      honest — this is what makes "looks like the mockups" compatible with §45 and Gate 2
+
+The gate's real question, and it needs a person: *would a Bangladeshi student landing on this
+believe it was built for them, or would they believe it was a developer's test page?*
 
 ---
 

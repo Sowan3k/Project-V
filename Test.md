@@ -581,7 +581,7 @@ mobile renderer.
 
 ## 8. Pre-launch gate verification
 
-The three gates in [Phases.md](Phases.md). None can be signed off from a passing unit test
+The four gates in [Phases.md](Phases.md). None can be signed off from a passing unit test
 alone — each needs the checklist walked deliberately.
 
 | Gate | Covers | State |
@@ -589,6 +589,12 @@ alone — each needs the checklist walked deliberately.
 | Gate 1 — Visualisation scalability | §7 above + invariant tests 24, 25 | ⬜ |
 | Gate 2 — Real launch content | Germany/Australia/USA/Malaysia sourced routes, zero mockup-derived values | ⬜ |
 | Gate 3 — Complete community loop | Full E2E: search → ribbon → road → step → field → follow → progress → contribute → revision → change → shadow → progress intact | ⬜ |
+| Gate 4 — Visual fidelity | Every screen screenshotted at 360/768/1280/1440 and reviewed against its visual reference; every departure written down | ⬜ |
+
+**Gate 4 needs a fidelity checklist per mockup**, added here when Phase 12G builds it: what
+matches, what is deliberately substituted and under which rule, what is genuinely outstanding.
+An unexplained difference from a mockup is a defect; an explained one is a decision. Gate 1 and
+Gate 4 are not the same test — Gate 1 would pass on a renderer that draws grey boxes.
 
 Gate 3 requires **one Playwright golden-path test** that walks the whole loop end to end — the
 loop is the thing being verified, and fragments that each pass separately do not prove it.
