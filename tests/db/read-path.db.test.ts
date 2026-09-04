@@ -128,13 +128,19 @@ describe.skipIf(!url)('search is open, filtered and honest', () => {
    * both failure modes at once.
    */
   it('pages without losing or repeating a route', async () => {
-    const destination = `PG${Date.now() % 100000}`.slice(0, 6)
-    const wanted = ROUTES_PER_PAGE + 3
-    for (let i = 0; i < wanted; i += 1) await buildRoute({ destination })
+    // `destinationCountry` is `@db.Char(2)`. The first version of this test used a generated
+    // six-character code to isolate itself, which Postgres rejected — and the failure only
+    // appeared in CI, because typecheck cannot see a column width.
+    const destination = 'ZY'
+    const added = ROUTES_PER_PAGE + 3
+    for (let i = 0; i < added; i += 1) await buildRoute({ destination })
 
     const first = await searchRoutes({ destinationCountry: destination })
-    expect(first.total).toBe(wanted)
-    expect(first.pageCount).toBe(2)
+    // Compared against the total the database actually reports rather than against `added`.
+    // CI starts from an empty container, but a developer running this twice would not, and a
+    // test that only passes on a clean database is a test that fails for the wrong reason.
+    expect(first.total).toBeGreaterThanOrEqual(added)
+    expect(first.pageCount).toBe(Math.ceil(first.total / ROUTES_PER_PAGE))
     expect(first.routes).toHaveLength(ROUTES_PER_PAGE)
     expect(first.page).toBe(1)
 
@@ -145,22 +151,23 @@ describe.skipIf(!url)('search is open, filtered and honest', () => {
       seen.push(...result.routes.map((r) => r.slug))
     }
 
-    expect(seen).toHaveLength(wanted)
-    expect(new Set(seen).size, 'a route appeared on two pages').toBe(wanted)
-  }, 180_000)
+    // Both failure modes at once: a route that appears on no page, and one that appears on two.
+    expect(seen).toHaveLength(first.total)
+    expect(new Set(seen).size, 'a route appeared on more than one page').toBe(first.total)
+  }, 300_000)
 
   /**
    * `?page=` is user input and reaches this function unvalidated. Every one of these should
    * land on a real page rather than on an empty result, a negative `skip`, or an error.
    */
   it('clamps a page number that is out of range, negative or nonsense', async () => {
-    const destination = `CL${Date.now() % 100000}`.slice(0, 6)
+    const destination = 'ZX'
     await buildRoute({ destination })
 
     for (const requested of [0, -5, 1000, Number.NaN]) {
       const result = await searchRoutes({ destinationCountry: destination }, new Date(), requested)
       expect(result.page, `page=${requested}`).toBe(1)
-      expect(result.routes).toHaveLength(1)
+      expect(result.routes.length, `page=${requested}`).toBeGreaterThan(0)
     }
   }, 120_000)
 

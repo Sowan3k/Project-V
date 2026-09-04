@@ -34,6 +34,23 @@ const actor = { id: null, system: true }
 export const OFFICIAL_FIELD = 'Test official requirement. Not a real requirement.'
 export const PROGRAMME_FIELD = 'Test programme-specific requirement. Not a real requirement.'
 
+/**
+ * A distinctive intake, so the reading specs can find this route from search — Phase 12D.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **Why this became necessary.** Phase 12D gave search a page size of twelve. The other
+ * specs build routes as fixtures — `lifecycle.spec.ts` seven, `changes.spec.ts` six — and all
+ * of them are BD → DE at Master's, exactly like this one. Search is newest-first, and this
+ * route is seeded before any of them, so on a full run it is pushed onto page two and the
+ * reading specs stopped finding it.
+ *
+ * That is a **test-data problem, not a product one**: showing the twelve newest routes on the
+ * first page is correct, and a spec that depended on there being no page was depending on an
+ * accident. The fix is to make the fixture reachable rather than to weaken what is asserted —
+ * the specs still search, still see ribbons, still click one, and still walk the same road.
+ */
+export const SEEDED_INTAKE = 'E2E reading journey'
+
 setup('seed a route for the reading journey', async () => {
   if (process.env.E2E_BASE_URL) return // Deployed target: never seeded.
 
@@ -46,6 +63,7 @@ setup('seed a route for the reading journey', async () => {
       originCountry: 'BD',
       destinationCountry: 'DE',
       studyLevel: StudyLevel.masters,
+      intake: SEEDED_INTAKE,
       title: 'Test route for the reading journey',
       summary: 'Illustrative test data. Not researched content and not a real procedure.',
     })

@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { SEEDED_INTAKE } from './seed-route.setup'
+
 /**
  * Phase 5 exit criterion: "Playwright covers landing → search → ribbon → road → step → field."
  *
@@ -16,6 +18,21 @@ const seeded = !process.env.E2E_BASE_URL
 /** The route `e2e/seed-route.setup.ts` creates. Named so specs do not race each other. */
 const SEEDED_ROUTE = 'Test route for the reading journey'
 
+/**
+ * Search, filtered to the seeded route's own intake — Phase 12D.
+ *
+ * Search now shows twelve routes per page, newest first. The other specs build BD → DE
+ * Master's fixtures — seven in `lifecycle.spec.ts`, six in `changes.spec.ts` — and this route
+ * is seeded before all of them, so on a full run it was pushed onto page two and these specs
+ * stopped finding it.
+ *
+ * Filtering is the honest fix. The alternative — asserting on whatever ribbon happens to be
+ * first — would pass while testing nothing in particular, and raising the page size to hide
+ * the problem would be tuning the product to suit the tests. This still exercises the whole
+ * path the spec is named for: search, ribbons, click one, road.
+ */
+const SEARCH = `/en/routes?intake=${encodeURIComponent(SEEDED_INTAKE)}`
+
 test.describe('anonymous reading journey', () => {
   test.skip(!seeded, 'needs a seeded route; the deployed target is deliberately not seeded')
 
@@ -28,6 +45,13 @@ test.describe('anonymous reading journey', () => {
     await page.getByRole('link', { name: /find my route/i }).click()
     await expect(page).toHaveURL(/\/en\/routes$/)
     await expect(page.getByRole('heading', { name: /find a route/i })).toBeVisible()
+    // Results are ribbons even before a filter is applied — the unfiltered first page is
+    // what an arriving visitor actually sees, so it is worth asserting here and nowhere else.
+    await expect(page.locator('main ul li a').first().getByRole('img').first()).toBeVisible()
+
+    // Then filter, because Phase 12D pages search at twelve and the fixtures other specs
+    // build would otherwise push this one onto page two. See the note on SEARCH.
+    await page.goto(SEARCH)
 
     // 3. Ribbons — each result is the route compressed, drawn by the renderer
     /**
@@ -74,7 +98,7 @@ test.describe('anonymous reading journey', () => {
     const context = await browser.newContext({ javaScriptEnabled: false })
     const page = await context.newPage()
 
-    await page.goto('/en/routes')
+    await page.goto(SEARCH)
     const firstRoute = page.locator('main ul li a').filter({ hasText: SEEDED_ROUTE }).first()
     await expect(firstRoute).toBeVisible()
     await firstRoute.click()
@@ -103,7 +127,7 @@ test.describe('anonymous reading journey', () => {
   test('history is readable without an account, and keeps the route on screen', async ({
     page,
   }) => {
-    await page.goto('/en/routes')
+    await page.goto(SEARCH)
     await page.locator('main ul li a').filter({ hasText: SEEDED_ROUTE }).first().click()
     // Wait for the navigation to settle before reading the heading. Without this, `innerText`
     // resolves against whichever h1 is on screen at that instant — which was the search
@@ -124,7 +148,7 @@ test.describe('anonymous reading journey', () => {
 
   test('no read path redirects to a sign-in', async ({ page }) => {
     // FR-01 and D-03: search, ribbons, roads, steps, fields and history are all open.
-    await page.goto('/en/routes')
+    await page.goto(SEARCH)
     await page.locator('main ul li a').filter({ hasText: SEEDED_ROUTE }).first().click()
     // Wait for the navigation to settle before reading the URL — capturing it too early
     // gave '/en/routes', and the loop below then requested '/en/routes/history'.
@@ -211,7 +235,7 @@ test.describe('the trust surface is legible to a reader', () => {
   })
 
   test('a ribbon in search results agrees with the route it leads to', async ({ page }) => {
-    await page.goto('/en/routes')
+    await page.goto(SEARCH)
 
     // The ribbon shows maturity and a count of things to know — not the list, and never a
     // calmer picture than the route page itself (FR-74).
