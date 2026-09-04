@@ -160,7 +160,7 @@ describe.skipIf(!url)('FR-38, D-20, invariant 23 — an unused new route goes do
     const route = await makeRoute('dormant')
     const when = later(DORMANCY_DAYS + 5)
 
-    const before = await searchRoutes({ originCountry: 'BD', destinationCountry: 'DE' })
+    const before = (await searchRoutes({ originCountry: 'BD', destinationCountry: 'DE' })).routes
     expect(before.map((r) => r.slug)).toContain(route.slug)
 
     const result = await applyProposedLifecycle(route.routeId, when)
@@ -168,7 +168,7 @@ describe.skipIf(!url)('FR-38, D-20, invariant 23 — an unused new route goes do
     expect(result.applied?.reason).toBe('unused_since_creation')
 
     // Out of the listing...
-    const after = await searchRoutes({ originCountry: 'BD', destinationCountry: 'DE' })
+    const after = (await searchRoutes({ originCountry: 'BD', destinationCountry: 'DE' })).routes
     expect(after.map((r) => r.slug)).not.toContain(route.slug)
 
     // ...and entirely intact. The page still loads, the road still has its steps, and the
@@ -220,7 +220,7 @@ describe.skipIf(!url)('FR-38, D-20, invariant 23 — an unused new route goes do
     expect(revived.applied?.to).toBe(RouteLifecycleState.experimental)
     expect(revived.applied?.reason).toBe('activity_resumed')
     // Back in search.
-    const results = await searchRoutes({ originCountry: 'BD', destinationCountry: 'DE' })
+    const results = (await searchRoutes({ originCountry: 'BD', destinationCountry: 'DE' })).routes
     expect(results.map((r) => r.slug)).toContain(route.slug)
   })
 
@@ -252,7 +252,7 @@ describe.skipIf(!url)('FR-38, D-20, invariant 23 — an unused new route goes do
 
     // And the established-but-quiet route stays in search, because it is still a route people
     // can use (FR-39, BR-10).
-    const results = await searchRoutes({ originCountry: 'BD', destinationCountry: 'DE' })
+    const results = (await searchRoutes({ originCountry: 'BD', destinationCountry: 'DE' })).routes
     expect(results.map((r) => r.slug)).toContain(settled.slug)
     expect(results.map((r) => r.slug)).not.toContain(newish.slug)
   })
@@ -309,7 +309,7 @@ describe.skipIf(!url)('FR-38, D-20, invariant 23 — an unused new route goes do
     const detail = await getRouteBySlug(route.slug)
     expect(detail?.lifecycleState).toBe(RouteLifecycleState.archived)
     // Archived leaves search and stays readable with its history (FR-45, BR-15).
-    const results = await searchRoutes({})
+    const results = (await searchRoutes({})).routes
     expect(results.map((r) => r.slug)).not.toContain(route.slug)
     expect((await getRouteHistory(route.routeId)).length).toBeGreaterThan(0)
   })
@@ -440,7 +440,7 @@ describe.skipIf(!url)('FR-40, FR-58, BR-25, invariant 20 — a merge loses nothi
     expect(detail?.mergedInto?.slug).toBe(canonical.slug)
 
     // 6. It leaves search; the survivor stays.
-    const results = await searchRoutes({ originCountry: 'BD', destinationCountry: 'DE' })
+    const results = (await searchRoutes({ originCountry: 'BD', destinationCountry: 'DE' })).routes
     expect(results.map((r) => r.slug)).not.toContain(duplicate.slug)
     expect(results.map((r) => r.slug)).toContain(canonical.slug)
 
@@ -497,7 +497,7 @@ describe.skipIf(!url)('FR-40, FR-58, BR-25, invariant 20 — a merge loses nothi
     await unmergeRoute({ adminId: admin, routeId: duplicate.routeId, note: 'Different intakes' })
 
     expect((await getRouteBySlug(duplicate.slug))?.mergedInto).toBeNull()
-    const results = await searchRoutes({ originCountry: 'BD', destinationCountry: 'DE' })
+    const results = (await searchRoutes({ originCountry: 'BD', destinationCountry: 'DE' })).routes
     expect(results.map((r) => r.slug)).toContain(duplicate.slug)
     // The follower never noticed.
     expect(await getJourneyForRoute(follower1, duplicate.routeId)).not.toBeNull()
@@ -572,7 +572,7 @@ describe.skipIf(!url)('FR-40, FR-58, BR-25, invariant 20 — a merge loses nothi
     expect(stored.mergedIntoId).toBeNull()
     expect(stored.lifecycleState).toBe(RouteLifecycleState.experimental)
     // Still in search: a flag changes nothing (invariant 14).
-    const results = await searchRoutes({ originCountry: 'BD', destinationCountry: 'DE' })
+    const results = (await searchRoutes({ originCountry: 'BD', destinationCountry: 'DE' })).routes
     expect(results.map((r) => r.slug)).toContain(a.slug)
 
     // The queue shows them, and shows them oldest-first with no tally.

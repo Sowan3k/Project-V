@@ -75,13 +75,18 @@ export default async function RoutePage({
   // Candidates for a duplicate flag: routes on the same origin/destination/level pair, which
   // is the only pair that could plausibly describe the same journey (§40.1). Excludes this
   // route and anything already merged away, so the list offers no dead ends.
+  //
+  // Page one only, since Phase 12D gave search a page size. A duplicate-flag picker is a
+  // shortlist a person reads, not an index — if the right route is not among the most recent
+  // dozen on this exact pair, the honest answer is that this control cannot help and the
+  // flag belongs on the other route instead.
   const siblings = (
     await searchRoutes({
       originCountry: route.originCountry,
       destinationCountry: route.destinationCountry,
       studyLevel: route.studyLevel,
     })
-  ).filter((candidate) => candidate.id !== route.id)
+  ).routes.filter((candidate) => candidate.id !== route.id)
 
   return (
     <RouteContext route={route} dictionary={t} locale={locale} tab="overview">

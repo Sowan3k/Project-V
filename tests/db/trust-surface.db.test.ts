@@ -320,7 +320,7 @@ describe.skipIf(!url)('the route passport over real rows — FR-10, FR-11, FR-62
     // around: the same shape is a genuine performance question for Phase 12 once a
     // destination has many routes (Test.md §14).
     const route = await getRouteBySlug(built.slug, NOW)
-    const results = await searchRoutes({ destinationCountry: 'DE' }, NOW)
+    const results = (await searchRoutes({ destinationCountry: 'DE' }, NOW)).routes
     if (!route) throw new Error('route not found')
 
     const ribbon = results.find((result) => result.slug === built.slug)

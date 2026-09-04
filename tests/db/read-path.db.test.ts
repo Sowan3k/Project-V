@@ -14,6 +14,7 @@ import {
   getRouteBySlug,
   getRouteHistory,
   getStepFields,
+  ROUTES_PER_PAGE,
   searchRoutes,
 } from '../../src/server/routes/read'
 import { addEdge, addField, addStep, archiveField, archiveStep, createRoute, reviseField } from '../../src/server/revisions/service'
@@ -79,23 +80,23 @@ async function buildRoute(over: Partial<{ destination: string; level: typeof Stu
 describe.skipIf(!url)('search is open, filtered and honest', () => {
   it('finds a route with no filters and no session', async () => {
     const built = await buildRoute()
-    const results = await searchRoutes()
+    const results = (await searchRoutes()).routes
     expect(results.map((r) => r.slug)).toContain(built.slug)
   }, 60_000)
 
   it('filters by destination and study level', async () => {
     const built = await buildRoute({ destination: 'AU', level: StudyLevel.bachelors })
 
-    const matching = await searchRoutes({ destinationCountry: 'AU', studyLevel: StudyLevel.bachelors })
+    const matching = (await searchRoutes({ destinationCountry: 'AU', studyLevel: StudyLevel.bachelors })).routes
     expect(matching.map((r) => r.slug)).toContain(built.slug)
 
-    const wrongLevel = await searchRoutes({ destinationCountry: 'AU', studyLevel: StudyLevel.phd })
+    const wrongLevel = (await searchRoutes({ destinationCountry: 'AU', studyLevel: StudyLevel.phd })).routes
     expect(wrongLevel.map((r) => r.slug)).not.toContain(built.slug)
   }, 60_000)
 
   it('returns the graph so the ribbon draws from the same data as the road', async () => {
     const built = await buildRoute()
-    const summary = (await searchRoutes()).find((r) => r.slug === built.slug)
+    const summary = (await searchRoutes()).routes.find((r) => r.slug === built.slug)
 
     expect(summary?.graph.steps).toHaveLength(3)
     expect(summary?.stepCount).toBe(3)
@@ -113,8 +114,63 @@ describe.skipIf(!url)('search is open, filtered and honest', () => {
     expect(options.destinations.length).toBeGreaterThan(0)
   }, 60_000)
 
+  /**
+   * **Paging must not lose a route or show one twice** — Phase 12D.
+   *
+   * Before this, search returned every match: 359 ribbons on one page on the test branch.
+   * Adding `skip`/`take` to a query whose ordering is not a *total* order is the classic way
+   * to introduce a silent data bug — rows the database is free to order either way can land
+   * on two pages, or on none. Routes built in one transaction share `createdAt` to the
+   * millisecond, which this suite does constantly, so the tie-break on `id` is load-bearing
+   * rather than tidiness.
+   *
+   * Walking every page and comparing the union to the total is the assertion that catches
+   * both failure modes at once.
+   */
+  it('pages without losing or repeating a route', async () => {
+    const destination = `PG${Date.now() % 100000}`.slice(0, 6)
+    const wanted = ROUTES_PER_PAGE + 3
+    for (let i = 0; i < wanted; i += 1) await buildRoute({ destination })
+
+    const first = await searchRoutes({ destinationCountry: destination })
+    expect(first.total).toBe(wanted)
+    expect(first.pageCount).toBe(2)
+    expect(first.routes).toHaveLength(ROUTES_PER_PAGE)
+    expect(first.page).toBe(1)
+
+    const seen: string[] = []
+    for (let page = 1; page <= first.pageCount; page += 1) {
+      const result = await searchRoutes({ destinationCountry: destination }, new Date(), page)
+      expect(result.page).toBe(page)
+      seen.push(...result.routes.map((r) => r.slug))
+    }
+
+    expect(seen).toHaveLength(wanted)
+    expect(new Set(seen).size, 'a route appeared on two pages').toBe(wanted)
+  }, 180_000)
+
+  /**
+   * `?page=` is user input and reaches this function unvalidated. Every one of these should
+   * land on a real page rather than on an empty result, a negative `skip`, or an error.
+   */
+  it('clamps a page number that is out of range, negative or nonsense', async () => {
+    const destination = `CL${Date.now() % 100000}`.slice(0, 6)
+    await buildRoute({ destination })
+
+    for (const requested of [0, -5, 1000, Number.NaN]) {
+      const result = await searchRoutes({ destinationCountry: destination }, new Date(), requested)
+      expect(result.page, `page=${requested}`).toBe(1)
+      expect(result.routes).toHaveLength(1)
+    }
+  }, 120_000)
+
   it('returns an empty list rather than throwing when nothing matches', async () => {
-    expect(await searchRoutes({ destinationCountry: 'ZZ' })).toEqual([])
+    const empty = await searchRoutes({ destinationCountry: 'ZZ' })
+    expect(empty.routes).toEqual([])
+    expect(empty.total).toBe(0)
+    // Phase 12D: a page count of 1 rather than 0 for no results, so the page can always say
+    // "Page 1 of 1" instead of "Page 1 of 0", which reads like a fault.
+    expect(empty.pageCount).toBe(1)
   }, 60_000)
 })
 

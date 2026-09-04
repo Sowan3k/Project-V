@@ -100,6 +100,29 @@ export const ROAD: Density = {
 }
 
 /**
+ * The road in a panel rather than across a page — Phase 12D.
+ *
+ * Same cards as `ROAD`, wrapping at three per row instead of five, for a road that has to sit
+ * inside a column of a page rather than own the width of one. The landing illustration is the
+ * case it exists for: at `ROAD` a six-stage road puts five cards on the first row and one
+ * marooned on the second, which looks like a mistake rather than a composition.
+ *
+ * A density constant, not a second renderer — the same thing `ROAD_NARROW` is, for a
+ * different reason (Spike A).
+ */
+export const ROAD_COMPACT: Density = {
+  columnsPerRow: 3,
+  columnWidth: 214,
+  rowHeight: 150,
+  laneGap: 84,
+  nodeWidth: 176,
+  nodeHeight: 74,
+  padding: 34,
+  showLabels: true,
+  carriageway: 28,
+}
+
+/**
  * The road at phone width.
  *
  * Differs from ROAD only in how many ranks fit on a row, and in sizing. No branching, no

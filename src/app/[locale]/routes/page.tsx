@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { ROUTE_MECHANISMS, STUDY_LEVELS } from '@/domain/enums'
 import type { RouteMechanism, StudyLevel } from '@/domain/enums'
 import { GridRegion, PageCanvas, PageGrid } from '@/components/layout'
+import { Chip, EmptyState, LinkButton } from '@/components/ui'
 import { isLocale } from '@/i18n/config'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 import { getDictionary } from '@/i18n/get-dictionary'
@@ -73,12 +74,34 @@ export default async function RouteSearchPage({
   }
 
   const hasFilters = Object.keys(filters).length > 0
-  const [routes, options] = await Promise.all([searchRoutes(filters), availableFilters()])
+  const page = Number.parseInt(one(query.page) ?? '1', 10)
+  const [results, options] = await Promise.all([
+    searchRoutes(filters, new Date(), page),
+    availableFilters(),
+  ])
 
   return (
     <PageCanvas className="py-10">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{t.search.title}</h1>
-      <p className="mt-2 text-sm text-ink-700">{t.search.lede}</p>
+      <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+        <div>
+          <h1 className="text-title font-semibold tracking-tight text-ink-900">{t.search.title}</h1>
+          <p className="mt-2 text-sm text-ink-700">{t.search.lede}</p>
+        </div>
+        {/* VR-12 leads with these three promises beside the heading. They are the product's
+            actual guarantees rather than marketing: free (§28), community-maintained (§16),
+            and no document upload (invariant 6, §24.1). */}
+        <ul className="flex flex-wrap gap-2">
+          <li>
+            <Chip>{t.principles.free}</Chip>
+          </li>
+          <li>
+            <Chip>{t.principles.communityMaintained}</Chip>
+          </li>
+          <li>
+            <Chip>{t.principles.noDocumentUpload}</Chip>
+          </li>
+        </ul>
+      </div>
 
       <PageGrid className="mt-8">
         <GridRegion span={4}>
@@ -166,6 +189,15 @@ export default async function RouteSearchPage({
 
         <GridRegion span={8}>
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <p className="text-sm text-ink-500" role="status">
+              {t.search.resultCount(results.total)}
+              {results.pageCount > 1 ? (
+                <span className="text-ink-500">
+                  {' · '}
+                  {t.search.pageOf(results.page, results.pageCount)}
+                </span>
+              ) : null}
+            </p>
             {/* FR-13, where a student actually notices the gap: at the moment their own route
                 is not in the results. Outside the boundary, so it is there to click before
                 the results have arrived. */}
@@ -178,10 +210,11 @@ export default async function RouteSearchPage({
           </div>
 
           <SearchResults
-            routes={routes}
+            results={results}
             hasFilters={hasFilters}
             locale={locale}
             dictionary={t}
+            query={query}
           />
         </GridRegion>
       </PageGrid>
@@ -213,38 +246,120 @@ export default async function RouteSearchPage({
  * the decision rather than an omission.
  */
 function SearchResults({
-  routes,
+  results,
   hasFilters,
   locale,
   dictionary: t,
+  query,
 }: {
-  routes: Awaited<ReturnType<typeof searchRoutes>>
+  results: Awaited<ReturnType<typeof searchRoutes>>
   hasFilters: boolean
   locale: string
   dictionary: Dictionary
+  query: SearchParams
 }) {
+  if (results.routes.length === 0) {
+    return (
+      <div className="mt-3">
+        {/* An empty platform is the first risk in §45. Saying so plainly is better than an
+            apologetic error, and far better than inventing routes to look populated. */}
+        <EmptyState
+          title={t.search.emptyTitle}
+          body={hasFilters ? t.search.emptyBody : t.search.emptyBodyNoFilters}
+          action={
+            <LinkButton href={`/${locale}/routes/new`} tone="secondary">
+              {t.contribute.createRoute}
+            </LinkButton>
+          }
+        />
+      </div>
+    )
+  }
+
   return (
     <>
-      <p className="text-sm text-ink-500" role="status">
-        {t.search.resultCount(routes.length)}
-      </p>
-
-      {routes.length === 0 ? (
-        <div className="mt-3 rounded-xl border border-hairline bg-surface p-6">
-          <h2 className="font-medium text-ink-900">{t.search.emptyTitle}</h2>
-          {/* An empty platform is the first risk in §45. Saying so plainly is better than
-              an apologetic error, and far better than inventing routes to look populated. */}
-          <p className="mt-2 text-sm leading-6 text-ink-700">
-            {hasFilters ? t.search.emptyBody : t.search.emptyBodyNoFilters}
-          </p>
-        </div>
-      ) : (
-        <ul className="mt-3 space-y-3">
-          {routes.map((route) => (
-            <RouteRibbon key={route.id} route={route} dictionary={t} locale={locale} />
-          ))}
-        </ul>
-      )}
+      <ul className="mt-3 space-y-3">
+        {results.routes.map((route) => (
+          <RouteRibbon key={route.id} route={route} dictionary={t} locale={locale} />
+        ))}
+      </ul>
+      <Pagination results={results} query={query} dictionary={t} />
     </>
+  )
+}
+
+/**
+ * Page links — Phase 12D.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **Plain links, not a control.** Every page is a real URL that can be bookmarked, shared,
+ * opened in a new tab and reached with JavaScript disabled — the same rule as `?step=` on a
+ * route (§7.1, Phase 5). A "load more" button would be none of those things and would need a
+ * client component, which the read path does not have.
+ *
+ * The existing filters are carried across rather than rebuilt, so paging never silently
+ * widens a search. That is a real failure mode: a reader who filtered to Germany and clicked
+ * page 2 into an unfiltered list would have no way of knowing their filter had gone.
+ *
+ * First and last are offered as well as previous and next, because with a page count in the
+ * dozens "back to the start" is otherwise a dozen clicks.
+ */
+function Pagination({
+  results,
+  query,
+  dictionary: t,
+}: {
+  results: Awaited<ReturnType<typeof searchRoutes>>
+  query: SearchParams
+  dictionary: Dictionary
+}) {
+  if (results.pageCount <= 1) return null
+
+  const href = (page: number): string => {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(query)) {
+      if (key === 'page') continue
+      const single = Array.isArray(value) ? value[0] : value
+      if (single) params.set(key, single)
+    }
+    if (page > 1) params.set('page', String(page))
+    const search = params.toString()
+    return search === '' ? '?' : `?${search}`
+  }
+
+  const first = results.page > 1
+  const last = results.page < results.pageCount
+
+  return (
+    <nav
+      aria-label={t.search.pagination}
+      className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-5"
+    >
+      <div className="flex items-center gap-2">
+        {first ? (
+          <>
+            <LinkButton href={href(1)} tone="secondary">
+              {t.search.firstPage}
+            </LinkButton>
+            <LinkButton href={href(results.page - 1)} tone="secondary">
+              {t.search.previousPage}
+            </LinkButton>
+          </>
+        ) : null}
+      </div>
+      <p className="text-meta text-ink-500">{t.search.pageOf(results.page, results.pageCount)}</p>
+      <div className="flex items-center gap-2">
+        {last ? (
+          <>
+            <LinkButton href={href(results.page + 1)} tone="secondary">
+              {t.search.nextPage}
+            </LinkButton>
+            <LinkButton href={href(results.pageCount)} tone="secondary">
+              {t.search.lastPage}
+            </LinkButton>
+          </>
+        ) : null}
+      </div>
+    </nav>
   )
 }

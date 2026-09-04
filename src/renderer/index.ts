@@ -7,6 +7,6 @@
  */
 export { Ribbon, ResponsiveRoad, Road } from './route-visual'
 export type { RouteAnnotations, RouteVisualProps, RouteVisualStrings } from './route-visual'
-export { RIBBON, ROAD, ROAD_NARROW, layout } from './layout'
+export { RIBBON, ROAD, ROAD_COMPACT, ROAD_NARROW, layout } from './layout'
 export type { Density, Layout, PlacedEdge, PlacedNode } from './layout'
 export { CATEGORY_STYLE, EDGE_STYLE } from './primitives'

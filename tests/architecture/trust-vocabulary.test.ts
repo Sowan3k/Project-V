@@ -129,7 +129,20 @@ describe('invariant 13 / test 13 — trust is never purchasable', () => {
     for (const ordering of orderings) {
       expect(ordering).not.toMatch(/\b(rank|score|weight|boost|priority|featured)\b/i)
     }
-    expect(readLayer).toMatch(/orderBy: \[\{ createdAt: 'desc' \}\]/)
+    /**
+     * Newest first, `id` breaking ties — and the tie-break is required rather than tolerated.
+     *
+     * Phase 12D gave search a page size, and `skip`/`take` over an ordering that is not a
+     * *total* order is the classic silent data bug: routes created in the same transaction
+     * share `createdAt` to the millisecond, so the database is free to return one of them on
+     * two different pages and none on a third. The seed and the integration suite both build
+     * routes that way.
+     *
+     * Still unpurchasable, which is what invariant 13 is about: `id` is assigned at insert and
+     * nothing can buy an earlier one. Matched exactly rather than loosened to a pattern, so
+     * adding a third ordering key stays a decision somebody has to make here.
+     */
+    expect(readLayer).toMatch(/orderBy: \[\{ createdAt: 'desc' \}, \{ id: 'desc' \}\]/)
   })
 })
 

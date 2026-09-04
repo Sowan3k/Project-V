@@ -140,6 +140,27 @@ export const en = {
     travel_departure: 'Travel and departure',
   } satisfies Record<StepCategory, string>,
 
+  /**
+   * The same six categories in one or two words — Phase 12D.
+   *
+   * Not a second vocabulary: these are the *same* categories, named for places where the full
+   * form does not fit. A step card on the road is about 130 units wide for its text, and
+   * "Documents and preparation" truncates to "Documents and pre…" — which is worse than a
+   * short name, because a reader cannot tell whether the label was cut or the step is
+   * genuinely called that.
+   *
+   * The full names stay everywhere there is room, and stay the accessible name in the
+   * renderer's `<title>`, so nothing is lost to a screen reader.
+   */
+  stepCategoryShort: {
+    documents_preparation: 'Documents',
+    language_testing: 'Tests',
+    admission_university: 'Admission',
+    funding_scholarship: 'Funding',
+    immigration_visa: 'Visa',
+    travel_departure: 'Departure',
+  } satisfies Record<StepCategory, string>,
+
   landing: {
     headlineBn: 'ভিনদেশী এক্সপ্রেস',
     headline: 'Understand the road before you fly',
@@ -152,6 +173,28 @@ export const en = {
       { title: 'Compare', body: 'Each route appears as a ribbon you can compare at a glance.' },
       { title: 'Open', body: 'A ribbon unfolds into a road: every step, in order, with its detail.' },
     ],
+
+    /**
+     * The hero illustration — Phase 12D, VR-01.
+     *
+     * VR-01 leads with a Bangladesh → Germany road carrying Documents, Test, Admission, Visa
+     * and Fly. Ours draws the **six step categories** instead of a named destination, and the
+     * caption says so, because a made-up route on the homepage is exactly the fake content
+     * Gate 2 forbids and §45 warns about: a reader cannot tell an illustrative route from a
+     * researched one, and the whole product rests on that difference being visible.
+     *
+     * What it shows is real: these are the categories every route is built from, drawn by the
+     * same renderer that draws every route.
+     */
+    illustrationCaption: 'The kinds of stage a route is made of',
+    illustrationNote:
+      'An illustration of the six stages, not a route you can follow. Real routes are researched from official sources and carry their own steps, sources and dates.',
+
+    destinationsTitle: 'Destinations with routes',
+    destinationsEmpty:
+      'No destinations have routes yet. They are researched and reviewed before they appear here.',
+    destinationRouteCount: (n: number) => (n === 1 ? '1 route' : `${n} routes`),
+    browseAll: 'Browse all routes',
   },
 
   search: {
@@ -171,6 +214,14 @@ export const en = {
       'Nothing has been published for these filters. This platform is new and its routes are researched and seeded carefully rather than generated — an empty result is honest, not an error.',
     emptyBodyNoFilters:
       'No routes have been published yet. Routes are researched from official sources and reviewed before they appear here.',
+
+    /** Paging — Phase 12D. Before this, every match rendered on one page. */
+    pagination: 'Search result pages',
+    pageOf: (page: number, total: number) => `Page ${page} of ${total}`,
+    firstPage: 'First',
+    previousPage: 'Previous',
+    nextPage: 'Next',
+    lastPage: 'Last',
   },
 
   route: {

@@ -199,12 +199,34 @@ function laterOf(a: Date | null, b: Date | null): Date | null {
  * Removed and archived routes never appear. Everything else does, including experimental
  * ones — a new route is shown, honestly labelled, rather than hidden (FR-74).
  */
+/**
+ * How many routes a search page shows — Phase 12D.
+ *
+ * Before this there was no limit at all, so every search rendered every matching route: on
+ * the test branch that is 359 ribbons on one page, tens of thousands of pixels tall, each
+ * carrying its own SVG. Nothing was wrong with the query; there was simply no page.
+ *
+ * Twelve rather than twenty or fifty because a ribbon is tall — it is a whole route, not a
+ * row — and a first screen a reader can actually take in is worth more than a longer one
+ * they scroll past.
+ */
+export const ROUTES_PER_PAGE = 12
+
+export interface RouteSearchPage {
+  readonly routes: readonly RouteSummary[]
+  /** Total matching the filters, not the number on this page. */
+  readonly total: number
+  /** 1-based. */
+  readonly page: number
+  readonly pageCount: number
+}
+
 export async function searchRoutes(
   filters: RouteSearchFilters = {},
   now: Date = new Date(),
-): Promise<readonly RouteSummary[]> {
-  const routes = await prisma.route.findMany({
-    where: {
+  page = 1,
+): Promise<RouteSearchPage> {
+  const where = {
       archivedAt: null,
       mergedIntoId: null,
       // Phase 11 — dormant, archived and removed routes leave the listing. None is deleted
@@ -217,17 +239,32 @@ export async function searchRoutes(
       ...(filters.studyLevel ? { studyLevel: filters.studyLevel } : {}),
       ...(filters.intake ? { intake: filters.intake } : {}),
       ...(filters.mechanism ? { mechanism: filters.mechanism } : {}),
-    },
+  }
+
+  const total = await prisma.route.count({ where })
+  const pageCount = Math.max(1, Math.ceil(total / ROUTES_PER_PAGE))
+  // Clamped rather than trusted: `?page=` is user input, and a negative or enormous value
+  // should land on a real page rather than on an empty one or a database error.
+  const current = Math.min(Math.max(1, Math.trunc(page) || 1), pageCount)
+
+  const routes = await prisma.route.findMany({
+    where,
     include: ROUTE_INCLUDE,
     // Newest first, and nothing else. There is no relevance score, no boost and no sponsored
     // slot to insert one into — ordering that money could influence is exactly what
     // invariant 13 (FR-78, BR-13, BR-14) forbids.
-    orderBy: [{ createdAt: 'desc' }],
+    //
+    // `id` breaks ties. Without it, routes created in the same transaction — which the
+    // seed and the integration suite both do — have no total order, so the database may
+    // return one of them on two different pages and none on a third.
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    skip: (current - 1) * ROUTES_PER_PAGE,
+    take: ROUTES_PER_PAGE,
   })
 
   const standings = await fieldStandings(routes.map((route) => route.id), now)
 
-  return routes.map((route) => {
+  const summaries = routes.map((route) => {
     const graph = toGraph(route.steps, route.edges)
     const standing = standings.get(route.id)
     return {
@@ -255,6 +292,8 @@ export async function searchRoutes(
       },
     }
   })
+
+  return { routes: summaries, total, page: current, pageCount }
 }
 
 /** The distinct values actually present, so the search form offers only useful options. */
@@ -277,6 +316,45 @@ export async function availableFilters(): Promise<{
     destinations: [...new Set(routes.map((r) => r.destinationCountry))].sort(),
     intakes: [...new Set(routes.map((r) => r.intake).filter((i): i is string => i !== null))].sort(),
   }
+}
+
+export interface DestinationSummary {
+  readonly country: string
+  readonly routeCount: number
+}
+
+/**
+ * Destinations that actually have routes, with how many — Phase 12D, for the landing page.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * VR-01 calls this section "Popular destinations". **This one is not about popularity**, and
+ * the difference is not pedantry:
+ *
+ * - It counts *routes*, not followers or visits. A route count is a fact about what has been
+ *   written, and nothing about it can be bought (invariant 13, FR-78).
+ * - It is ordered by count and then alphabetically, so ties are stable rather than arbitrary,
+ *   and the ordering has no score in it to weight.
+ * - It confers nothing. A destination appearing here says routes exist for it — not that
+ *   they are good, current or safe. Every trust signal still lives on the route (invariant
+ *   12: no reports is not a trust signal, and neither is a high route count).
+ *
+ * Anonymous, like everything else in this module: no session, no actor, no role (FR-01).
+ */
+export async function destinationSummaries(limit = 8): Promise<readonly DestinationSummary[]> {
+  const grouped = await prisma.route.groupBy({
+    by: ['destinationCountry'],
+    where: {
+      archivedAt: null,
+      mergedIntoId: null,
+      lifecycleState: { in: [...SEARCHABLE_LIFECYCLE_STATES] },
+    },
+    _count: { _all: true },
+  })
+
+  return grouped
+    .map((row) => ({ country: row.destinationCountry, routeCount: row._count._all }))
+    .sort((a, b) => b.routeCount - a.routeCount || a.country.localeCompare(b.country))
+    .slice(0, limit)
 }
 
 export interface FieldView {
