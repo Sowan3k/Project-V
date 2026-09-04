@@ -204,6 +204,25 @@ export const en = {
     revisionCount: (n: number) => (n === 1 ? '1 version' : `${n} versions`),
     duration: 'Typical duration',
     days: (n: number) => (n === 1 ? '1 day' : `${n} days`),
+    /**
+     * The short form that fits on a step card on the road — Phase 12C, VR-04.
+     *
+     * Rounded to the largest unit that still says something useful, because a card has room
+     * for three words and "about 6 weeks" is more use at a glance than "43 days".
+     *
+     * **"about", always.** Invariant 16 and BR-18: a duration is a planning aid, never a
+     * promise, and a bare "6 weeks" on a road reads as a commitment the platform is in no
+     * position to make. The long form beside the field keeps the exact number.
+     */
+    durationShort: (days: number) => {
+      if (days < 14) return days === 1 ? 'about 1 day' : `about ${days} days`
+      if (days < 60) {
+        const weeks = Math.round(days / 7)
+        return weeks === 1 ? 'about 1 week' : `about ${weeks} weeks`
+      }
+      const months = Math.round(days / 30)
+      return months === 1 ? 'about 1 month' : `about ${months} months`
+    },
     startsAfter: (n: number) => `Can start about day ${n}`,
     deadline: 'Deadline',
   },

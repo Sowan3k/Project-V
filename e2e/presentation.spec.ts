@@ -114,10 +114,18 @@ test.describe('the road reflows rather than shrinking', () => {
     // Both are rendered — one per density — and exactly one is visible.
     expect(await roads.count()).toBeGreaterThanOrEqual(2)
 
+    /**
+     * Read from the **viewBox**, not the `width` attribute.
+     *
+     * Phase 12C removed `width`/`height` from the SVG: pinning the drawing to a pixel size
+     * is what kept the ribbon 160px wide inside a 790px row, so the road now scales to its
+     * container through `w-full` and a viewBox. The viewBox is what still says which density
+     * produced the drawing, which is what this test is actually about.
+     */
     const visible = await page.evaluate(() =>
       [...document.querySelectorAll('svg[role="img"]')]
         .filter((el) => (el as SVGElement).getBoundingClientRect().width > 0)
-        .map((el) => Number(el.getAttribute('width'))),
+        .map((el) => Number((el.getAttribute('viewBox') ?? '').split(/\s+/)[2])),
     )
     expect(visible.length, 'exactly one road should be painted').toBe(1)
 
@@ -144,6 +152,35 @@ test.describe('the road reflows rather than shrinking', () => {
         : layout(graph, ROAD).width
 
     expect(visible[0], 'the painted road should match this viewport’s density').toBe(expected)
+  })
+
+  /**
+   * **The Phase 12C defect, asserted so it cannot silently return.**
+   *
+   * `RIBBON.columnWidth` was 30, so an eight-step ribbon drew about 160px inside a ~790px
+   * search result — a thumbnail where VR-03 shows a full-width band. The ribbon is not a
+   * picture of the route, it *is* the route compressed (invariant 25, D-33), and at a fifth
+   * of the row it could not do that job.
+   *
+   * Measured as a **fraction of the row it sits in**, not against a pixel threshold: the
+   * whole point is that it fills whatever space it is given, at every viewport, so a fixed
+   * number would only be right at one width.
+   */
+  test('a ribbon fills the row it sits in, at every viewport', async ({ page }) => {
+    await page.goto('/en/routes')
+
+    const ribbon = page.getByRole('img').first()
+    await expect(ribbon).toBeVisible()
+
+    const ratio = await page.evaluate(() => {
+      const svg = document.querySelector('main [role="img"]')
+      if (!svg) return 0
+      // The nearest block ancestor is the row the ribbon is laid out in.
+      const row = svg.parentElement?.getBoundingClientRect().width ?? 0
+      return row === 0 ? 0 : svg.getBoundingClientRect().width / row
+    })
+
+    expect(ratio, 'the ribbon should occupy most of its row').toBeGreaterThanOrEqual(0.85)
   })
 
   test('the road scrolls inside its own container, never the page', async ({ page }) => {

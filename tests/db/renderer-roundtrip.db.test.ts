@@ -33,6 +33,7 @@ const strings: RouteVisualStrings = {
   added: en.route.stepAdded,
   archived: en.route.stepArchived,
   disrupted: en.route.stepDisrupted,
+  duration: en.route.durationShort,
   summary: (n) => `Route with ${n} steps`,
 }
 

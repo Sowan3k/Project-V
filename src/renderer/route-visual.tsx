@@ -6,6 +6,8 @@ import {
   Connector,
   DestinationMarker,
   DisruptionIndicator,
+  RibbonSegment,
+  RoadSegment,
   ShadowMarker,
   ShadowSegment,
   StartMarker,
@@ -66,6 +68,12 @@ export interface RouteVisualStrings {
   readonly added: string
   readonly archived: string
   readonly disrupted: string
+  /**
+   * Formats a step duration in days as a phrase — "about 3 weeks". Passed in for the same
+   * reason as every other string here: "weeks" is English, and English does not live in the
+   * renderer.
+   */
+  readonly duration: (days: number) => string
   /** Accessible description of the whole visual, e.g. "Route with 8 steps". */
   readonly summary: (stepCount: number) => string
 }
@@ -96,11 +104,29 @@ function RouteVisual({
   return (
     <svg
       viewBox={`0 0 ${frame.width} ${frame.height}`}
-      width={frame.width}
-      height={frame.height}
+      /**
+       * **Scales to its container rather than to a pixel size — Phase 12C.**
+       *
+       * `width={frame.width}` pinned the drawing to whatever the density happened to
+       * produce, which is how the ribbon ended up 160 pixels wide inside a 790-pixel search
+       * result. With `w-full` and a viewBox the aspect ratio is preserved and the browser
+       * fits the drawing to the row — and because `fitWidth` already normalised the *shape*,
+       * a four-step ribbon and a twelve-step one now come out at similar heights instead of
+       * one being twice as tall as the other.
+       */
       role="img"
       aria-label={strings.summary(frame.order.length)}
-      className={className}
+      className={`h-auto w-full ${className ?? ''}`}
+      /**
+       * Fill the container, but never magnify past natural size.
+       *
+       * Without the cap, `w-full` scales a three-step road up to whatever the canvas gives
+       * it and the cards come out enormous — the mirror image of the defect this phase is
+       * fixing. The ribbon is unaffected because `fitWidth` already normalises it to ~960
+       * units whatever the step count, so its cap is always above the container and it
+       * always fills.
+       */
+      style={{ maxWidth: frame.width }}
       fontFamily="system-ui, -apple-system, sans-serif"
     >
       {shadow === null ? null : (
@@ -114,30 +140,55 @@ function RouteVisual({
         </g>
       )}
 
-      {frame.edges.map((placed) => (
-        <Connector key={placed.edge.id} placed={placed} />
-      ))}
+      {/* The carriageway, in its own layer beneath everything, so a wrapped row's curved
+          return reads as the same continuous road rather than as a separate connector. */}
+      {density.carriageway > 0 ? (
+        <g aria-hidden="true">
+          {frame.edges.map((placed) => (
+            <RoadSegment key={`road-${placed.edge.id}`} placed={placed} density={density} />
+          ))}
+        </g>
+      ) : (
+        frame.edges.map((placed) => <Connector key={placed.edge.id} placed={placed} />)
+      )}
 
       {first === undefined ? null : <StartMarker node={first} label={strings.start} />}
       {last === undefined ? null : <DestinationMarker node={last} label={strings.destination} />}
 
-      {frame.nodes.map((node) => (
-        <StepMarker
-          key={node.step.id}
-          node={
-            // An annotated departure is drawn exactly as a genuinely archived step is, by
-            // giving the marker the same input rather than a second code path.
-            departing.has(node.step.id)
-              ? { ...node, step: { ...node.step, archived: true } }
-              : node
-          }
-          density={density}
-          categoryLabel={strings.categories[node.step.category]}
-          added={added.has(node.step.id)}
-          addedLabel={strings.added}
-          archivedLabel={strings.archived}
-        />
-      ))}
+      {frame.nodes.map((node) => {
+        // An annotated departure is drawn exactly as a genuinely archived step is, by giving
+        // the marker the same input rather than a second code path.
+        const drawn = departing.has(node.step.id)
+          ? { ...node, step: { ...node.step, archived: true } }
+          : node
+        const duration =
+          node.step.typicalDurationDays === null
+            ? null
+            : strings.duration(node.step.typicalDurationDays)
+
+        return density.showLabels ? (
+          <StepMarker
+            key={node.step.id}
+            node={drawn}
+            density={density}
+            categoryLabel={strings.categories[node.step.category]}
+            duration={duration}
+            added={added.has(node.step.id)}
+            addedLabel={strings.added}
+            archivedLabel={strings.archived}
+          />
+        ) : (
+          <RibbonSegment
+            key={node.step.id}
+            node={drawn}
+            categoryLabel={strings.categories[node.step.category]}
+            archived={drawn.step.archived}
+            added={added.has(node.step.id)}
+            addedLabel={strings.added}
+            archivedLabel={strings.archived}
+          />
+        )
+      })}
 
       {frame.nodes
         .filter((node) => disrupted.has(node.step.id))

@@ -45,7 +45,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 11 | Lifecycle, dormancy, merge, admin | Maintenance without data loss | ✅ |
 | 12 | Responsive, accessibility, polish, support link | Launch-quality **mechanics** | 🟡 |
 | 12B | Design system and visual foundation | Tokens, primitives, brand — what a screen is made of | ✅ |
-| 12C | Ribbon and road as drawn | A route looks like a route, still route-agnostic | ⬜ |
+| 12C | Ribbon and road as drawn | A route looks like a route, still route-agnostic | ✅ |
 | 12D | Public read path composition | Landing, discovery, route, step | ⬜ |
 | 12E | Signed-in and community surfaces | Journey, changes, contribution, safety | ⬜ |
 | 12F | Mobile and tablet as their own product | Phone IA, not a narrower desktop | ⬜ |
@@ -1086,19 +1086,61 @@ wrapping through three rows with curved returns and step cards sitting on it.
 - Wrapping tuned per density so 3–20 steps read well at 360 / 768 / 1280 / 1440.
 
 **Exit criteria**
-- ⬜ **Structural equivalence still passes** — two routes, same graph, different destinations,
+- ✅ **Structural equivalence still passes** — two routes, same graph, different destinations,
   identical geometry. This is the invariant-24 proof and it is not negotiable
-- ⬜ **Generative coverage still passes** on random valid graphs, 3–20 steps
-- ⬜ **No identity branching** in `src/renderer/**`; the import boundary still holds
-- ⬜ Ribbon and road step counts and order still match for every fixture (invariant 25)
-- ⬜ A ribbon occupies **at least 85% of its row's width** at every viewport, asserted in E2E —
+- ✅ **Generative coverage still passes** on random valid graphs, 3–20 steps
+- ✅ **No identity branching** in `src/renderer/**`; the import boundary still holds
+- ✅ Ribbon and road step counts and order still match for every fixture (invariant 25)
+- ✅ A ribbon occupies **at least 85% of its row's width** at every viewport, asserted in E2E —
   this is the defect that must not silently return
 - ⬜ Side-by-side screenshots of a real seeded route against VR-03 (ribbon) and VR-04 (road),
   reviewed and accepted by the owner
-- ⬜ Renders with JavaScript disabled; zero client components added
+- ✅ Renders with JavaScript disabled; zero client components added
 
 **Visual references:** VR-03 (ribbon band), VR-04 (wrapping road), VR-05/VR-13 (stepper)
 **Invariants:** 24, 25
+
+### Phase 12C result (2026-09-04)
+
+The ribbon is a band and the road is a road. Both still come out of the one `layout()` pass
+from the one primitive library; no route-specific code, no second renderer, and the
+structural-equivalence, generative, import-boundary and identity guards all pass unchanged.
+
+**The ribbon defect had two halves and fixing only the first made it worse.** `columnWidth`
+was 30, so an eight-step ribbon drew ~160px inside a ~790px row. Stretching the *spacing* to
+a target width (`fitWidth`) fixed the extent and produced five small chevrons adrift in 960
+units of whitespace — wider, and still not a ribbon. The segments have to grow with the
+columns (`fillColumns`), and because the marker width then depends on the column width which
+depends on the marker width, the equation is *substituted* rather than iterated:
+`width = 2·padding + columnWidth·(FILL + columns − 1)`, one unknown, solved directly.
+
+Both are derived from **structure alone** — the rank count — so identical shapes still lay out
+identically. `columnWidth` became a floor rather than a value, which is what preserves the
+non-overlap guarantee Spike A bought: a route long enough that the fitted spacing would be
+narrower than a marker keeps the minimum and simply comes out wider than the target, and the
+viewBox scales it back.
+
+**The road joins card centres, not card edges.** Edge-to-edge left the asphalt visible only
+in the 38-unit gaps between cards, which reads as a connector between boxes. VR-04 runs one
+continuous road with the cards sitting *on* it, so the connectors now meet at centres and the
+opaque cards hide the part that passes behind them. Ribbon density keeps edge-to-edge, because
+its chevrons abut and a centre-joined connector would start underneath a segment.
+
+Also: step *cards* rather than markers (176×74, ordinal badge, category rail, icon, title,
+duration), a real carriageway with a dashed centre line, `columnsPerRow` 4 → 5 after a
+five-rank route wrapped onto a second row carrying one card and a band of dead space, and
+`durationShort` in the dictionary — which says "about", always, because a bare "6 weeks" on a
+road is a promise invariant 16 and BR-18 do not let us make.
+
+**Two things the type system and a guard caught.** Removing `width`/`height` from the SVG broke
+the E2E that read `getAttribute('width')` to tell which density was painted; it reads the
+viewBox now, which is the honest signal. And adding `duration` to `RouteVisualStrings` failed
+the build in three places at once — the renderer holds no strings of its own, so every caller
+had to supply the formatter.
+
+Gate: `lint`, `typecheck`, 686 unit/architecture tests, clean production build. Screenshots at
+360/768/1280/1440: every page 200, zero horizontal overflow, and at 360px the road wraps into
+a serpentine with curved returns rather than shrinking.
 
 ---
 

@@ -11,6 +11,7 @@ export function rendererStrings(t: Dictionary): RouteVisualStrings {
     added: t.route.stepAdded,
     archived: t.route.stepArchived,
     disrupted: t.route.stepDisrupted,
+    duration: t.route.durationShort,
     summary: (n) => `${t.route.roadLabel} — ${t.route.stepCount(n)}`,
   }
 }

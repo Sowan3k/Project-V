@@ -1,4 +1,4 @@
-import type { StepCategory, StepEdgeKind } from '@/domain/enums'
+import { StepEdgeKind as EdgeKind, type StepCategory, type StepEdgeKind } from '@/domain/enums'
 
 import type { Density, PlacedEdge, PlacedNode } from './layout'
 
@@ -163,6 +163,119 @@ export function Connector({ placed }: { placed: PlacedEdge }) {
   )
 }
 
+/**
+ * The road surface — Phase 12C, VR-04.
+ *
+ * Two strokes along the same path: a wide band of asphalt, and a dashed centre line on top.
+ * That is the whole trick, and it is what turns a diagram of markers-joined-by-hairlines into
+ * something a reader recognises as a road before reading a word of it. The road is the
+ * product's primary metaphor (§8.5.3) and until now it was the one thing not being drawn.
+ *
+ * Rendered beneath every marker, in its own layer, so a wrapped row's curved return reads as
+ * the same continuous carriageway rather than as a separate connector.
+ *
+ * A branch is still not plain sequence: an optional or alternative route gets a *narrower*
+ * surface and keeps its dashed centre line, so the hierarchy survives even though both are
+ * roads. Kind-based, never identity-based — invariant 24.
+ */
+export function RoadSegment({ placed, density }: { placed: PlacedEdge; density: Density }) {
+  const minor =
+    placed.edge.kind === EdgeKind.optional_branch || placed.edge.kind === EdgeKind.alternative
+  const width = minor ? density.carriageway * 0.62 : density.carriageway
+
+  return (
+    <g>
+      <path
+        d={placed.path}
+        fill="none"
+        stroke="var(--color-road-surface, #94a3b8)"
+        strokeWidth={width}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={minor ? 0.55 : 1}
+      />
+      <path
+        d={placed.path}
+        fill="none"
+        stroke="var(--color-road-line, #fff)"
+        strokeWidth={Math.max(1.5, width * 0.07)}
+        strokeLinecap="round"
+        strokeDasharray={`${width * 0.5} ${width * 0.42}`}
+        opacity={0.85}
+      />
+    </g>
+  )
+}
+
+/**
+ * One segment of the compressed ribbon — Phase 12C, VR-03.
+ *
+ * An interlocking chevron rather than a rounded box: the point carries direction, which is
+ * what makes a row of them read as *a journey in order* at a glance instead of as a row of
+ * swatches. The notch on the left receives the previous segment's point, so the band reads as
+ * continuous even though every segment is drawn independently.
+ *
+ * Filled with the category's mid-tone and the icon reversed out in white — measured at 3.40:1
+ * in the worst case, which clears WCAG 1.4.11's 3:1 for a graphical object. The pale `fill`
+ * tone is right behind text on a page; at 40 units square with no label it is too faint to
+ * carry the route's shape across a search result.
+ */
+export function RibbonSegment({
+  node,
+  categoryLabel,
+  archived,
+  added,
+  addedLabel,
+  archivedLabel,
+}: {
+  node: PlacedNode
+  categoryLabel: string
+  archived: boolean
+  added: boolean
+  addedLabel: string
+  archivedLabel: string
+}) {
+  const style = CATEGORY_STYLE[node.step.category]
+  const w = node.width
+  const h = node.height
+  const x = node.x - w / 2
+  const y = node.y - h / 2
+  /**
+   * The chevron's point, and the matching notch that receives the previous one.
+   *
+   * Bounded by both dimensions. Purely proportional to height, a wide segment gets a point
+   * so shallow it reads as a rectangle and the band loses its direction; purely proportional
+   * to width, a two-step route gets a point deeper than the segment is tall and the band
+   * turns into a row of arrowheads.
+   */
+  const notch = Math.min(h * 0.5, w * 0.13)
+
+  const state = archived ? archivedLabel : added ? addedLabel : null
+  const description = `${node.ordinal}. ${node.step.label} — ${categoryLabel}${state ? ` (${state})` : ''}`
+
+  return (
+    <g opacity={archived ? 0.4 : 1}>
+      <title>{description}</title>
+      <path
+        d={`M ${x} ${y} L ${x + w - notch} ${y} L ${x + w} ${y + h / 2} L ${x + w - notch} ${y + h} L ${x} ${y + h} L ${x + notch} ${y + h / 2} Z`}
+        fill={style.line}
+        stroke={added || archived ? style.ink : 'none'}
+        strokeWidth={added ? 2.5 : archived ? 1.5 : 0}
+        {...(archived ? { strokeDasharray: '4 3' } : {})}
+      />
+      {/* Nudged right of centre: the left notch eats into the segment, so a mathematically
+          centred icon reads as sitting too far left. */}
+      <CategoryIcon
+        category={node.step.category}
+        cx={node.x + notch / 2}
+        cy={node.y}
+        size={h * 0.52}
+        colour="var(--color-road-line, #fff)"
+      />
+    </g>
+  )
+}
+
 /** The previous version drawn beneath the current one (FR-77, shadow route). */
 export function ShadowSegment({ placed }: { placed: PlacedEdge }) {
   return (
@@ -198,6 +311,12 @@ export interface StepMarkerProps {
   readonly density: Density
   /** Localised category name. Passed in so the renderer holds no strings of its own. */
   readonly categoryLabel: string
+  /**
+   * Already-formatted duration, e.g. "2–3 weeks". Formatted by the caller for the same
+   * reason as every other string here: "weeks" is English, and English does not live in the
+   * renderer. Null when the step carries no timing, which is common and not a defect.
+   */
+  readonly duration: string | null
   readonly added?: boolean
   /** Passed in, never defaulted: a default would be English living in the renderer. */
   readonly addedLabel: string
@@ -212,8 +331,8 @@ export interface StepMarkerProps {
  */
 export function StepMarker({
   node,
-  density,
   categoryLabel,
+  duration,
   added = false,
   addedLabel,
   archivedLabel,
@@ -226,6 +345,22 @@ export function StepMarker({
   const state = archived ? archivedLabel : added ? addedLabel : null
   const description = `${node.ordinal}. ${node.step.label} — ${categoryLabel}${state ? ` (${state})` : ''}`
 
+  /**
+   * A step **card**, not a marker — Phase 12C, VR-04.
+   *
+   * VR-04 puts the ordinal, the category icon, the step's name and its expected duration on
+   * the road itself, so the road answers "what is this journey" without the reader going
+   * anywhere. The previous 128×52 marker had room for a truncated title and nothing else,
+   * which is why the road read as a flowchart rather than as the primary view of a route.
+   *
+   * The card sits on white rather than the category tint, with a tinted rail down its left
+   * edge: at this size a full pastel fill washes the text out, and the rail carries the
+   * category just as clearly beside an icon that already carries it.
+   */
+  const railWidth = 5
+  const iconSize = 17
+  const numberR = 11
+
   return (
     <g opacity={archived ? 0.42 : 1}>
       <title>{description}</title>
@@ -234,39 +369,77 @@ export function StepMarker({
         y={y}
         width={node.width}
         height={node.height}
-        rx={density.showLabels ? 10 : 7}
-        fill={category.fill}
-        stroke={category.ink}
-        strokeWidth={added ? 3 : 1.5}
+        rx={11}
+        fill="var(--color-surface, #fff)"
+        stroke={added || archived ? category.ink : 'var(--color-hairline, #e2e8f0)'}
+        strokeWidth={added ? 2.5 : 1.25}
         {...(archived ? { strokeDasharray: '4 3' } : {})}
       />
+      {/* The category rail. Clipped to the card's radius by a second rounded rect rather
+          than a clipPath, which keeps this a pure shape with no document-level ids — two
+          roads on one page would otherwise collide on the id. */}
+      <path
+        d={`M ${x + 11} ${y} L ${x + railWidth} ${y} A 11 11 0 0 0 ${x} ${y + 11} L ${x} ${y + node.height - 11} A 11 11 0 0 0 ${x + railWidth} ${y + node.height} L ${x + 11} ${y + node.height} Z`}
+        fill={category.line}
+      />
 
-      {density.showLabels ? (
-        <>
-          <CategoryIcon category={node.step.category} cx={x + 15} cy={y + 16} size={13} />
-          <text x={x + 26} y={y + 20} fontSize={11} fontWeight={600} fill={category.ink}>
-            {node.ordinal}
-          </text>
-          <text x={x + 9} y={y + 37} fontSize={11.5} fill="var(--color-ink-900, #0f172a)">
-            {truncate(node.step.label, 17)}
-          </text>
-          {state === null ? null : (
-            <text
-              x={x + node.width - 6}
-              y={y - 5}
-              fontSize={9}
-              textAnchor="end"
-              fill="var(--color-ink-500, #64748b)"
-            >
-              {state}
-            </text>
-          )}
-        </>
-      ) : (
-        // No room for text at ribbon density, so the icon is the whole of the non-colour
-        // signal. It is what keeps the compressed form readable without colour vision, and
-        // the `<title>` above carries the same information to a screen reader.
-        <CategoryIcon category={node.step.category} cx={node.x} cy={node.y} size={12} />
+      <CategoryIcon
+        category={node.step.category}
+        cx={x + railWidth + 6 + iconSize / 2}
+        cy={y + node.height / 2}
+        size={iconSize}
+      />
+
+      <text
+        x={x + railWidth + 12 + iconSize}
+        y={y + node.height / 2 - 3}
+        fontSize={12.5}
+        fontWeight={600}
+        fill="var(--color-ink-900, #0f172a)"
+      >
+        {truncate(node.step.label, 18)}
+      </text>
+      {duration === null ? null : (
+        <text
+          x={x + railWidth + 12 + iconSize}
+          y={y + node.height / 2 + 13}
+          fontSize={10.5}
+          fill="var(--color-ink-500, #64748b)"
+        >
+          {duration}
+        </text>
+      )}
+
+      {/* The ordinal, in a badge straddling the card's top-left corner (VR-04). */}
+      <circle
+        cx={x + numberR * 0.5}
+        cy={y}
+        r={numberR}
+        fill={category.line}
+        stroke="var(--color-surface, #fff)"
+        strokeWidth={2}
+      />
+      <text
+        x={x + numberR * 0.5}
+        y={y + 3.5}
+        fontSize={10.5}
+        fontWeight={700}
+        textAnchor="middle"
+        fill="var(--color-road-line, #fff)"
+      >
+        {node.ordinal}
+      </text>
+
+      {state === null ? null : (
+        <text
+          x={x + node.width - 8}
+          y={y - 6}
+          fontSize={9.5}
+          textAnchor="end"
+          fill="var(--color-ink-500, #64748b)"
+        >
+          {state}
+        </text>
       )}
     </g>
   )
