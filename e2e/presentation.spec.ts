@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 /**
  * Presentation, responsiveness and accessibility in a browser — Phase 12.
@@ -190,6 +190,92 @@ test.describe('the road reflows rather than shrinking', () => {
     )
     expect(pageOverflow).toBeLessThanOrEqual(1)
   })
+})
+
+/**
+ * CLAUDE.md §7.2, asserted where it is actually true or false — Phase 12E.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * "One canvas width and one gutter, shared by the header, every page and the footer. That
+ * shared edge is what gives the interface a stable vertical axis at every viewport size."
+ *
+ * There is already an architecture guard for this, and it **missed a page**. It reads each
+ * page file for `<PageCanvas`, and `routes/new/page.tsx` has one — in the branch that renders
+ * for a signed-in contributor. The anonymous branch returned a bare `ContentColumn`, so the
+ * heading sat flush against x=0 while the header and footer were inset: no gutter at all, on
+ * the page somebody sees at the moment they decide whether this platform is real.
+ *
+ * A source-text check cannot see which branch renders. This compares the page's own heading
+ * to the header's brand mark in a real browser, which is the property §7.2 states rather than
+ * a proxy for it — and it holds however the page is written.
+ */
+/** The header's own left edge, and the page heading's, in one measurement. */
+async function measureEdges(
+  page: Page,
+): Promise<{ header: number; heading: number } | null> {
+  return page.evaluate(() => {
+    const header = document.querySelector('header a')
+    const heading = document.querySelector('main h1')
+    if (!header || !heading) return null
+    return {
+      header: header.getBoundingClientRect().left,
+      heading: heading.getBoundingClientRect().left,
+    }
+  })
+}
+
+test.describe('every page shares one left edge with the header', () => {
+  const PAGES = ['/en', '/en/routes', '/en/routes/new', '/en/signin', '/en/journeys']
+
+  /**
+   * §7.2 allows one exception, and the 404 is it: "`centred` exists for screens that
+   * genuinely contain only reading matter, and should be rare."
+   *
+   * Encoded rather than excluded. A centred page still has to sit *inside* the canvas — the
+   * failure this whole describe block exists to catch is a page with no gutter at all, and
+   * that is caught by `left >= header`, which a centred column satisfies and a missing canvas
+   * does not.
+   */
+  const CENTRED = ['/en/routes/definitely-not-a-real-route']
+
+  for (const path of CENTRED) {
+    test(`${path} is centred, but still inside the canvas`, async ({ page }) => {
+      const response = await page.goto(path)
+      expect(response?.status(), `${path} should be a 404, not a failure`).toBe(404)
+      // Wait for the heading rather than assuming `goto` implies a painted page. This test
+      // read a null DOM once and passed on the retry, which is the signature of a race, not
+      // of a fix — every page here queries a database whose compute scales to zero, so a
+      // cold first request genuinely takes seconds.
+      await expect(page.locator('main h1')).toBeVisible()
+
+      const edges = await measureEdges(page)
+      expect(edges, `${path} needs a header link and an h1 to compare`).not.toBeNull()
+      if (!edges) return
+      expect(edges.heading, `${path} sits outside the canvas`).toBeGreaterThanOrEqual(
+        edges.header - 2,
+      )
+    })
+  }
+
+  for (const path of PAGES) {
+    test(`${path} is inset like the header`, async ({ page }) => {
+      const response = await page.goto(path)
+      expect(response?.status(), `${path} should render`).toBeLessThan(500)
+      await expect(page.locator('main h1')).toBeVisible()
+
+      const edges = await measureEdges(page)
+      expect(edges, `${path} needs a header link and an h1 to compare`).not.toBeNull()
+      if (!edges) return
+
+      // Not exact: a heading may sit inside a grid region that starts at the canvas edge, and
+      // sub-pixel layout differs between engines. Two pixels is far tighter than the ~20-40px
+      // gutter a missing canvas removes, which is the failure this exists to catch.
+      expect(
+        Math.abs(edges.heading - edges.header),
+        `${path}: heading at ${edges.heading}, header at ${edges.header}`,
+      ).toBeLessThanOrEqual(2)
+    })
+  }
 })
 
 test.describe('the voluntary support link', () => {

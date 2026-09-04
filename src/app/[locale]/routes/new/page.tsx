@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { ContentColumn, PageCanvas } from '@/components/layout'
+import { buttonClass, LinkButton } from '@/components/ui'
 import { ROUTE_MECHANISMS, STUDY_LEVELS } from '@/domain/enums'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
@@ -55,26 +55,39 @@ export default async function NewRoutePage({
   const viewer = await currentViewer()
 
   if (!viewer) {
+    /**
+     * **This branch had no `PageCanvas` and therefore no gutter** — its heading sat flush
+     * against x=0 while the header and footer above and below were inset, on the page a
+     * contributor sees at the moment they decide whether this platform is real.
+     *
+     * The Phase 12 guard did not catch it because it reads the file for `<PageCanvas` and
+     * this file has one — in the *other* return path. A source-text check cannot see which
+     * branch renders. Phase 12E adds a browser assertion that compares each page's heading to
+     * the header's own left edge, which is the property §7.2 actually states.
+     */
     return (
-      <ContentColumn width="reading">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
-          {t.contribute.createRoute}
-        </h1>
-        <p className="mt-3 text-base leading-7 text-ink-700">{t.contribute.createRouteLede}</p>
-        <Link
-          href={`/${locale}/signin?next=${encodeURIComponent(`/${locale}/routes/new`)}`}
-          className="mt-4 inline-block rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white"
-        >
-          {t.auth.signIn}
-        </Link>
-      </ContentColumn>
+      <PageCanvas className="py-12">
+        <ContentColumn width="reading">
+          <h1 className="text-title font-semibold tracking-tight text-ink-900">
+            {t.contribute.createRoute}
+          </h1>
+          <p className="mt-3 text-base leading-7 text-ink-700">{t.contribute.createRouteLede}</p>
+          <div className="mt-6">
+            <LinkButton
+              href={`/${locale}/signin?next=${encodeURIComponent(`/${locale}/routes/new`)}`}
+            >
+              {t.auth.signIn}
+            </LinkButton>
+          </div>
+        </ContentColumn>
+      </PageCanvas>
     )
   }
 
   return (
     <PageCanvas className="py-8">
       <ContentColumn width="normal">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
+        <h1 className="text-title font-semibold tracking-tight text-ink-900">
           {t.contribute.createRoute}
         </h1>
         <ContentColumn width="reading">
@@ -145,10 +158,7 @@ export default async function NewRoutePage({
             <textarea name="summary" rows={3} className={INPUT} />
           </label>
 
-          <button
-            type="submit"
-            className="justify-self-start rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white"
-          >
+          <button type="submit" className={buttonClass('primary', 'justify-self-start')}>
             {t.contribute.publish}
           </button>
         </form>

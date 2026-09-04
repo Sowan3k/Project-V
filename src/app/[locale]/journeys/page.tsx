@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { ContentColumn, PageCanvas } from '@/components/layout'
+import { LinkButton } from '@/components/ui'
 import { JourneyStepStatus } from '@/domain/enums'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
@@ -59,17 +60,26 @@ export default async function JourneysPage({
   const viewer = await currentViewer()
 
   if (!viewer) {
+    // Same omission as `routes/new`, found by the same browser assertion: this branch had no
+    // `PageCanvas`, so it rendered with no gutter while the header and footer were inset.
+    // The architecture guard reads the file for `<PageCanvas` and this file has one — in the
+    // signed-in branch below.
     return (
-      <ContentColumn width="reading">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{t.journey.indexTitle}</h1>
-        <p className="mt-3 text-base leading-7 text-ink-700">{t.journey.privateExplainer}</p>
-        <Link
-          href={`/${locale}/signin?next=${encodeURIComponent(`/${locale}/journeys`)}`}
-          className="mt-4 inline-block rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white"
-        >
-          {t.auth.signIn}
-        </Link>
-      </ContentColumn>
+      <PageCanvas className="py-12">
+        <ContentColumn width="reading">
+          <h1 className="text-title font-semibold tracking-tight text-ink-900">
+            {t.journey.indexTitle}
+          </h1>
+          <p className="mt-3 text-base leading-7 text-ink-700">{t.journey.privateExplainer}</p>
+          <div className="mt-6">
+            <LinkButton
+              href={`/${locale}/signin?next=${encodeURIComponent(`/${locale}/journeys`)}`}
+            >
+              {t.auth.signIn}
+            </LinkButton>
+          </div>
+        </ContentColumn>
+      </PageCanvas>
     )
   }
 
@@ -78,7 +88,7 @@ export default async function JourneysPage({
   return (
     <PageCanvas className="py-8">
       <ContentColumn width="wide">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{t.journey.indexTitle}</h1>
+        <h1 className="text-title font-semibold tracking-tight text-ink-900">{t.journey.indexTitle}</h1>
         <ContentColumn width="reading">
           <p className="mt-2 text-sm leading-6 text-ink-700">{t.journey.indexLede}</p>
         </ContentColumn>
