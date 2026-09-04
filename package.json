@@ -31,7 +31,8 @@
     "renderer:gallery": "tsx --tsconfig tsconfig.scripts.json scripts/renderer/gallery.tsx",
     "renderer:shoot": "node scripts/renderer/shoot.mjs",
     "fixture:germany": "dotenv -e .env.test.local -- tsx scripts/fixtures/germany-rwth-direct.ts",
-    "db:wake": "dotenv -e .env.local -- node scripts/db/wake.mjs"
+    "db:wake": "dotenv -e .env.local -- node scripts/db/wake.mjs",
+    "dev:test": "dotenv -e .env.test.local -- next dev"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
