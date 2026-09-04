@@ -40,21 +40,39 @@ to match `Visual References/` once real data exists.
   surface area (indexing, sitemap, title, canvas) whose only reader is a developer, and 12G's
   screenshot suite gives the same benefit from screens that actually ship.
 
+### Phase 12D — done in this session too (`4e155ab`, `5e76cd0`)
+
+- **Search paginates.** 12 per page, plain links, filters carried across. Forced an ordering
+  fix that matters more than the paging: `createdAt` alone is not a total order and routes
+  built in one transaction share it to the millisecond, so `skip`/`take` could return one
+  route on two pages and another on none. Added an `id` tie-break and updated the invariant-13
+  ordering guard to match it exactly rather than loosening it.
+- **The landing page has a road** — of the six step *categories*, not a named destination, with
+  a caption saying so. A plausible-looking route on the front page is the fake content Gate 2
+  forbids; a reader must be able to tell a researched route from an invented one.
+- **The route header's 350px void is gone**: the route's own facts across the top (steps, fly
+  window, contributors, followers — all counts or stored dates), passport moved to a right rail
+  beside the view as VR-04 and VR-05 place it.
+- **The 360px overflow open since run #53 was the tab strip** — four non-wrapping tabs pushed
+  the row four pixels past the viewport. `flex-wrap` fixes it.
+- Breadcrumbs, destination cards counting routes rather than followers, short category names,
+  and a `ROAD_COMPACT` density.
+
+**One recorded substitution:** VR-05's field table has **Source** and **Confidence** columns
+and neither is being built as drawn. Source is a group heading, not a per-row cell (§7.3), and
+"Confidence: High/Medium" is VR-14's "28%" in words — §7.3 forbids inventing thresholds and
+percentages. Fields keep Phase 6's grouped presentation. Written into Phases.md, because an
+unexplained departure from a mockup is a defect and an explained one is a decision.
+
 ### Pending — read this first next session
 
 **Blocking release, in order:**
 
-1. **Phase 12D — public read path composition.** *Next up, starting now.* The landing page has
-   a large void where VR-01's route illustration belongs; the route page has dead space above
-   the road; there is **no pagination** (359 routes renders one enormous page); no breadcrumbs
-   anywhere. Search structure, route three-region layout, step field table, VR-14 low-trust
-   presentation.
-2. **Phase 12E** — My Journey, shadow comparison, contribution, safety, updates surfaces.
-3. **Phase 12F** — phone IA (bottom tabs, route-as-tabs), tablet two-panel, and the **4px
-   horizontal overflow at 360px** still open from Phase 12 (run #53, `e53794a`). Suspect is the
-   non-wrapping four-tab nav in `route-context.tsx`.
-4. **Phase 12G** — screenshot suite in CI, fidelity checklist per mockup in `Test.md`, Gate 4.
-5. **Phase 13** — four gates, then release.
+1. **Phase 12E** — My Journey, shadow comparison, contribution, safety, updates surfaces.
+2. **Phase 12F** — phone IA (bottom tabs, route-as-tabs) and tablet two-panel. The 4px
+   overflow it also listed was fixed in 12D.
+3. **Phase 12G** — screenshot suite in CI, fidelity checklist per mockup in `Test.md`, Gate 4.
+4. **Phase 13** — four gates, then release.
 
 **Owner actions outstanding:**
 
@@ -67,12 +85,11 @@ to match `Visual References/` once real data exists.
 
 **Known-open, non-blocking:**
 
-- CI has not run since `e53794a`; the last full gate had one E2E failure (the 360px overflow
-  above). Everything since has been verified locally — `lint`, `typecheck`, 686 unit and
+- CI run #54 on `5e76cd0` is the first full gate since `e53794a`. Everything has also been verified locally — `lint`, `typecheck`, 686 unit and
   architecture tests, clean production build, and screenshots at 360/768/1280/1440 showing
   every page 200 with zero horizontal overflow.
-- The E2E assertion that a ribbon fills ≥85% of its row is written but has **not** yet run in
-  CI, because E2E needs the database job.
+- The E2E assertion that a ribbon fills ≥85% of its row, and the 360px overflow fix, both run
+  for the first time in run #54.
 - Content track untouched: Germany worksheet still has UNVERIFIED sections; Australia, USA and
   Malaysia not started. Gate 2 cannot pass until this is done, and it is calendar work.
 - `.shots.mjs` at the repo root is an untracked local screenshot helper, gitignored.

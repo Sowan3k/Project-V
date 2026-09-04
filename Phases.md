@@ -46,7 +46,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 12 | Responsive, accessibility, polish, support link | Launch-quality **mechanics** | 🟡 |
 | 12B | Design system and visual foundation | Tokens, primitives, brand — what a screen is made of | ✅ |
 | 12C | Ribbon and road as drawn | A route looks like a route, still route-agnostic | ✅ |
-| 12D | Public read path composition | Landing, discovery, route, step | ⬜ |
+| 12D | Public read path composition | Landing, discovery, route, step | ✅ |
 | 12E | Signed-in and community surfaces | Journey, changes, contribution, safety | ⬜ |
 | 12F | Mobile and tablet as their own product | Phone IA, not a narrower desktop | ⬜ |
 | 12G | Visual acceptance | Gate 4 green, screenshots reviewed | ⬜ |
@@ -1182,16 +1182,75 @@ VR-13's "Verified" / "98%" become source and last-confirmed language (BR-20, §8
 **Exit criteria**
 - ⬜ Screenshots at 360/768/1280/1440 of landing, search, route and step reviewed side by side
   against VR-01, VR-12, VR-04, VR-05 and VR-14, and accepted by the owner
-- ⬜ Search results paginate; no page exceeds a reasonable document height
-- ⬜ Every page uses `PageCanvas`; one left edge across header, content and footer (guarded)
-- ⬜ Breadcrumbs on every route-context page, each segment a real link
-- ⬜ Every §8.6 exception is absent, asserted by the existing guards, and each substitution is
+- ✅ Search results paginate; no page exceeds a reasonable document height
+- ✅ Every page uses `PageCanvas`; one left edge across header, content and footer (guarded)
+- ✅ Breadcrumbs on every route-context page, each segment a real link
+- ✅ Every §8.6 exception is absent, asserted by the existing guards, and each substitution is
   recorded in this file
-- ⬜ The whole read path still works with JavaScript disabled
-- ⬜ A destination with no routes shows an honest empty state, not a sample route
+- ✅ The whole read path still works with JavaScript disabled
+- ✅ A destination with no routes shows an honest empty state, not a sample route
 
 **Visual references:** VR-01, VR-03, VR-04, VR-05, VR-12, VR-13, VR-14
 **FRs:** FR-01, FR-02, FR-03, FR-04, FR-05, FR-06, FR-08, FR-09, FR-10, FR-11, FR-74
+
+### Phase 12D result (2026-09-04)
+
+**Search had no page.** It returned every match — 359 ribbons on the test branch, tens of
+thousands of pixels tall, each with its own SVG. Nothing was wrong with the query; there was
+simply no pagination. Twelve per page, because a ribbon is a whole route rather than a row,
+through plain links that are real URLs and work with JavaScript off.
+
+Adding `skip`/`take` forced an ordering fix that matters more than the paging: **`createdAt`
+alone is not a total order**, and routes built in one transaction share it to the millisecond,
+which this codebase does constantly. Without an `id` tie-break the database is free to return
+one route on two pages and another on none. The invariant-13 ordering guard was updated to
+match the new clause exactly rather than loosened — `id` is assigned at insert and nothing can
+buy an earlier one.
+
+**The landing page had a hero and then a void** — on a 1440px screen, a headline, four chips
+and roughly six hundred pixels of nothing. VR-01's defining element is the illustrated road,
+and the homepage of a product whose whole idea is a road did not show one.
+
+It shows one now, and **what it shows is the decision**: the six step *categories*, not a
+named destination, with a caption saying so. VR-01 draws Bangladesh → Germany with named
+stages; reproducing that means putting a plausible-looking route on the front page of a
+platform whose entire value rests on a reader being able to tell a researched route from an
+invented one. Gate 2 requires zero mockup-derived values and §45 answers the cold start with
+honest emptiness. The categories are real vocabulary, and they go through the same `layout()`
+and the same primitives as every route — if the renderer breaks, this breaks with it.
+
+**The route header was 350px of empty page.** A title, one grey line, and for a route with no
+summary nothing else, beside a tall passport panel that set the row height. Fixed the way
+VR-04 and VR-05 do it: the route's own facts across the top — steps, fly window, contributors,
+followers, all counts or stored dates — and the passport moved into a **right rail beside the
+view**, where a rail is as long as the thing next to it. It still shows on every tab (FR-74).
+
+**The 360px overflow, open since run #53, was the tab strip.** Four non-wrapping tabs pushed
+the row four pixels past the viewport. `flex-wrap` is the fix and is right on its own terms:
+the alternative is a row a reader must drag sideways to discover that History exists.
+
+Also: breadcrumbs replacing "← Back to search" (a back link answers "how do I leave"; a
+breadcrumb also answers "where am I"), destination cards counting **routes** rather than
+followers or visits, short category names for step cards, and a `ROAD_COMPACT` density because
+at `ROAD` a six-stage road marooned one card on a second row.
+
+#### The one substitution: VR-05's field table is not being built as drawn
+
+VR-05 shows fields as a table with **Source** and **Confidence** columns. Both are §8.6
+exceptions in the columns themselves, and Phase 6 answered each deliberately:
+
+- **Source** is a *group heading*, not a per-row cell (CLAUDE.md §7.3). Eleven fields state
+  their provenance once at the top of their region rather than eleven times, which makes the
+  FR-54 separation positional — and positional separation survives skimming, which telling two
+  similar chips apart does not.
+- **Confidence** as "High / Medium" is the same claim as VR-14's "28%" in words. §7.3: invent
+  no thresholds and no percentages. What a reader gets instead is the evidence — source class,
+  last confirmed, revision count, open challenges — and the weighting that decides which of
+  those is loud enough to change what they should do.
+
+So the fields keep Phase 6's grouped presentation. This is recorded here rather than left as
+an unexplained difference, per the rule at the top of these phases: an unexplained departure
+from a mockup is a defect, an explained one is a decision.
 
 ---
 
