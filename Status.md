@@ -7,6 +7,82 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Session 15 — 2026-09-04
+
+**Goal:** begin the visual phases. Owner approved all six (12B–12G) and asked for the visuals
+to match `Visual References/` once real data exists.
+
+### Done
+
+- **Phase 12B — design system** (`911e4d5`). Type, spacing, radius and elevation scales;
+  measured category palette; `src/components/ui.tsx` primitives; brand lockup in the header.
+- **Phase 12C — ribbon and road** (`c4d2c46`). The ribbon is a full-width chevron band, the
+  road is a carriageway with a dashed centre line and step cards on it. Still one `layout()`
+  pass, one primitive library, all invariant-24 guards unchanged.
+- Both CLAUDE.md §11 palette decisions closed and recorded there.
+
+### Decisions taken
+
+- **The category palette is fitted, not chosen.** Constant lightness across the six so they
+  read as a family; chroma bisected per hue to the sRGB boundary; hues in journey order.
+  Re-measured on every commit from the CSS — worst category ink 6.13:1, worst road line 3.40:1.
+- **There is no maturity palette, and a test fails if one appears.** A hue per lifecycle state
+  fights §7.3's weight system, a green `established` chip is a safety claim invariant 12 and
+  BR-20 forbid, and `quiet` versus `established` is a difference in activity rather than in how
+  much care to take (FR-39). Maturity is weight, word and icon.
+- **The ribbon fix needed both halves.** Stretching the spacing alone (`fitWidth`) produced
+  five small chevrons adrift in whitespace — the segments had to grow with the columns
+  (`fillColumns`) too. `columnWidth` became a floor rather than a value, which is what keeps
+  Spike A's non-overlap guarantee intact.
+- **The road joins card centres, not card edges**, so the asphalt runs continuously behind the
+  cards as VR-04 draws it, rather than showing only in the 38-unit gaps between them.
+- **The component gallery route promised in 12B is deferred to 12G**, deliberately: it is real
+  surface area (indexing, sitemap, title, canvas) whose only reader is a developer, and 12G's
+  screenshot suite gives the same benefit from screens that actually ship.
+
+### Pending — read this first next session
+
+**Blocking release, in order:**
+
+1. **Phase 12D — public read path composition.** *Next up, starting now.* The landing page has
+   a large void where VR-01's route illustration belongs; the route page has dead space above
+   the road; there is **no pagination** (359 routes renders one enormous page); no breadcrumbs
+   anywhere. Search structure, route three-region layout, step field table, VR-14 low-trust
+   presentation.
+2. **Phase 12E** — My Journey, shadow comparison, contribution, safety, updates surfaces.
+3. **Phase 12F** — phone IA (bottom tabs, route-as-tabs), tablet two-panel, and the **4px
+   horizontal overflow at 360px** still open from Phase 12 (run #53, `e53794a`). Suspect is the
+   non-wrapping four-tab nav in `route-context.tsx`.
+4. **Phase 12G** — screenshot suite in CI, fidelity checklist per mockup in `Test.md`, Gate 4.
+5. **Phase 13** — four gates, then release.
+
+**Owner actions outstanding:**
+
+- **`production` is six migrations behind** (Phases 7–11). This is why `/en/routes` 500s on
+  Vercel. Standing instruction is that I do not deploy to Neon: run `npm run db:status`
+  (expect 6 pending), then `npm run db:deploy`.
+- **Accept or reject the ribbon/road direction** against VR-03 and VR-04 — 12C's one
+  unticked exit criterion, deliberately left ⬜ because it is not mine to tick. 12D and 12E
+  build on it, so a rejection is cheapest now.
+
+**Known-open, non-blocking:**
+
+- CI has not run since `e53794a`; the last full gate had one E2E failure (the 360px overflow
+  above). Everything since has been verified locally — `lint`, `typecheck`, 686 unit and
+  architecture tests, clean production build, and screenshots at 360/768/1280/1440 showing
+  every page 200 with zero horizontal overflow.
+- The E2E assertion that a ribbon fills ≥85% of its row is written but has **not** yet run in
+  CI, because E2E needs the database job.
+- Content track untouched: Germany worksheet still has UNVERIFIED sections; Australia, USA and
+  Malaysia not started. Gate 2 cannot pass until this is done, and it is calendar work.
+- `.shots.mjs` at the repo root is an untracked local screenshot helper, gitignored.
+
+### Next step
+
+Phase 12D — public read path composition.
+
+---
+
 ## Session 14 — 2026-09-04
 
 **Goal:** decide what happens to the frontend. The owner inspected the deployment after
