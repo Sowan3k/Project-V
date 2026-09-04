@@ -356,15 +356,33 @@ describe('the application presents itself as a finished product', () => {
    * Asserted as an absence as well as a presence, so a future `loading.tsx` at the segment
    * level is a decision somebody has to make against this note rather than an accident.
    */
-  it('streams results inside the page rather than blanking the segment', () => {
-    const search = read('src/app/[locale]/routes/page.tsx')
-    expect(search).toMatch(/<Suspense fallback=/)
-    expect(search).toMatch(/aria-busy/)
-
-    const segmentWide = walk('src/app', ['.tsx']).filter((file) =>
-      /\/\[locale\]\/loading\.tsx$/.test(file.replace(/\\/g, '/')),
-    )
+  /**
+   * **Phase 12 tried two loading states on the read path and removed both.** Each looked
+   * obviously right until it was tested, and the reasons are worth keeping.
+   *
+   * A segment-level `loading.tsx` went first: under `[locale]` it replaces everything inside
+   * the layout, including the persistent route header and tabs §7.1 exists to keep on screen,
+   * so every tab click would have blanked the route being read.
+   *
+   * A Suspense boundary around just the search results replaced it, and **broke the platform
+   * for anybody without JavaScript.** React streams the fallback and swaps in the real markup
+   * with an inline script; with no script the swap never happens and the reader is left on a
+   * skeleton for ever. The Phase 5 no-JavaScript spec caught it.
+   *
+   * Search is the first thing a visitor does, on a phone, often on a poor connection
+   * (CLAUDE.md §7). Working without JavaScript is worth more than a shimmer.
+   */
+  it('has no loading state that would break without JavaScript', () => {
+    const segmentWide = walk('src/app', ['.tsx']).filter((file) => file.endsWith('loading.tsx'))
     expect(segmentWide, 'a segment-wide loading.tsx would blank the route context').toEqual([])
+
+    for (const page of [
+      'src/app/[locale]/routes/page.tsx',
+      'src/app/[locale]/routes/[slug]/page.tsx',
+      'src/app/[locale]/page.tsx',
+    ]) {
+      expect(stripComments(read(page)), page).not.toMatch(/<Suspense/)
+    }
   })
 
   /**

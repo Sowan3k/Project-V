@@ -150,5 +150,13 @@ export function GridRegion({
     8: 'md:col-span-6 lg:col-span-8',
     12: 'md:col-span-6 lg:col-span-12',
   }
-  return <div className={`${spans[span] ?? ''} ${className}`}>{children}</div>
+  /**
+   * `min-w-0` is load-bearing, not tidiness.
+   *
+   * A grid child defaults to `min-width: auto`, which refuses to shrink below its content —
+   * so one wide descendant (a road, a long unbroken value, a table) pushes the whole page
+   * sideways instead of scrolling inside its own container. That is the 4px horizontal
+   * overflow the Phase 12 E2E caught at 360px, and it is the standard cause.
+   */
+  return <div className={`min-w-0 ${spans[span] ?? ''} ${className}`}>{children}</div>
 }

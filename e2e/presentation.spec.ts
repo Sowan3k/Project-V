@@ -121,14 +121,29 @@ test.describe('the road reflows rather than shrinking', () => {
     )
     expect(visible.length, 'exactly one road should be painted').toBe(1)
 
-    const width = page.viewportSize()?.width ?? 0
-    const painted = visible[0] ?? 0
-    if (width < 640) {
-      // Narrow density: 2 columns per row, so materially smaller than the desktop road.
-      expect(painted, 'the phone should get the narrow road').toBeLessThan(500)
-    } else {
-      expect(painted, 'a desktop should get the full road').toBeGreaterThan(500)
-    }
+    /**
+     * Compared against the geometry the layout pass actually produces for *this* route,
+     * rather than a fixed threshold.
+     *
+     * The first version asserted `> 500` for desktop and failed at 384 — because the seeded
+     * route has only two ranks, so even the full-width density is 384px wide. A magic number
+     * chosen against an imagined route is a test that fails on the real one.
+     */
+    const { layout, ROAD, ROAD_NARROW } = await import('../src/renderer')
+    const { loadRouteGraph } = await import('../src/server/revisions/read')
+    const { prisma } = await import('../src/server/db/client')
+
+    const route = await prisma.route.findUniqueOrThrow({
+      where: { slug: 'e2e-test-route' },
+      select: { id: true },
+    })
+    const graph = await loadRouteGraph(route.id)
+    const expected =
+      (page.viewportSize()?.width ?? 0) < 640
+        ? layout(graph, ROAD_NARROW).width
+        : layout(graph, ROAD).width
+
+    expect(visible[0], 'the painted road should match this viewport’s density').toBe(expected)
   })
 
   test('the road scrolls inside its own container, never the page', async ({ page }) => {
