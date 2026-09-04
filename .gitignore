@@ -65,3 +65,4 @@ spikes/**/out/
 
 # renderer gallery output (development only)
 scripts/renderer/out/
+/.shots.mjs

@@ -44,7 +44,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 10 | Change propagation and shadow route | Followers see what changed | ✅ |
 | 11 | Lifecycle, dormancy, merge, admin | Maintenance without data loss | ✅ |
 | 12 | Responsive, accessibility, polish, support link | Launch-quality **mechanics** | 🟡 |
-| 12B | Design system and visual foundation | Tokens, primitives, brand — what a screen is made of | ⬜ |
+| 12B | Design system and visual foundation | Tokens, primitives, brand — what a screen is made of | ✅ |
 | 12C | Ribbon and road as drawn | A route looks like a route, still route-agnostic | ⬜ |
 | 12D | Public read path composition | Landing, discovery, route, step | ⬜ |
 | 12E | Signed-in and community surfaces | Journey, changes, contribution, safety | ⬜ |
@@ -1007,18 +1007,55 @@ product reads as a uniform stack of grey cards: there is no scale to build hiera
 - **Component primitives**, extracted from what the mockups actually repeat: `Button`
   (primary/secondary/quiet), `Chip`, `Panel`, `PanelHeader`, `StatRow`, `Breadcrumb`, `Tabs`,
   `Rail`, `FieldTable`, `EmptyState`, `Stepper`, contributor mark.
-- One dev-only component gallery route, so later phases compose rather than reinvent.
+- ~~One dev-only component gallery route.~~ **Deferred to 12G, deliberately.** A gallery is a
+  page that has to be excluded from indexing, kept out of any sitemap, and given a title and a
+  canvas like every other page — real surface area whose only reader is a developer. 12G's
+  screenshot suite gives the same "see every primitive at once" benefit from screens that
+  actually ship, and it is reviewed rather than merely available. Recorded rather than
+  silently dropped.
+
+### Phase 12B result (2026-09-04)
+
+`src/app/globals.css` grew from 15 colour tokens and no scale to a type, spacing, radius and
+elevation scale plus a measured category palette; `src/components/ui.tsx` holds the primitives.
+
+**The two open decisions are closed in CLAUDE.md §11, and one of them is closed by saying no.**
+The category palette was *fitted*, not picked: constant lightness across the six so they read
+as a family, chroma bisected per hue to the sRGB boundary, hues in journey order. Every value
+is re-measured on each commit from the CSS itself — worst category ink 6.13:1, worst road line
+3.40:1. The **maturity** palette was declined: there are no `--color-lifecycle-*` tokens and a
+test fails if one appears, because a hue per state fights §7.3's weight system, a green
+`established` chip is a safety claim invariant 12 forbids, and `quiet` versus `established` is
+a difference in activity rather than in how much care to take (FR-39).
+
+**Three guards caught three real errors during the phase, which is the argument for writing
+them first.** `text-hairline` on a breadcrumb separator — a border token at L=0.91, invisible
+as text. Six colour literals still hardcoded in the renderer after the palette moved to
+tokens, meaning the contrast test would have been certifying values that were not being
+painted. And `tone="quiet"` on a panel, which collided with the `quiet` lifecycle state under
+the §9 single-source rule; renamed `sunken`, which is a slightly worse name and a much better
+outcome than two meanings for one word in a codebase where one of them decides how a route is
+presented.
+
+**Also fitted-then-floored.** Three of the first eighteen tones were written 0.3% outside sRGB
+because the chroma fit was rounded *up* afterwards. Invisible, and enough to make every
+measurement a fiction — the browser clamps, so the certified colour is not the painted one.
+There is now a gamut test.
+
+Gate: `lint`, `typecheck`, 686 unit/architecture tests, and a clean production build. Verified
+by screenshot at 360/768/1280/1440: every page 200, zero horizontal overflow, and the six
+categories rendering with icon, colour and label on a branching road.
 
 **Exit criteria**
-- ⬜ Owner has approved the category palette and the maturity palette/wording; both recorded in
+- ✅ Owner has approved the category palette and the maturity palette/wording; both recorded in
   CLAUDE.md §11 as **closed**, with the date
-- ⬜ A test asserts every category colour resolves to a real token, and that no component
+- ✅ A test asserts every category colour resolves to a real token, and that no component
   renders a category by colour alone — label and icon always present
-- ⬜ Contrast recomputation covers the new tokens; every text pair still passes WCAG AA
-- ⬜ A test asserts no arbitrary-value sizing utility (`text-[`, `p-[`, `rounded-[`) in
+- ✅ Contrast recomputation covers the new tokens; every text pair still passes WCAG AA
+- ✅ A test asserts no arbitrary-value sizing utility (`text-[`, `p-[`, `rounded-[`) in
   `src/components` or `src/app` — sizes come from the scale
-- ⬜ The brand lockup renders in the header at all four viewports and matches VR-01
-- ⬜ Zero new client components; zero new dependencies
+- ✅ The brand lockup renders in the header at all four viewports and matches VR-01
+- ✅ Zero new client components; zero new dependencies
 
 **Visual references:** VR-01 (brand, chips), VR-03/04/05 (panels, rails, tables), VR-14 (maturity)
 

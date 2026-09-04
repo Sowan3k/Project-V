@@ -17,30 +17,129 @@ import type { Density, PlacedEdge, PlacedNode } from './layout'
  */
 
 /**
- * Category presentation.
+ * Category presentation — Phase 12B.
  *
- * Colour is never the only carrier of meaning: every marker also has a glyph, and at road
- * density a text label as well (CLAUDE.md §7, §10.4, REQUIREMENTS.md §10.4). The glyph is
- * what makes the compressed ribbon readable without colour vision.
+ * Colour is never the only carrier of meaning: every marker also carries an **icon**, and at
+ * road density a text label as well (CLAUDE.md §7, §10.4, REQUIREMENTS.md §10.4). That is
+ * what makes the compressed ribbon readable without colour vision — and it is load-bearing
+ * here, because the palette runs green→amber→rose in journey order and those three are
+ * exactly the ones deutan and protan vision collapse.
  *
- * The exact palette is still an open decision (CLAUDE.md §11). These are placeholders chosen
- * to be distinguishable, and they live in one place so replacing them is one edit.
+ * **The colours are `var()` references, not literals.** Phase 12B measured and fitted the
+ * palette in `globals.css`; repeating the values here would be a second source that can
+ * disagree with the first, and the contrast test reads the CSS. SVG `fill` and `stroke`
+ * accept custom properties, so the renderer picks up a palette change with no edit at all.
+ *
+ * The icons are 24×24 stroke paths, drawn here because this is the primitive library and
+ * hand-authoring primitives is what invariant 24 explicitly permits. Nothing about them is
+ * route-specific: they describe a *category of work*, and a route created at 2am by a
+ * contributor gets them by choosing a category, with no developer involved.
  */
-export const CATEGORY_STYLE: Record<StepCategory, { fill: string; stroke: string; glyph: string }> = {
-  documents_preparation: { fill: '#eef2ff', stroke: '#4338ca', glyph: '▤' },
-  language_testing: { fill: '#ecfeff', stroke: '#0e7490', glyph: '⌥' },
-  admission_university: { fill: '#f0fdf4', stroke: '#15803d', glyph: '✦' },
-  funding_scholarship: { fill: '#fefce8', stroke: '#a16207', glyph: '◈' },
-  immigration_visa: { fill: '#fef2f2', stroke: '#b91c1c', glyph: '⬢' },
-  travel_departure: { fill: '#faf5ff', stroke: '#7e22ce', glyph: '➤' },
+export interface CategoryStyle {
+  /** Tint behind the marker. */
+  readonly fill: string
+  /** Label, icon and marker stroke. AA against both `fill` and the page. */
+  readonly ink: string
+  /** The road segment carrying this step. 3:1 against the page. */
+  readonly line: string
+  /** 24×24 stroke path. Colour is never the only carrier of meaning (§10.4). */
+  readonly icon: string
 }
 
-/** Connector styling by edge kind. A branch must not look like plain sequence. */
+export const CATEGORY_STYLE: Record<StepCategory, CategoryStyle> = {
+  // A document with a folded corner and ruled lines.
+  documents_preparation: {
+    fill: 'var(--color-cat-documents-fill)',
+    ink: 'var(--color-cat-documents-ink)',
+    line: 'var(--color-cat-documents-line)',
+    icon: 'M8 3h6l4 4v13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM14 3v5h4M10 13h6M10 17h4',
+  },
+  // A speech bubble: language and the tests that measure it.
+  language_testing: {
+    fill: 'var(--color-cat-language-fill)',
+    ink: 'var(--color-cat-language-ink)',
+    line: 'var(--color-cat-language-line)',
+    icon: 'M20 4H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3v4l4-4h9a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1zM8 10h.01M12 10h.01M16 10h.01',
+  },
+  // A columned institution.
+  admission_university: {
+    fill: 'var(--color-cat-admission-fill)',
+    ink: 'var(--color-cat-admission-ink)',
+    line: 'var(--color-cat-admission-line)',
+    icon: 'M12 3 3 8h18zM3 10h18M6 10v7M10 10v7M14 10v7M18 10v7M4 20h16',
+  },
+  // A banknote — funding, fees and proof of funds.
+  funding_scholarship: {
+    fill: 'var(--color-cat-funding-fill)',
+    ink: 'var(--color-cat-funding-ink)',
+    line: 'var(--color-cat-funding-line)',
+    icon: 'M2 6h20v12H2zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6M5 9h.01M19 15h.01',
+  },
+  // A shield: permission to enter, checked by someone else.
+  immigration_visa: {
+    fill: 'var(--color-cat-immigration-fill)',
+    ink: 'var(--color-cat-immigration-ink)',
+    line: 'var(--color-cat-immigration-line)',
+    icon: 'M12 3 5 6v6c0 4.2 3 7.4 7 9 4-1.6 7-4.8 7-9V6zM9 12l2 2 4-4',
+  },
+  // The paper plane, which is also the brand mark. Departure closes the road.
+  travel_departure: {
+    fill: 'var(--color-cat-travel-fill)',
+    ink: 'var(--color-cat-travel-ink)',
+    line: 'var(--color-cat-travel-line)',
+    icon: 'M22 2 2 9.5l8 3.2M22 2l-7.4 20-3.9-9.3M22 2 10.7 12.7',
+  },
+}
+
+/**
+ * One category icon, scaled from its 24×24 authoring grid to `size` and centred on (cx, cy).
+ *
+ * `vectorEffect="non-scaling-stroke"` keeps the stroke one weight at every density: without
+ * it the ribbon's small icons come out hairline-thin while the road's look heavy, because
+ * the same path is being scaled by very different factors.
+ */
+export function CategoryIcon({
+  category,
+  cx,
+  cy,
+  size,
+  colour,
+}: {
+  category: StepCategory
+  cx: number
+  cy: number
+  size: number
+  colour?: string
+}) {
+  const scale = size / 24
+  const style = CATEGORY_STYLE[category]
+  return (
+    <g
+      transform={`translate(${cx - size / 2} ${cy - size / 2}) scale(${scale})`}
+      fill="none"
+      stroke={colour ?? style.ink}
+      strokeWidth={1.9}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      vectorEffect="non-scaling-stroke"
+      aria-hidden="true"
+    >
+      <path d={style.icon} />
+    </g>
+  )
+}
+
+/**
+ * Connector styling by edge kind. A branch must not look like plain sequence.
+ *
+ * Tokenised in Phase 12B for the same reason as the categories: one source, so a palette
+ * change is one edit and the contrast test measures what is actually painted.
+ */
 export const EDGE_STYLE: Record<StepEdgeKind, { stroke: string; dash?: string; width: number }> = {
-  sequential: { stroke: '#64748b', width: 2.5 },
-  optional_branch: { stroke: '#94a3b8', dash: '5 4', width: 2 },
-  alternative: { stroke: '#0e7490', dash: '2 5', width: 2 },
-  rejoin: { stroke: '#64748b', width: 2.5 },
+  sequential: { stroke: 'var(--color-road-surface, #94a3b8)', width: 2.5 },
+  optional_branch: { stroke: 'var(--color-road-surface, #94a3b8)', dash: '5 4', width: 2 },
+  alternative: { stroke: 'var(--color-cat-language-line, #0e7490)', dash: '2 5', width: 2 },
+  rejoin: { stroke: 'var(--color-road-surface, #94a3b8)', width: 2.5 },
 }
 
 function truncate(value: string, max: number): string {
@@ -70,7 +169,7 @@ export function ShadowSegment({ placed }: { placed: PlacedEdge }) {
     <path
       d={placed.path}
       fill="none"
-      stroke="#cbd5e1"
+      stroke="var(--color-shadow-route, #cbd5e1)"
       strokeWidth={6}
       strokeLinecap="round"
       opacity={0.5}
@@ -86,7 +185,7 @@ export function ShadowMarker({ node }: { node: PlacedNode }) {
       width={node.width}
       height={node.height}
       rx={10}
-      fill="#e2e8f0"
+      fill="var(--color-shadow-route, #e2e8f0)"
       opacity={0.55}
     />
   )
@@ -137,17 +236,18 @@ export function StepMarker({
         height={node.height}
         rx={density.showLabels ? 10 : 7}
         fill={category.fill}
-        stroke={category.stroke}
+        stroke={category.ink}
         strokeWidth={added ? 3 : 1.5}
         {...(archived ? { strokeDasharray: '4 3' } : {})}
       />
 
       {density.showLabels ? (
         <>
-          <text x={x + 9} y={y + 20} fontSize={11} fill={category.stroke}>
-            {category.glyph} {node.ordinal}
+          <CategoryIcon category={node.step.category} cx={x + 15} cy={y + 16} size={13} />
+          <text x={x + 26} y={y + 20} fontSize={11} fontWeight={600} fill={category.ink}>
+            {node.ordinal}
           </text>
-          <text x={x + 9} y={y + 37} fontSize={11.5} fill="#0f172a">
+          <text x={x + 9} y={y + 37} fontSize={11.5} fill="var(--color-ink-900, #0f172a)">
             {truncate(node.step.label, 17)}
           </text>
           {state === null ? null : (
@@ -156,16 +256,17 @@ export function StepMarker({
               y={y - 5}
               fontSize={9}
               textAnchor="end"
-              fill={archived ? '#64748b' : '#15803d'}
+              fill="var(--color-ink-500, #64748b)"
             >
               {state}
             </text>
           )}
         </>
       ) : (
-        <text x={node.x} y={node.y + 4} fontSize={10} textAnchor="middle" fill={category.stroke}>
-          {category.glyph}
-        </text>
+        // No room for text at ribbon density, so the icon is the whole of the non-colour
+        // signal. It is what keeps the compressed form readable without colour vision, and
+        // the `<title>` above carries the same information to a screen reader.
+        <CategoryIcon category={node.step.category} cx={node.x} cy={node.y} size={12} />
       )}
     </g>
   )
@@ -176,7 +277,7 @@ export function StartMarker({ node, label }: { node: PlacedNode; label: string }
   return (
     <g>
       <title>{label}</title>
-      <circle cx={node.x - node.width / 2 - 12} cy={node.y} r={5} fill="#0f172a" />
+      <circle cx={node.x - node.width / 2 - 12} cy={node.y} r={5} fill="var(--color-ink-900, #0f172a)" />
     </g>
   )
 }
@@ -187,7 +288,7 @@ export function DestinationMarker({ node, label }: { node: PlacedNode; label: st
   return (
     <g>
       <title>{label}</title>
-      <path d={`M ${x} ${node.y - 6} L ${x + 11} ${node.y} L ${x} ${node.y + 6} Z`} fill="#7e22ce" />
+      <path d={`M ${x} ${node.y - 6} L ${x + 11} ${node.y} L ${x} ${node.y + 6} Z`} fill="var(--color-cat-travel-ink, #7e22ce)" />
     </g>
   )
 }
@@ -213,9 +314,9 @@ export function DisruptionIndicator({
   return (
     <g>
       <title>{label}</title>
-      <circle cx={cx} cy={cy} r={r} fill="#d97706" stroke="#fff" strokeWidth={1.5} />
+      <circle cx={cx} cy={cy} r={r} fill="var(--color-caution-500, #d97706)" stroke="var(--color-surface, #fff)" strokeWidth={1.5} />
       {density.showLabels ? (
-        <text x={cx} y={cy + 3.5} fontSize={9} textAnchor="middle" fill="#fff">
+        <text x={cx} y={cy + 3.5} fontSize={9} textAnchor="middle" fill="var(--color-surface, #fff)">
           !
         </text>
       ) : null}

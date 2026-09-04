@@ -62,6 +62,30 @@ function themeTokens(): Map<string, [number, number, number]> {
   return tokens
 }
 
+/**
+ * Non-colour scale tokens, by family — Phase 12B.
+ *
+ * `text-` is shared between the font-size scale and the text-colour utilities, so the
+ * "undefined colour" guard below has to know both or it reports every `text-panel` as a
+ * broken colour. Reading them from the CSS keeps that automatic: adding a step to the type
+ * scale needs no test change.
+ */
+function scaleTokens(prefix: string): Set<string> {
+  const names = new Set<string>()
+  for (const match of CSS.matchAll(new RegExp(`--${prefix}-([a-z0-9-]+):`, 'g'))) {
+    const name = match[1] ?? ''
+    // `--text-panel--line-height` declares a property of `panel`, not a token called
+    // `panel--line-height`.
+    names.add(name.split('--')[0] ?? name)
+  }
+  return names
+}
+
+/** True when the sRGB conversion of an oklch triple lands inside the displayable cube. */
+function inGamut(rgb: readonly number[]): boolean {
+  return rgb.every((v) => v >= -0.001 && v <= 1.001)
+}
+
 describe('WCAG contrast — every text token against every background it sits on', () => {
   /**
    * **Phase 12 found `ink-500` at 4.28:1 against white — below AA.**
@@ -121,6 +145,114 @@ describe('WCAG contrast — every text token against every background it sits on
 })
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════
+   The category palette — Phase 12B, closing a CLAUDE.md §11 open decision
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+describe('the six step categories are a measured palette, not a chosen one', () => {
+  const CATEGORIES = [
+    'documents',
+    'language',
+    'admission',
+    'funding',
+    'immigration',
+    'travel',
+  ] as const
+
+  it('defines three tones for every category', () => {
+    const tokens = themeTokens()
+    for (const category of CATEGORIES) {
+      for (const tone of ['ink', 'line', 'fill'] as const) {
+        expect(tokens.has(`cat-${category}-${tone}`), `cat-${category}-${tone} missing`).toBe(true)
+      }
+    }
+  })
+
+  /**
+   * **A token written out of gamut is a token that is not the colour it was measured as.**
+   *
+   * The browser clamps it, silently, and every contrast figure computed from the written
+   * value is then wrong about what is on screen. Three of the first eighteen tones were
+   * written 0.3% outside sRGB by rounding up after the chroma fit — far too small to see and
+   * more than enough to make the measurement a fiction.
+   */
+  it('keeps every category tone inside sRGB', () => {
+    const tokens = themeTokens()
+    const clipping: string[] = []
+    for (const [name, value] of tokens) {
+      if (!name.startsWith('cat-')) continue
+      if (!inGamut(oklchToRgb(...value))) clipping.push(name)
+    }
+    expect(clipping, 'These tokens are outside sRGB and will be clamped by the browser').toEqual([])
+  })
+
+  it('meets AA for category ink on white and on its own fill', () => {
+    const tokens = themeTokens()
+    const white = oklchToRgb(1, 0, 0)
+    const failures: string[] = []
+
+    for (const category of CATEGORIES) {
+      const ink = tokens.get(`cat-${category}-ink`)
+      const fill = tokens.get(`cat-${category}-fill`)
+      if (!ink || !fill) continue
+      const onWhite = contrast(oklchToRgb(...ink), white)
+      const onFill = contrast(oklchToRgb(...ink), oklchToRgb(...fill))
+      if (onWhite < 4.5) failures.push(`${category} ink on white: ${onWhite.toFixed(2)}`)
+      if (onFill < 4.5) failures.push(`${category} ink on its fill: ${onFill.toFixed(2)}`)
+    }
+
+    expect(failures).toEqual([])
+  })
+
+  /**
+   * The road segment is a graphical object rather than text, so the bar is WCAG 1.4.11's
+   * 3:1 — but it *is* a bar. A pastel road on a white page is invisible to a reader with low
+   * vision, and the road is the product's primary metaphor (§8.5.3).
+   */
+  it('meets 3:1 for every category line against the page', () => {
+    const tokens = themeTokens()
+    const white = oklchToRgb(1, 0, 0)
+    for (const category of CATEGORIES) {
+      const line = tokens.get(`cat-${category}-line`)
+      if (!line) continue
+      const ratio = contrast(oklchToRgb(...line), white)
+      expect(ratio, `${category} line on white`).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  /**
+   * Lightness constant across the family is what makes six hues read as one set rather than
+   * as six unrelated colours — and it is also what keeps the ribbon legible in greyscale,
+   * where every segment lands at the same value and the glyphs do the work instead.
+   */
+  it('holds lightness constant across the family, per tone', () => {
+    const tokens = themeTokens()
+    for (const tone of ['ink', 'line', 'fill'] as const) {
+      const lightnesses = new Set(
+        CATEGORIES.map((c) => tokens.get(`cat-${c}-${tone}`)?.[0]).filter((v) => v !== undefined),
+      )
+      expect(lightnesses.size, `${tone} lightness varies across categories`).toBe(1)
+    }
+  })
+
+  /**
+   * **The decision recorded in globals.css is that there is NO maturity palette** — maturity
+   * is carried by weight, word and icon, from tokens that already exist. A
+   * `--color-lifecycle-established` appearing here later would be someone re-opening a closed
+   * decision by accident, and would put a coloured badge on the ordinary case (§7.3), or a
+   * green one on a route we have not verified (invariant 12, BR-20).
+   */
+  it('assigns no colour to any lifecycle state', () => {
+    const tokens = [...themeTokens().keys()]
+    const offenders = tokens.filter((name) =>
+      /^(lifecycle|maturity|established|experimental|developing|disputed|dormant|quiet|stale)/.test(
+        name,
+      ),
+    )
+    expect(offenders, 'A per-state colour re-opens a decision closed in globals.css').toEqual([])
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
    Colour utilities that resolve to nothing
    ══════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -136,6 +268,7 @@ describe('every colour utility resolves to a token that exists', () => {
 
   it('has no bg-, text- or border- utility naming an undefined colour', () => {
     const defined = new Set(themeTokens().keys())
+    const FONT_SIZES = scaleTokens('text')
     const offenders: string[] = []
 
     for (const file of SOURCE_FILES) {
@@ -150,6 +283,10 @@ describe('every colour utility resolves to a token that exists', () => {
           if (!match) continue
           const token = match[2] ?? ''
           if (defined.has(token) || BUILT_IN.test(token)) continue
+          // `text-` also addresses the font-size scale, and `text-panel` is a size, not a
+          // colour. Read from the CSS rather than listed, so adding a step to the scale
+          // needs no change here.
+          if (match[1] === 'text' && FONT_SIZES.has(token)) continue
           /**
            * These prefixes are shared with non-colour utilities, and the list is where this
            * guard earns or loses its usefulness. Getting it wrong in the permissive direction
@@ -170,6 +307,110 @@ describe('every colour utility resolves to a token that exists', () => {
     }
 
     expect(offenders, 'These utilities name a colour with no theme token').toEqual([])
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   The design system — Phase 12B
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+describe('components build from the scale rather than from ad-hoc values', () => {
+  /**
+   * **This is the guard that keeps the design system a system.**
+   *
+   * A scale that components are free to ignore is documentation, not a system. One
+   * `text-[13px]` is harmless; the hundredth is how the product got here — eleven pages each
+   * inventing their own sizes, and a result that reads as an undifferentiated field of grey
+   * cards because nothing was ever decided once.
+   *
+   * Scoped to the type, space and radius families deliberately. Widths are *not* included:
+   * `max-w-[68ch]` is a reading measure, which is a typographic quantity rather than a step
+   * on a spacing scale, and the canvas guard below already forbids a second page width.
+   */
+  it('uses no arbitrary type, spacing or radius value', () => {
+    const ARBITRARY = /\b(?:\w+:)*(text|p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|gap|gap-x|gap-y|rounded|space-x|space-y)-\[[^\]]+\]/g
+    const offenders: string[] = []
+
+    for (const file of SOURCE_FILES) {
+      const code = stripComments(read(file))
+      for (const attr of code.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\}|\{'([^']*)'\})/g)) {
+        const classes = attr[1] ?? attr[2] ?? attr[3] ?? ''
+        for (const match of classes.matchAll(ARBITRARY)) {
+          // Tracking is a typographic detail with no scale of its own and no meaningful
+          // step — an uppercase wordmark needs the exact letter-spacing it needs.
+          if (match[0].includes('tracking')) continue
+          offenders.push(`${file}: ${match[0]}`)
+        }
+      }
+    }
+
+    expect(offenders, 'These bypass the token scale in globals.css').toEqual([])
+  })
+
+  /**
+   * §10.4 and §8.5.4: colour never carries meaning on its own. The category palette runs
+   * green → amber → rose in journey order, and those three are precisely the ones deutan and
+   * protan vision collapse — so for a substantial number of readers the icon *is* the signal,
+   * not a decoration beside it.
+   *
+   * Asserted on the data rather than on a rendering, because it is the data that would go
+   * missing: a category added later with no icon would still compile and still draw.
+   */
+  it('gives every step category an icon, not only a colour', async () => {
+    const { CATEGORY_STYLE } = await import('../../src/renderer/primitives')
+    const { STEP_CATEGORIES } = await import('../../src/domain/enums')
+
+    for (const category of STEP_CATEGORIES) {
+      const style = CATEGORY_STYLE[category]
+      expect(style, `${category} has no presentation`).toBeDefined()
+      expect(style.icon.length, `${category} has no icon path`).toBeGreaterThan(10)
+      expect(style.ink, `${category} ink is not a token`).toMatch(/^var\(--color-/)
+      expect(style.fill, `${category} fill is not a token`).toMatch(/^var\(--color-/)
+      expect(style.line, `${category} line is not a token`).toMatch(/^var\(--color-/)
+    }
+  })
+
+  /**
+   * The palette lives in one place. A hex literal in the renderer is a second source that
+   * can disagree with `globals.css` — and the contrast test reads the CSS, so the value it
+   * certifies would not be the value being painted.
+   *
+   * `var(--token, #fallback)` is allowed and is why the pattern is anchored: the fallback is
+   * only reached if the stylesheet failed to load, in which case a readable approximation
+   * beats an unstyled black-on-white diagram.
+   */
+  it('keeps colour literals out of the renderer', () => {
+    const offenders: string[] = []
+    for (const file of walk('src/renderer', ['.ts', '.tsx'])) {
+      const code = stripComments(read(file))
+      for (const match of code.matchAll(/#[0-9a-fA-F]{3,8}\b/g)) {
+        const before = code.slice(Math.max(0, match.index - 60), match.index)
+        if (/var\(--[a-z0-9-]+,\s*$/.test(before)) continue
+        offenders.push(`${file}: ${match[0]}`)
+      }
+    }
+    expect(offenders, 'A colour literal here is a second palette').toEqual([])
+  })
+
+  it('leads with the brand lockup in the header', () => {
+    const header = stripComments(read('src/components/site-header.tsx'))
+    expect(header).toMatch(/<BrandLockup/)
+    // Bengali identity, English interface (§8.5.6) — both halves, and the Bengali tagged so
+    // a screen reader switches pronunciation instead of reading it as English.
+    const ui = read('src/components/ui.tsx')
+    expect(ui).toMatch(/lang="bn"/)
+  })
+
+  /**
+   * The primitives are what make the system usable; a primitive that needed state would put
+   * a JavaScript bundle in front of every page that used it, which is the opposite of the
+   * point. Checked here as well as in the client-component census below, because this is the
+   * file most likely to grow one.
+   */
+  it('keeps every primitive a server component', () => {
+    const ui = read('src/components/ui.tsx')
+    expect(ui).not.toMatch(/'use client'/)
+    expect(stripComments(ui)).not.toMatch(/useState|useEffect|useRef|onClick=/)
   })
 })
 

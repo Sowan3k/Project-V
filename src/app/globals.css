@@ -1,18 +1,72 @@
 @import 'tailwindcss';
 
 /*
- * Phase 0 defines only the neutral and brand tokens the shell needs.
- *
- * The six semantic category colours (documents/preparation, language/tests,
- * admission/university, funding/scholarship, immigration/visa, travel/departure) and the
- * route-maturity palette are NOT defined here on purpose: the exact palette and maturity
- * label wording are still open decisions (CLAUDE.md §11). Inventing them now would be
- * answering an open decision by accident.
+ * The design system — Phase 12B.
  *
  * Visual direction (CLAUDE.md §8.5): white and light backgrounds, generous whitespace,
- * navy/blue brand, rounded panels, subtle borders, very light shadows.
+ * navy/blue brand, pastel category accents, rounded panels, subtle borders, very light
+ * shadows. Strong hierarchy. No heavy gradients, no generic SaaS-dashboard styling.
+ *
+ * ═════════════════════════════════════════════════════════════════════════════════════════
+ * WHY THIS FILE GREW
+ *
+ * Through Phase 12 this file held **15 colour tokens and zero typography, spacing, radius or
+ * elevation tokens.** Every component therefore invented its own sizes inline, and that is
+ * the mechanical reason the product read as a uniform stack of grey cards: with no scale,
+ * there is nothing to build hierarchy *out of*. A page whose every element is `text-sm` in a
+ * `rounded-xl` box is not badly designed — it is undesigned, and no amount of per-component
+ * tuning fixes it, because the next component starts from nothing again.
+ *
+ * Two of these token groups close decisions CLAUDE.md §11 had left open since Phase 0. That
+ * was correct while nothing needed them; every mockup needs them, so they are decided here
+ * and recorded there rather than improvised per component.
+ * ═════════════════════════════════════════════════════════════════════════════════════════
  */
 @theme {
+  /* ── Type scale ────────────────────────────────────────────────────────────────────────
+   *
+   * Six steps, named for the job rather than the size, so a heading that needs to get bigger
+   * is one token edit and not a search for every page that happened to use `text-3xl`.
+   *
+   * The ratio is deliberately modest (~1.25). The mockups get their hierarchy mostly from
+   * weight, colour and space — a large display size beside small dense panels — rather than
+   * from dramatic size jumps, and a steep scale on a 360px phone forces the top of the ramp
+   * to wrap awkwardly.
+   *
+   * Tailwind's own `text-xs … text-4xl` still exist and are still fine for one-off tuning;
+   * these are what the shared components use.
+   */
+  --text-micro: 0.6875rem; /* 11px — chip text, table meta, ordinals */
+  --text-micro--line-height: 1.45;
+  --text-meta: 0.8125rem; /* 13px — secondary lines, captions, timestamps */
+  --text-meta--line-height: 1.5;
+  --text-panel: 0.9375rem; /* 15px — panel headings, emphasised body */
+  --text-panel--line-height: 1.45;
+  --text-section: 1.25rem; /* 20px — section headings within a page */
+  --text-section--line-height: 1.3;
+  --text-title: 1.75rem; /* 28px — the page's subject */
+  --text-title--line-height: 1.2;
+  --text-display: 2.5rem; /* 40px — the landing hero, and nothing else */
+  --text-display--line-height: 1.1;
+
+  /* ── Shape ─────────────────────────────────────────────────────────────────────────────
+   *
+   * Two radii, because the mockups use two: a generous one for panels and a tighter one for
+   * the controls inside them. A single radius everywhere is what makes an interface read as
+   * one undifferentiated field of boxes.
+   */
+  --radius-panel: 0.875rem; /* 14px — panels, cards, ribbons */
+  --radius-control: 0.5rem; /* 8px — buttons, inputs, chips */
+
+  /* ── Elevation ─────────────────────────────────────────────────────────────────────────
+   *
+   * "Very light shadows" (§8.5.5). These are separation, not depth: a panel lifts off the
+   * page just enough to have an edge, and `raised` is for the one thing on a screen that is
+   * genuinely floating. Anything heavier turns into the SaaS dashboard §8.5 warns against.
+   */
+  --shadow-panel: 0 1px 2px 0 oklch(0.24 0.03 258 / 0.04), 0 1px 3px 0 oklch(0.24 0.03 258 / 0.06);
+  --shadow-raised: 0 4px 12px -2px oklch(0.24 0.03 258 / 0.08), 0 2px 6px -2px oklch(0.24 0.03 258 / 0.06);
+
   --color-ink-900: oklch(0.24 0.03 258);
   --color-ink-700: oklch(0.42 0.02 258);
   /*
@@ -35,6 +89,16 @@
   /* Same correction, same reason. Used for borders and tints today; a token that only
      passes AA by not being used as text is a trap for the next person who uses it. */
   --color-brand-500: oklch(0.55 0.13 254);
+  /*
+   * The brand tint — added in Phase 12B, and it is a repair rather than a new idea.
+   *
+   * `bg-brand-50` was written by an earlier phase and never defined. Tailwind emits no CSS
+   * and no warning for an undefined utility, so those elements simply had no background at
+   * all, which on a white page is invisible. Phase 12 found it and removed the usages; this
+   * defines the token those usages wanted, so the guard that catches the next one has
+   * something legitimate to allow.
+   */
+  --color-brand-50: oklch(0.972 0.014 254);
 
   --color-surface: oklch(1 0 0);
   --color-surface-muted: oklch(0.985 0.003 258);
@@ -55,6 +119,114 @@
   --color-caution-900: oklch(0.42 0.09 62);
   --color-caution-500: oklch(0.7 0.14 68);
   --color-caution-50: oklch(0.975 0.022 82);
+
+  /* ── The six step categories ───────────────────────────────────────────────────────────
+   *
+   * **Closes a CLAUDE.md §11 open decision** (owner-approved 2026-09-04). Deferred since
+   * Phase 0 and correctly so — nothing needed it. Every mockup needs it, and the ribbon is
+   * simply unreadable without it, so it is decided here rather than improvised per component.
+   *
+   * Three tones per category, each with a different job and therefore a different bar:
+   *
+   *   ink   the label and the marker stroke. Normal text → WCAG AA 4.5:1, on white AND on
+   *         its own fill, because a chip puts the two together. Worst measured: 6.13:1.
+   *   line  the road segment. A graphical object → WCAG 1.4.11's 3:1. Worst: 3.40:1.
+   *   fill  the tint behind a chip or marker. Not text; its only job is to stay light
+   *         enough that `ink` clears AA on it, which is what the 6.13 above measures.
+   *
+   * **Every value was fitted, not chosen.** Lightness is constant across all six so the set
+   * reads as a family; chroma is the largest each hue can carry at that lightness while
+   * staying inside sRGB, found by bisection per hue. A single chroma across six hues either
+   * clips — meaning the colour the browser paints is not the colour that was measured — or
+   * is timid everywhere to suit the narrowest hue. Three of the first eighteen tones were
+   * written 0.3% out of gamut by rounding *up* after fitting; they are floored now.
+   *
+   * The hues run in journey order, so a ribbon reads left to right as a progression rather
+   * than as six arbitrary colours. Green, amber and rose sit next to each other in that
+   * order and are the trio that deutan and protan vision collapse — which is exactly why
+   * **colour is never the only carrier of meaning** (§10.4, §8.5.4): every marker also
+   * carries a glyph, and at road density a text label. Remove all colour and nothing is
+   * lost but emphasis.
+   *
+   * Recomputed by `tests/architecture/presentation.test.ts` on every commit, reading these
+   * values out of this file, so a later adjustment cannot quietly drop one below AA.
+   */
+  --color-cat-documents-ink: oklch(0.46 0.139 272);
+  --color-cat-documents-line: oklch(0.62 0.159 272);
+  --color-cat-documents-fill: oklch(0.965 0.016 272);
+
+  --color-cat-language-ink: oklch(0.46 0.08 212);
+  --color-cat-language-line: oklch(0.62 0.108 212);
+  --color-cat-language-fill: oklch(0.965 0.027 212);
+
+  --color-cat-admission-ink: oklch(0.46 0.121 152);
+  --color-cat-admission-line: oklch(0.62 0.159 152);
+  --color-cat-admission-fill: oklch(0.965 0.027 152);
+
+  --color-cat-funding-ink: oklch(0.46 0.097 75);
+  --color-cat-funding-line: oklch(0.62 0.13 75);
+  --color-cat-funding-fill: oklch(0.965 0.027 75);
+
+  --color-cat-immigration-ink: oklch(0.46 0.139 22);
+  --color-cat-immigration-line: oklch(0.62 0.159 22);
+  --color-cat-immigration-fill: oklch(0.965 0.017 22);
+
+  --color-cat-travel-ink: oklch(0.46 0.139 318);
+  --color-cat-travel-line: oklch(0.62 0.159 318);
+  --color-cat-travel-fill: oklch(0.965 0.026 318);
+
+  /* ── The road surface ──────────────────────────────────────────────────────────────────
+   *
+   * VR-04 draws the road as an actual carriageway — a dark ribbon of asphalt with a dashed
+   * centre line — not as connectors between markers. These are the two tones that makes it
+   * one object rather than a diagram of one.
+   */
+  --color-road-surface: oklch(0.72 0.012 258);
+  --color-road-line: oklch(0.99 0.002 258);
+
+  /*
+   * The previous version, drawn behind the current one (FR-77).
+   *
+   * Light enough to read as "underneath" and dark enough to be visible at all — a shadow
+   * route nobody can see is the failure Phase 4 recorded and Phase 10 solved by moving to a
+   * side-by-side comparison. This tone is what remains of the overlay, used at ribbon
+   * density where two columns will not fit.
+   */
+  --color-shadow-route: oklch(0.87 0.008 258);
+
+  /* ── Route maturity: the decision is that there is no maturity palette ─────────────────
+   *
+   * **Closes the second CLAUDE.md §11 open decision** (owner-approved 2026-09-04), and it is
+   * closed by deciding *against* the thing it asked for. There are deliberately no
+   * `--color-lifecycle-*` tokens below this comment.
+   *
+   * §8.5.8 asks that Established, Developing, Experimental, Quiet/Stale, Disputed and
+   * Quarantined "look materially different from one another", and the obvious reading is
+   * nine states, nine colours. That reading is wrong here, for three reasons that all point
+   * the same way:
+   *
+   *   1. **§7.3 already decided the weight system**, and a hue per state fights it. A route
+   *      is rendered at one of three weights — caution, context, or nothing — and a palette
+   *      would put a coloured badge on the ordinary case, which is precisely the "badge on
+   *      everything is a badge on nothing" failure §7.3 exists to prevent.
+   *   2. **A green `established` chip is a safety claim.** Invariant 12 and BR-20: no
+   *      verified/safe badge, and we are not an admission or immigration authority. Green
+   *      reads as "checked and fine" no matter what the label beside it says.
+   *   3. **The states are not six equals.** `quiet` and `established` differ in *activity*,
+   *      not in how much care a reader should take — FR-39 is explicit that a quiet route is
+   *      not to be treated as false — so colouring them differently would assert a
+   *      distinction the domain says is not there.
+   *
+   * So maturity is carried by **weight, word and icon**, drawn from tokens that already
+   * exist: `ink-*` for settled states, `brand-*` for emerging ones, `caution-*` for the ones
+   * that change what a reader should do, and `ink-500` for retired ones. Two states that
+   * share a weight are told apart by their label, which survives skimming better than
+   * telling two chips of similar hue apart, and works for a reader who cannot see either.
+   *
+   * `lifecycleWarrantsCaution` in `src/domain/lifecycle.ts` remains the single decider of
+   * which states are loud. Nothing in this file may disagree with it, because nothing in
+   * this file knows about lifecycle states at all.
+   */
 }
 
 :root {

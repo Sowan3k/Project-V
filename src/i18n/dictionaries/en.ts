@@ -50,6 +50,22 @@ export const en = {
   common: {
     skipToContent: 'Skip to content',
     loading: 'Loading',
+    /** Accessible names for the landmarks a screen-reader user navigates between. */
+    primaryNavigation: 'Primary',
+    breadcrumb: 'Breadcrumb',
+  },
+
+  /**
+   * Primary navigation — Phase 12B.
+   *
+   * Two items, because two pages exist. VR-01, VR-03 and VR-04 show five; three of them
+   * (Updates, Community, Resources) are pages this product does not have, and a nav link to
+   * a page that does not exist is worse than an absent one. The mockups are binding on
+   * arrangement, not on inventory.
+   */
+  nav: {
+    routes: 'Routes',
+    myJourney: 'My Journey',
   },
 
   /**
