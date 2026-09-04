@@ -26,6 +26,32 @@ function monthLabel(point: { year: number; month: number }): string {
 }
 
 /**
+ * Just the range, for the route header's stat band — Phase 12D.
+ *
+ * **Still never a single date, and still never bare.** Invariant 16 and BR-18: an expected
+ * fly window is a planning aid, and the moment it is rendered as one value it starts reading
+ * as a promise. It sits under the label "Expected fly window" and carries the estimate
+ * wording as its accessible title, so the qualification travels with the number rather than
+ * being left behind on a page the reader may not scroll to.
+ */
+export function FlyWindowValue({
+  window,
+  dictionary: t,
+}: {
+  window: FlyWindow | null
+  dictionary: Dictionary
+}) {
+  if (window === null) {
+    return <span className="text-panel font-medium text-ink-500">{t.flyWindow.unknown}</span>
+  }
+  return (
+    <span title={t.flyWindow.estimate}>
+      {t.route.flyWindowShort(monthLabel(window.from), monthLabel(window.to))}
+    </span>
+  )
+}
+
+/**
  * Expected fly window — FR-56, §20.1.
  *
  * Always rendered as a range with the estimate wording attached. There is deliberately no

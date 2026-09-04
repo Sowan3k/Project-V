@@ -234,11 +234,24 @@ export const en = {
     tabHistory: 'History',
     tabsLabel: 'Route views',
     selectAStep: 'Select a step to see the information inside it.',
-    backToSearch: 'Back to search',
     ribbonLabel: 'Route overview',
     roadLabel: 'The full road',
     steps: 'Steps',
     stepCount: (n: number) => (n === 1 ? '1 step' : `${n} steps`),
+
+    /**
+     * Labels for the route header's stat band — Phase 12D, VR-04/VR-05.
+     *
+     * `followersLabel` is the one that has to be exactly right. §26 and invariant 17: a
+     * follower count says how many people are tracking this route privately, and nothing
+     * whatever about whether any of them succeeded. "Following privately" rather than
+     * "students" or "users on this route" keeps both facts in the label — the number is
+     * people, and their progress is not ours to describe.
+     */
+    stepsLabel: 'Steps',
+    contributorsLabel: 'Contributors',
+    followersLabel: 'Following privately',
+    flyWindowShort: (from: string, to: string) => `${from} – ${to}`,
     openStep: 'Open this step',
     closeStep: 'Close',
     noSteps: 'This route has no steps yet.',

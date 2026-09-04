@@ -1,8 +1,9 @@
 import Link from 'next/link'
 
-import { ContentColumn, PageCanvas } from '@/components/layout'
+import { ContentColumn, GridRegion, PageCanvas, PageGrid } from '@/components/layout'
+import { Breadcrumb, Stat } from '@/components/ui'
 import { LifecycleNote, MergedNotice } from '@/components/lifecycle'
-import { FlyWindowNote } from '@/components/route-shared'
+import { FlyWindowValue } from '@/components/route-shared'
 import { RoutePassportPanel } from '@/components/trust'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 import type { RouteDetail } from '@/server/routes/read'
@@ -56,14 +57,30 @@ export function RouteContext({
   return (
     <>
       <div className="border-b border-hairline bg-surface">
-        <PageCanvas className="pt-6">
-          <Link href={`/${locale}/routes`} className="text-sm text-brand-700 hover:underline">
-            ← {t.route.backToSearch}
-          </Link>
+        <PageCanvas className="pt-5">
+          {/*
+           * Breadcrumbs rather than a lone back link — Phase 12D, VR-05/VR-08/VR-13.
+           *
+           * "← Back to search" answers only "how do I leave"; a breadcrumb also answers
+           * "where am I", which on a route three levels deep is the question a reader
+           * actually has. Each segment is a real link, and the last is the page itself
+           * rather than a link to where you already are.
+           */}
+          <Breadcrumb
+            label={t.common.breadcrumb}
+            crumbs={[
+              { label: t.nav.routes, href: `/${locale}/routes` },
+              {
+                label: `${route.originCountry} → ${route.destinationCountry}`,
+                href: `/${locale}/routes?from=${encodeURIComponent(route.originCountry)}&to=${encodeURIComponent(route.destinationCountry)}`,
+              },
+              { label: route.title },
+            ]}
+          />
 
           <div className="mt-3 flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
-            <div className="min-w-0">
-              <h1 className="text-2xl font-semibold tracking-tight text-balance text-ink-900">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-title font-semibold tracking-tight text-balance text-ink-900">
                 {route.title}
               </h1>
               <p className="mt-1 text-sm text-ink-500">
@@ -83,14 +100,30 @@ export function RouteContext({
               <ContentColumn width="reading">
                 <LifecycleNote state={route.lifecycleState} dictionary={t} />
               </ContentColumn>
-            </div>
 
-            {/* Standing and timing sit together, beside the route rather than under it, and
-                stay on screen across both tabs. A reader who opens the history should not
-                lose sight of how mature the route they are reading actually is (FR-74). */}
-            <div className="w-full max-w-sm shrink-0 space-y-3">
-              <RoutePassportPanel trust={route.trust} dictionary={t} />
-              <FlyWindowNote window={route.flyWindow} dictionary={t} />
+              {/*
+               * The route's own facts, on the route — Phase 12D, VR-04/VR-05.
+               *
+               * Until now this column held a title, one grey line and, for a route with no
+               * summary, nothing else — so beside a tall passport the header was about
+               * three hundred and fifty pixels of empty page. VR-04 and VR-05 both put the
+               * duration, the fly window and the activity counts across the top, which is
+               * both better composition and the information a reader wants before deciding
+               * whether to open anything.
+               *
+               * Every one of these is a **count or a stored date**. No score, no percentage,
+               * no maturity arithmetic: the standing lives in the passport beside it, and
+               * `routePassport` is the only thing allowed to speak to it (invariant 14).
+               */}
+              <div className="mt-6 flex flex-wrap gap-x-10 gap-y-4">
+                <Stat value={route.stepCount} label={t.route.stepsLabel} />
+                <Stat value={<FlyWindowValue window={route.flyWindow} dictionary={t} />} label={t.flyWindow.label} />
+                <Stat value={route.trust.contributorCount} label={t.route.contributorsLabel} />
+                {/* "users marked this completed", never "verified" — FR-41, §26,
+                    invariant 17. The wording lives in the dictionary where it is
+                    reviewable as copy. */}
+                <Stat value={route.trust.followerCount} label={t.route.followersLabel} />
+              </div>
             </div>
           </div>
 
@@ -100,8 +133,17 @@ export function RouteContext({
             <MergedNotice route={route} locale={locale} dictionary={t} />
           </ContentColumn>
 
-          {/* Tabs, not links away. The route stays above them on every view. */}
-          <nav aria-label={t.route.tabsLabel} className="mt-6 -mb-px flex gap-1">
+          {/*
+           * Tabs, not links away. The route stays above them on every view.
+           *
+           * **`flex-wrap` is a bug fix, not styling.** This was a non-wrapping row of four
+           * tabs, and at 360px the fourth pushed the row four pixels past the viewport — the
+           * horizontal overflow the Phase 12 E2E has been failing on since run #53. A tab
+           * strip that wraps onto a second line at phone width is the correct behaviour
+           * anyway: the alternative is a row the reader has to drag sideways to discover
+           * that History exists.
+           */}
+          <nav aria-label={t.route.tabsLabel} className="mt-6 -mb-px flex flex-wrap gap-1">
             {tabs.map((entry) => {
               const active = entry.id === tab
               return (
@@ -123,7 +165,29 @@ export function RouteContext({
         </PageCanvas>
       </div>
 
-      <PageCanvas className="py-8">{children}</PageCanvas>
+      {/*
+       * Body: the view, and a rail that stays with it — Phase 12D, VR-04/VR-05/VR-07.
+       *
+       * The passport used to sit in the header beside the title. It is a tall panel and the
+       * title column is short, so on a route without a summary the header was a stat band
+       * and then roughly two hundred and fifty pixels of empty page — the taller column set
+       * the height and nothing filled the rest.
+       *
+       * VR-04 and VR-05 both put route maturity in a **right rail beside the roadmap**, not
+       * in the header, and that is also where it composes: the rail is as long as the view
+       * next to it. It still appears on every tab, which is what FR-74 asks for — a reader
+       * who opens the history should not lose sight of how mature the route is.
+       */}
+      <PageCanvas className="py-8">
+        <PageGrid>
+          <GridRegion span={8}>{children}</GridRegion>
+          <GridRegion span={4}>
+            <div className="space-y-3 lg:sticky lg:top-6">
+              <RoutePassportPanel trust={route.trust} dictionary={t} />
+            </div>
+          </GridRegion>
+        </PageGrid>
+      </PageCanvas>
     </>
   )
 }
