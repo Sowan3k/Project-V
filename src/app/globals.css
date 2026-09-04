@@ -23,6 +23,22 @@
  * ═════════════════════════════════════════════════════════════════════════════════════════
  */
 @theme {
+  /* ── Typefaces ─────────────────────────────────────────────────────────────────────────
+   *
+   * Loaded and self-hosted by `next/font` in `[locale]/layout.tsx`, which sets the two
+   * variables below on `<html>`. The fallbacks are not decoration: if the font files fail —
+   * a blocked CDN at build time, a stripped subset — the page must still be readable in
+   * something sane rather than in whatever the browser calls "sans-serif".
+   *
+   * `--font-bengali` is applied by the `font-bengali` utility, which belongs on every element
+   * carrying `lang="bn"`. Latin families almost never cover the script, so without it the
+   * brand wordmark renders in a device default that differs on every platform.
+   */
+  --font-sans: var(--font-interface), ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    sans-serif;
+  --font-bengali: var(--font-bengali-face), 'Noto Sans Bengali', ui-sans-serif, system-ui,
+    sans-serif;
+
   /* ── Type scale ────────────────────────────────────────────────────────────────────────
    *
    * Six steps, named for the job rather than the size, so a heading that needs to get bigger

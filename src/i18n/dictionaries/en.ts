@@ -539,6 +539,28 @@ export const en = {
     handleExplainer: 'This is how contributions appear to others. It is not your name.',
     notConfigured:
       'Sign-in is not configured on this deployment yet. Reading works without an account.',
+
+    /**
+     * What an account is for — Phase 12E.
+     *
+     * Exactly the two things FR-12 gates, described as what they do rather than as benefits.
+     * There is deliberately nothing here about status, recognition, streaks or standing: §25
+     * warns against turning contribution into a competitive points game, and a sign-in page
+     * promising standing would be the first place that started.
+     */
+    whatItIsFor: 'What an account is for',
+    offerContribute: {
+      title: 'Correct what is wrong',
+      body:
+        'Add a missing route, update a value that has changed, confirm that something is still current, or challenge something that is not. Every change keeps the earlier version, and nothing waits for approval.',
+    },
+    offerJourney: {
+      title: 'Follow a route privately',
+      body:
+        'Mark your own progress, keep your own dates and notes, and see which route changes reach the part you have not done yet. Nobody else can see any of it, and you are never asked to upload anything.',
+    },
+    readingNeedsNoAccount:
+      'Searching, routes, steps, sources and history are readable without an account, and always will be.',
   },
 
 

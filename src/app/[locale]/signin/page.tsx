@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 
-import { ContentColumn, PageCanvas } from '@/components/layout'
+import { ContentColumn, GridRegion, PageCanvas, PageGrid } from '@/components/layout'
+import { Button, Panel } from '@/components/ui'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { currentViewer, signIn } from '@/server/auth'
@@ -64,38 +65,75 @@ export default async function SignInPage({
 
   const configured = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET)
 
+  /**
+   * Two columns — Phase 12E.
+   *
+   * This was a narrow reading column alone on a 1440px page, which is the shape that made
+   * the whole deployment read as unfinished. The fix is not to centre it: §7.2 keeps
+   * `centred` for screens that are only reading matter, and re-centring a narrow column
+   * inside a wide canvas is what breaks the shared left edge.
+   *
+   * So the right side carries something real instead — **what an account is actually for.**
+   * A reader deciding whether to sign in wants to know what it buys and what it costs, and
+   * the honest answers are unusually short: contribute, and keep a private journey; we store
+   * an email address and generate a handle. Both are already product guarantees rather than
+   * marketing (FR-12, FR-26, §24.2, §24.3, invariant 6).
+   */
+  const offers = [t.auth.offerContribute, t.auth.offerJourney]
+
   return (
     <PageCanvas className="py-12">
-      <ContentColumn width="reading">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{t.auth.signInTitle}</h1>
-        <p className="mt-3 text-base leading-7 text-ink-700">{t.auth.signInLede}</p>
+      <PageGrid>
+        <GridRegion span={6}>
+          <h1 className="text-title font-semibold tracking-tight text-ink-900">
+            {t.auth.signInTitle}
+          </h1>
+          <ContentColumn width="reading">
+            <p className="mt-3 text-base leading-7 text-ink-700">{t.auth.signInLede}</p>
+          </ContentColumn>
 
-        {configured ? (
-          <form
-            action={async () => {
-              'use server'
-              await signIn('google', { redirectTo: next })
-            }}
-            className="mt-6"
-          >
-            <button
-              type="submit"
-              className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white"
+          {configured ? (
+            <form
+              action={async () => {
+                'use server'
+                await signIn('google', { redirectTo: next })
+              }}
+              className="mt-6"
             >
-              {t.auth.withGoogle}
-            </button>
-          </form>
-        ) : (
-          <p className="mt-6 rounded-lg border border-hairline bg-surface p-4 text-sm text-ink-700">
-            {t.auth.notConfigured}
-          </p>
-        )}
+              <Button type="submit">{t.auth.withGoogle}</Button>
+            </form>
+          ) : (
+            <Panel tone="sunken" className="mt-6 text-sm text-ink-700">
+              {t.auth.notConfigured}
+            </Panel>
+          )}
 
-        <section className="mt-8 rounded-xl border border-hairline bg-surface p-4">
-          <h2 className="text-sm font-semibold text-ink-900">{t.auth.whatWeStore}</h2>
-          <p className="mt-1 text-sm leading-6 text-ink-700">{t.auth.whatWeStoreBody}</p>
-        </section>
-      </ContentColumn>
+          <Panel as="section" className="mt-8">
+            <h2 className="text-panel font-semibold text-ink-900">{t.auth.whatWeStore}</h2>
+            <p className="mt-1 text-sm leading-6 text-ink-700">{t.auth.whatWeStoreBody}</p>
+          </Panel>
+        </GridRegion>
+
+        <GridRegion span={6}>
+          <Panel as="section" className="h-full">
+            <h2 className="text-panel font-semibold text-ink-900">{t.auth.whatItIsFor}</h2>
+            <ul className="mt-4 space-y-4">
+              {offers.map((offer) => (
+                <li key={offer.title}>
+                  <p className="text-sm font-medium text-ink-900">{offer.title}</p>
+                  <p className="mt-1 text-sm leading-6 text-ink-700">{offer.body}</p>
+                </li>
+              ))}
+            </ul>
+            {/* Said here rather than only in the footer: this is the page where somebody is
+                weighing up an account, and "you never needed one to read" is the single most
+                useful thing we can tell them (FR-01, D-03). */}
+            <p className="mt-6 border-t border-hairline pt-4 text-meta leading-6 text-ink-500">
+              {t.auth.readingNeedsNoAccount}
+            </p>
+          </Panel>
+        </GridRegion>
+      </PageGrid>
     </PageCanvas>
   )
 }

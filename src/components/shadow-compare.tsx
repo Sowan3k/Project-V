@@ -282,8 +282,24 @@ export function ShadowCompare({
 }) {
   return (
     <div>
+      {/*
+       * The scale of change leads, and the two roads share the width — Phase 12E, VR-07.
+       *
+       * This was three equal columns, and because the whole comparison is nested inside the
+       * route body's eight-of-twelve region, each road was given about 285px. A road drawn
+       * at 285px is not a road anybody can read, which defeats the point of showing two of
+       * them: VR-07's whole idea is that you see the *shape* of the change before you read a
+       * word of it.
+       *
+       * The counts are a two-line summary, not a third road-sized panel, so they belong
+       * above rather than beside.
+       */}
+      <div className="mb-6">
+        <ChangeScale comparison={comparison} fieldsChanged={fieldsChanged} dictionary={t} />
+      </div>
+
       <PageGrid>
-        <GridRegion span={4}>
+        <GridRegion span={6}>
           <RoadPanel
             graph={before}
             heading={beforeLabel}
@@ -296,7 +312,7 @@ export function ShadowCompare({
             annotations={{ archivedStepIds: marked(comparison, 'step_archived') }}
           />
         </GridRegion>
-        <GridRegion span={4}>
+        <GridRegion span={6}>
           <RoadPanel
             graph={after}
             heading={t.changes.currentRoute}
@@ -305,9 +321,6 @@ export function ShadowCompare({
             // And steps that arrive are outlined and labelled on the current one.
             annotations={{ addedStepIds: marked(comparison, 'step_added') }}
           />
-        </GridRegion>
-        <GridRegion span={4}>
-          <ChangeScale comparison={comparison} fieldsChanged={fieldsChanged} dictionary={t} />
         </GridRegion>
       </PageGrid>
 

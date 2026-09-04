@@ -49,7 +49,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <PageCanvas className="pt-12 pb-14 sm:pt-16">
         <PageGrid>
           <GridRegion span={5}>
-            <p lang="bn" className="text-section font-semibold text-brand-900">
+            <p lang="bn" className="font-bengali text-section font-semibold text-brand-900">
               {t.landing.headlineBn}
             </p>
             <h1 className="mt-3 text-title font-semibold tracking-tight text-balance text-ink-900 lg:text-display">

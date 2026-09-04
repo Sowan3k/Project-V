@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { Anek_Bangla, Lexend } from 'next/font/google'
 import { notFound } from 'next/navigation'
 
 import { SiteFooter } from '@/components/site-footer'
@@ -15,6 +16,47 @@ import '../globals.css'
  * locale actually being rendered — the scaffolding that lets Bangla be added without
  * rework (CLAUDE.md §4).
  */
+
+/**
+ * Typefaces — Phase 12E.
+ *
+ * ═════════════════════════════════════════════════════════════════════════════════════════
+ * Until now the whole product ran on the system font stack, which is most of what was left
+ * making it read as a developer's page rather than a product. Two families, and each is a
+ * decision rather than a preference.
+ *
+ * **Lexend, for the interface.** Chosen for what it was built to do rather than for how it
+ * looks: it was designed to improve *reading proficiency*, with wider default spacing and
+ * unambiguous letterforms. This product exists to make dense procedural information — visa
+ * conditions, document requirements, deadlines — understandable to students who are often
+ * reading it in a second language and under some pressure. A typeface engineered for reading
+ * performance is on the nose for that in a way a fashionable geometric sans is not.
+ *
+ * **Anek Bangla, for the Bengali.** The brand wordmark is Bengali and appears on every page,
+ * and almost no Latin family covers the script — so until now it fell back to whatever the
+ * device happened to have, which differs on every platform and is frequently poor. Anek was
+ * designed for Indic scripts specifically. Bengali identity, English interface (§8.5.6) is
+ * not served by letting the Bengali half render by accident.
+ *
+ * **Both are variable, self-hosted at build time by `next/font`.** No runtime request to
+ * Google, no third-party connection on the critical path, no layout shift from a late swap,
+ * and each subset to the script it is for. Design-References.md is explicit that "a student
+ * in Dhaka on a slow connection is the person this product is for" — two variable subsets
+ * are a few tens of kilobytes and cost no JavaScript at all, which is why this is the
+ * typography change that was worth making and a shader hero is not.
+ * ═════════════════════════════════════════════════════════════════════════════════════════
+ */
+const interfaceFont = Lexend({
+  subsets: ['latin'],
+  variable: '--font-interface',
+  display: 'swap',
+})
+
+const bengaliFont = Anek_Bangla({
+  subsets: ['bengali'],
+  variable: '--font-bengali-face',
+  display: 'swap',
+})
 
 export function generateStaticParams(): { locale: string }[] {
   return LOCALES.map((locale) => ({ locale }))
@@ -84,7 +126,10 @@ export default async function LocaleLayout({
   const t = await getDictionary(locale)
 
   return (
-    <html lang={LOCALE_HTML_LANG[locale]}>
+    <html
+      lang={LOCALE_HTML_LANG[locale]}
+      className={`${interfaceFont.variable} ${bengaliFont.variable}`}
+    >
       <body className="min-h-dvh antialiased">
         <a
           href="#main"

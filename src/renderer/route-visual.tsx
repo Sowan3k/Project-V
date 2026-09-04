@@ -127,7 +127,10 @@ function RouteVisual({
        * always fills.
        */
       style={{ maxWidth: frame.width }}
-      fontFamily="system-ui, -apple-system, sans-serif"
+      // The interface face, so labels on the road match labels beside it. Falls back to the
+      // system stack if the variable is unset — a road that renders in the wrong font is a
+      // great deal better than one that does not render.
+      fontFamily="var(--font-sans, system-ui), system-ui, sans-serif"
     >
       {shadow === null ? null : (
         <g aria-hidden="true">

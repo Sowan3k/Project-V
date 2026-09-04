@@ -76,7 +76,7 @@ export function BrandLockup({
       <span className="flex flex-col leading-none">
         <span
           lang="bn"
-          className={`font-semibold text-brand-900 ${large ? 'text-section' : 'text-panel'}`}
+          className={`font-bengali font-semibold text-brand-900 ${large ? 'text-section' : 'text-panel'}`}
         >
           {nameBn}
         </span>
