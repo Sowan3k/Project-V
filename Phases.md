@@ -1302,6 +1302,51 @@ Phase 10's scope; if it is wanted it is a change request first.
 **Visual references:** VR-06, VR-07, VR-08, VR-09, VR-10, VR-11
 **FRs:** FR-13–FR-18, FR-23–FR-30, FR-35–FR-37, FR-42, FR-50, FR-55, FR-60, FR-61, FR-77
 
+### Phase 12E — in progress (2026-09-05)
+
+**Two pages had no gutter at all**, and the guard could not see them. `routes/new` and
+`journeys` each render a sign-in prompt for anonymous visitors, and neither branch was wrapped
+in `PageCanvas` — so the heading sat flush against x=0 while the header and footer were inset.
+The Phase 12 architecture guard reads each page file for `<PageCanvas` and both files have
+one, in the *other* return path; a source-text check cannot see which branch renders.
+
+The replacement asserts the rule §7.2 actually makes, in a browser: **every page's `h1` shares
+a left edge with the header's brand mark.** It found both defects on its first run, and §7.2's
+one exception — the 404 is deliberately `centred` — is encoded rather than excluded, as
+"inside the canvas" rather than "on the axis".
+
+**Typography, and it is the larger change.** The product ran on the system font stack, which
+is most of what was left making it read as a developer's page. Two families, both variable and
+self-hosted at build time by `next/font` — no runtime request to Google, no third-party
+connection on the critical path, no layout shift, no JavaScript:
+
+- **Lexend** for the interface, chosen for what it was built to do rather than how it looks:
+  it was designed to improve *reading proficiency*. This product exists to make visa
+  conditions, document requirements and deadlines understandable to students often reading
+  them in a second language and under pressure.
+- **Anek Bangla** for the Bengali. The wordmark is on every page, almost no Latin family
+  covers the script, and it had been falling back to whatever the device happened to have.
+  §8.5.6's "Bengali identity, English interface" is not served by letting the Bengali half
+  render by accident.
+
+Both were chosen against `Design-References.md`'s constraints rather than from a gallery —
+which is also why the three WebGL candidates in that file stay unadopted. It is explicit that
+"a student in Dhaka on a slow connection is the person this product is for", and two variable
+subsets cost tens of kilobytes and no JavaScript, where a shader hero costs a bundle and a GPU.
+
+**Sign-in** was a narrow reading column alone on a 1440px page. Not fixed by centring — §7.2
+reserves `centred` for reading matter and re-centring breaks the shared edge — but by giving
+the right side something real: what an account is actually for. Deliberately nothing about
+status, recognition or standing, which §25 warns against.
+
+**The shadow comparison** put its two roads and its change summary in three equal columns,
+nested inside the route body's eight-of-twelve region, so each road got about 285px. A road at
+285px defeats the point of showing two. The counts lead as a summary; the roads share the width.
+
+**Still open in this phase:** My Journey (VR-06), the contribution flows (VR-08, VR-09), the
+safety surfaces (VR-11), a route's updates and disruptions (VR-10), the contributor page and
+the admin queues.
+
 ---
 
 ## Phase 12F — Mobile and tablet as their own product

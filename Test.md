@@ -1529,3 +1529,44 @@ readers, not only for the writers.
   Phase 12G owns this, and until it lands the visual work is verified by inspection only.
 - The E2E assertion that a ribbon fills ≥85% of its row is written but had not completed a CI
   run at the time of writing.
+
+---
+
+## 24. Running E2E locally is not the same test CI runs (2026-09-05)
+
+Two properties of the local setup make a full local Playwright run untrustworthy, and both
+cost real time in Phase 12E before being understood. Neither affects CI.
+
+### `reuseExistingServer` plus `rm -rf .next` is a trap
+
+`playwright.config.ts` sets `reuseExistingServer: !process.env.CI`, which is right — rebuilding
+for every local run would be intolerable. But it means Playwright silently reuses **whatever is
+already on port 3100**, however old, and says nothing about it.
+
+Combined with `rm -rf .next` — which this work does constantly, because a production build and
+a dev server share that directory — the result is a server answering from a half-deleted build.
+The symptoms look exactly like product regressions and are not:
+
+| Symptom | Actual cause |
+|---|---|
+| "exactly one road should be painted: expected 1, received 2" | The compiled CSS was gone, so `sm:hidden` never applied and both densities were visible |
+| "the ribbon should occupy most of its row: received 0.78" | Same — the ribbon's container sizing came from CSS that was no longer on disk |
+
+Both were unreproducible against a fresh dev server, which is what finally identified them.
+**Kill anything on port 3100 before a local E2E run**, or the run is testing an artefact.
+
+### The remote database makes a parallel run a coin toss
+
+`fullyParallel: true` against a **remote** Neon branch is a different test from CI's local
+`postgres:18` container. A full local run produced 25 failures, almost all at the 60-second
+test timeout, across specs that had nothing to do with the change under test — and every one
+of them passed when run alone. This is the exposure already recorded in §14: successful
+connects to that branch took 2.4–8.8s and failures clustered at the default cliff.
+
+**What to trust locally:** a single spec, or a small set with `--workers=1`, against a server
+you know is fresh. **What not to trust:** a full parallel run's failure list.
+
+**What CI is:** a clean container, a fresh build every time, `reuseExistingServer` off because
+`CI` is set, and a database on localhost. That is the authoritative gate, and it is why the
+Phase 12D/12E work was pushed to CI once the affected specs passed in isolation rather than
+waiting for a green local full run that this environment cannot reliably produce.
