@@ -407,6 +407,49 @@ describe('components build from the scale rather than from ad-hoc values', () =>
    * point. Checked here as well as in the client-component census below, because this is the
    * file most likely to grow one.
    */
+  /**
+   * **Radius comes from the scale, not from Tailwind's default ramp** — Phase 12E.
+   *
+   * There were 76 hand-picked `rounded-lg` / `rounded-xl` across 20 files, which is what a
+   * design system is for: a panel and a control should each have *one* corner in the whole
+   * product, and the way to guarantee that is for there to be one place the number lives.
+   *
+   * Directional and shape variants — `rounded-t-lg` on a tab, `rounded-full` on a chip — are
+   * untouched: they are not the panel/control decision this is about.
+   */
+  it('uses the radius tokens rather than the default ramp', () => {
+    const offenders: string[] = []
+    for (const file of SOURCE_FILES) {
+      const code = stripComments(read(file))
+      for (const attr of code.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\}|\{'([^']*)'\})/g)) {
+        const classes = attr[1] ?? attr[2] ?? attr[3] ?? ''
+        for (const util of classes.split(/\s+/)) {
+          if (/^(?:\w+:)*rounded-(sm|md|lg|xl|2xl|3xl)$/.test(util)) offenders.push(`${file}: ${util}`)
+        }
+      }
+    }
+    expect(offenders, 'Use rounded-panel or rounded-control').toEqual([])
+  })
+
+  /**
+   * And a filled button comes from `buttonClass`. Six had been hand-written before the
+   * primitive gained a `compact` size — each very slightly different, and every one of them a
+   * place the next person would copy from.
+   */
+  it('builds filled buttons from the primitive', () => {
+    const offenders: string[] = []
+    for (const file of SOURCE_FILES) {
+      if (file.endsWith('ui.tsx')) continue
+      const code = stripComments(read(file))
+      for (const attr of code.matchAll(/className="([^"]*)"/g)) {
+        if (/\bbg-brand-700\b/.test(attr[1] ?? '') && /\bpx-\d/.test(attr[1] ?? '')) {
+          offenders.push(file)
+        }
+      }
+    }
+    expect([...new Set(offenders)], 'Use buttonClass() from @/components/ui').toEqual([])
+  })
+
   it('keeps every primitive a server component', () => {
     const ui = read('src/components/ui.tsx')
     expect(ui).not.toMatch(/'use client'/)

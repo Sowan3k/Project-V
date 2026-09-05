@@ -79,7 +79,7 @@ export default async function RouteHistoryPage({
         ) : (
           <ol className="mt-6 space-y-3">
             {history.map((entry) => (
-              <li key={entry.id} className="rounded-xl border border-hairline bg-surface p-4">
+              <li key={entry.id} className="rounded-panel border border-hairline bg-surface p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                   <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">
                     {entry.kind}

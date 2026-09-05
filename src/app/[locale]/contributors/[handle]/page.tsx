@@ -41,7 +41,7 @@ export default async function ContributorPage({
         </ContentColumn>
 
         {isNew ? (
-          <div className="mt-6 rounded-xl border border-hairline bg-surface p-4">
+          <div className="mt-6 rounded-panel border border-hairline bg-surface p-4">
             <p className="text-sm font-medium text-ink-900">{t.contribute.newContributor}</p>
             <ContentColumn width="reading">
               <p className="mt-1 text-sm leading-6 text-ink-700">{t.contribute.newContributorNote}</p>

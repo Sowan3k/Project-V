@@ -48,7 +48,7 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 const INPUT =
-  'mt-1 block w-full rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
+  'mt-1 block w-full rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
 
 export default async function AdminReportsPage({
   params,
@@ -86,7 +86,7 @@ export default async function AdminReportsPage({
         ) : (
           <ul className="mt-6 space-y-4">
             {queue.map((summary) => (
-              <li key={summary.fieldId} className="rounded-xl border border-hairline bg-surface p-4">
+              <li key={summary.fieldId} className="rounded-panel border border-hairline bg-surface p-4">
                 <PageGrid>
                   <GridRegion span={5}>
                     <h2 className="text-sm font-semibold text-ink-900">{t.admin.evidence}</h2>
@@ -128,7 +128,7 @@ export default async function AdminReportsPage({
                       </label>
                       <button
                         type="submit"
-                        className="justify-self-start rounded-lg bg-caution-900 px-3 py-1.5 text-xs font-medium text-white"
+                        className="justify-self-start rounded-control bg-caution-900 px-3 py-1.5 text-xs font-medium text-white"
                       >
                         {t.admin.quarantine}
                       </button>
@@ -161,7 +161,7 @@ export default async function AdminReportsPage({
                       </label>
                       <button
                         type="submit"
-                        className="justify-self-start rounded-lg border border-brand-700 px-3 py-1.5 text-xs font-medium text-brand-700"
+                        className="justify-self-start rounded-control border border-brand-700 px-3 py-1.5 text-xs font-medium text-brand-700"
                       >
                         {t.admin.recordDecision}
                       </button>

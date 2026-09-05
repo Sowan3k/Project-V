@@ -163,16 +163,34 @@ export type ButtonTone = 'primary' | 'secondary' | 'bare'
  * identical and a reader should not be able to tell which is which. Exported so a form's own
  * submit button can wear it without importing a component that would wrap it.
  */
-export function buttonClass(tone: ButtonTone = 'primary', className = ''): string {
+/**
+ * Two sizes, because the product genuinely has two jobs for a button.
+ *
+ * `default` is a page's own action — sign in, follow this route, find my route. `compact` is
+ * a submit inside a disclosure or a form row, where a full-size button would dominate the
+ * field it belongs to; six of those had been hand-written at `px-3 py-1.5 text-xs` before
+ * this existed, which is exactly the drift the primitives are for.
+ */
+export type ButtonSize = 'default' | 'compact'
+
+export function buttonClass(
+  tone: ButtonTone = 'primary',
+  { size = 'default', className = '' }: { size?: ButtonSize; className?: string } = {},
+): string {
   const base =
-    'inline-flex items-center justify-center gap-2 rounded-control text-sm font-medium transition-colors'
-  const tones: Record<ButtonTone, string> = {
-    primary: 'bg-brand-700 px-4 py-2.5 text-white hover:bg-brand-900',
-    secondary:
-      'border border-hairline bg-surface px-4 py-2.5 text-ink-900 hover:bg-surface-muted',
-    bare: 'px-1 py-0.5 text-brand-700 hover:underline',
+    'inline-flex items-center justify-center gap-2 rounded-control font-medium transition-colors'
+  const sizes: Record<ButtonSize, string> = {
+    default: 'px-4 py-2.5 text-sm',
+    compact: 'px-3 py-1.5 text-meta',
   }
-  return `${base} ${tones[tone]} ${className}`
+  const tones: Record<ButtonTone, string> = {
+    primary: 'bg-brand-700 text-white hover:bg-brand-900',
+    secondary: 'border border-hairline bg-surface text-ink-900 hover:bg-surface-muted',
+    // Sizeless by nature: it is a link wearing a button's affordances, not a filled control.
+    bare: 'px-1 py-0.5 text-sm text-brand-700 hover:underline',
+  }
+  const sizing = tone === 'bare' ? '' : sizes[size]
+  return `${base} ${sizing} ${tones[tone]} ${className}`
 }
 
 export function Button({
@@ -186,7 +204,7 @@ export function Button({
   className?: string
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button className={buttonClass(tone, className)} {...rest}>
+    <button className={buttonClass(tone, { className })} {...rest}>
       {children}
     </button>
   )
@@ -204,7 +222,7 @@ export function LinkButton({
   className?: string
 }) {
   return (
-    <Link href={href} className={buttonClass(tone, className)}>
+    <Link href={href} className={buttonClass(tone, { className })}>
       {children}
     </Link>
   )

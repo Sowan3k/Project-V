@@ -6,6 +6,7 @@ import {
   updateFieldAction,
 } from '@/app/[locale]/routes/[slug]/actions'
 import { Caution } from '@/components/trust'
+import { buttonClass } from '@/components/ui'
 import {
   CHALLENGE_REASONS,
   FIELD_APPLICABILITIES,
@@ -65,11 +66,11 @@ export function ContributionInvitation({
   )
 }
 
-const FORM = 'mt-2 grid gap-2 rounded-lg border border-hairline bg-surface p-3'
+const FORM = 'mt-2 grid gap-2 rounded-control border border-hairline bg-surface p-3'
 const INPUT =
-  'mt-1 block w-full rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
+  'mt-1 block w-full rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
 const LABEL = 'text-xs text-ink-700'
-const SUBMIT = 'justify-self-start rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-medium text-white'
+const SUBMIT = buttonClass('primary', { size: 'compact', className: 'justify-self-start' })
 const SUMMARY = 'cursor-pointer text-xs text-brand-700'
 
 /** The four field actions, side by side, each closed until asked for. */
@@ -355,7 +356,7 @@ export function OpenChallenges({
   if (field.openChallenges.length === 0) return null
 
   return (
-    <ul className="mt-2 space-y-1 rounded-md border border-caution-500/40 bg-caution-50 px-2.5 py-2">
+    <ul className="mt-2 space-y-1 rounded-control border border-caution-500/40 bg-caution-50 px-2.5 py-2">
       {field.openChallenges.map((challenge) => (
         <li key={challenge.id}>
           <Caution>

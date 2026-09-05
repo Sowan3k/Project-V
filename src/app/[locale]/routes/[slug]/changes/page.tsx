@@ -11,6 +11,7 @@ import {
   ResolveDisruptionControl,
 } from '@/components/changes'
 import { ContentColumn, GridRegion, PageGrid } from '@/components/layout'
+import { buttonClass } from '@/components/ui'
 import { RouteContext } from '@/components/route-context'
 import { ShadowCompare } from '@/components/shadow-compare'
 import { CHANGE_SEVERITIES, ROUTE_CHANGE_KINDS } from '@/domain/enums'
@@ -66,7 +67,7 @@ import {
 export const dynamic = 'force-dynamic'
 
 const INPUT =
-  'mt-1 block w-full rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
+  'mt-1 block w-full rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
 const LABEL = 'block text-xs text-ink-700'
 
 /**
@@ -264,7 +265,7 @@ async function FollowerPanel({
     <div className="mt-6">
       <PageGrid>
         <GridRegion span={12}>
-          <section className="rounded-xl border border-hairline bg-surface p-4">
+          <section className="rounded-panel border border-hairline bg-surface p-4">
             <h2 className="text-sm font-semibold text-ink-900">{t.changes.yourPositionTitle}</h2>
             <p className="mt-1 text-sm text-ink-700">
               {t.changes.needsAttention(report.needsAttention)}
@@ -450,7 +451,7 @@ async function RecordSection({
         <GridRegion span={6}>
           <form
             action={announceChangeAction}
-            className="rounded-xl border border-hairline bg-surface p-4"
+            className="rounded-panel border border-hairline bg-surface p-4"
           >
             {hidden}
             <h3 className="text-sm font-semibold text-ink-900">{t.changes.announceHeading}</h3>
@@ -515,7 +516,7 @@ async function RecordSection({
 
             <button
               type="submit"
-              className="mt-3 rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-medium text-white"
+              className={buttonClass('primary', { size: 'compact', className: 'mt-3' })}
             >
               {t.changes.submitAnnounce}
             </button>
@@ -525,7 +526,7 @@ async function RecordSection({
         <GridRegion span={6}>
           <form
             action={recordDisruptionAction}
-            className="rounded-xl border border-hairline bg-surface p-4"
+            className="rounded-panel border border-hairline bg-surface p-4"
           >
             {hidden}
             <h3 className="text-sm font-semibold text-ink-900">{t.changes.disruptHeading}</h3>
@@ -580,7 +581,7 @@ async function RecordSection({
 
             <button
               type="submit"
-              className="mt-3 rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-medium text-white"
+              className={buttonClass('primary', { size: 'compact', className: 'mt-3' })}
             >
               {t.changes.submitDisrupt}
             </button>

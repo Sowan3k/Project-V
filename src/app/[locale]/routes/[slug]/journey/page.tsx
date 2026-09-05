@@ -2,7 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { ContentColumn, GridRegion, PageGrid } from '@/components/layout'
+import { ContentColumn } from '@/components/layout'
+import { LinkButton, Panel, buttonClass } from '@/components/ui'
 import { RouteContext } from '@/components/route-context'
 import { rendererStrings } from '@/components/route-shared'
 import { JourneyStepStatus, JOURNEY_STEP_STATUSES } from '@/domain/enums'
@@ -103,8 +104,23 @@ export default async function JourneyPage({
   // never somebody else's data.
   const journey = viewer ? await getJourneyForRoute(viewer.id, route.id, { includeArchived: true }) : null
 
+  const following = journey !== null && journey.archivedAt === null
+
   return (
-    <RouteContext route={route} dictionary={t} locale={locale} tab="journey">
+    <RouteContext
+      route={route}
+      dictionary={t}
+      locale={locale}
+      tab="journey"
+      // Only once there is a journey to control. An anonymous visitor or somebody not
+      // following this route sees the route's standing and nothing that implies they have
+      // progress to manage.
+      rail={
+        following && journey !== null ? (
+          <JourneyRail journey={journey} slug={slug} dictionary={t} />
+        ) : undefined
+      }
+    >
       {viewer === null ? (
         <SignInInvitation dictionary={t} locale={locale} slug={slug} />
       ) : journey === null || journey.archivedAt !== null ? (
@@ -138,17 +154,22 @@ function SignInInvitation({
   slug: string
 }) {
   return (
-    <ContentColumn width="reading">
-      <h2 className="text-lg font-semibold text-ink-900">{t.journey.title}</h2>
-      <p className="mt-2 text-sm leading-6 text-ink-700">{t.journey.signInToFollow}</p>
-      <p className="mt-3 text-sm leading-6 text-ink-500">{t.journey.privateExplainer}</p>
-      <Link
-        href={`/${locale}/signin?next=${encodeURIComponent(`/${locale}/routes/${slug}/journey`)}`}
-        className="mt-4 inline-block rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white"
-      >
-        {t.auth.signIn}
-      </Link>
-    </ContentColumn>
+    <Panel as="section">
+      <ContentColumn width="reading">
+        <h2 className="text-section font-semibold text-ink-900">{t.journey.title}</h2>
+        <p className="mt-2 text-sm leading-6 text-ink-700">{t.journey.signInToFollow}</p>
+        {/* The privacy promise appears before the sign-in button, not after it. Somebody
+            deciding whether to create an account needs it while deciding (FR-26, §12.3). */}
+        <p className="mt-3 text-sm leading-6 text-ink-500">{t.journey.privateExplainer}</p>
+        <div className="mt-6">
+          <LinkButton
+            href={`/${locale}/signin?next=${encodeURIComponent(`/${locale}/routes/${slug}/journey`)}`}
+          >
+            {t.auth.signIn}
+          </LinkButton>
+        </div>
+      </ContentColumn>
+    </Panel>
   )
 }
 
@@ -164,23 +185,22 @@ function FollowInvitation({
   slug: string
 }) {
   return (
-    <ContentColumn width="reading">
-      <h2 className="text-lg font-semibold text-ink-900">{t.journey.title}</h2>
-      <p className="mt-2 text-sm leading-6 text-ink-700">{t.journey.privateExplainer}</p>
-      {resumable ? (
-        <p className="mt-2 text-sm leading-6 text-ink-500">{t.journey.resumed}</p>
-      ) : null}
-      <form action={followRouteAction} className="mt-4">
-        <input type="hidden" name="routeId" value={route.id} />
-        <input type="hidden" name="slug" value={slug} />
-        <button
-          type="submit"
-          className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white"
-        >
-          {resumable ? t.journey.resume : t.journey.follow}
-        </button>
-      </form>
-    </ContentColumn>
+    <Panel as="section">
+      <ContentColumn width="reading">
+        <h2 className="text-section font-semibold text-ink-900">{t.journey.title}</h2>
+        <p className="mt-2 text-sm leading-6 text-ink-700">{t.journey.privateExplainer}</p>
+        {resumable ? (
+          <p className="mt-2 text-sm leading-6 text-ink-500">{t.journey.resumed}</p>
+        ) : null}
+        <form action={followRouteAction} className="mt-6">
+          <input type="hidden" name="routeId" value={route.id} />
+          <input type="hidden" name="slug" value={slug} />
+          <button type="submit" className={buttonClass()}>
+            {resumable ? t.journey.resume : t.journey.follow}
+          </button>
+        </form>
+      </ContentColumn>
+    </Panel>
   )
 }
 
@@ -218,7 +238,7 @@ function JourneyBoard({
 
         {/* The same road, from the same renderer. A journey is a view of the route, and it
             must look like the route the follower opened (invariant 25). */}
-        <div className="mt-4 overflow-x-auto rounded-xl border border-hairline bg-surface p-4">
+        <div className="mt-4 overflow-x-auto rounded-panel border border-hairline bg-surface p-4">
           <ResponsiveRoad graph={route.graph} strings={rendererStrings(t)} />
         </div>
         <p className="mt-2 text-xs text-ink-500">{t.journey.routeChangedNote}</p>
@@ -232,30 +252,51 @@ function JourneyBoard({
         dictionary={t}
       />
 
-      <PageGrid className="mt-8">
-        <GridRegion span={8}>
-          <ul className="space-y-3">
-            {route.steps.map((step, index) => (
-              <StepProgressRow
-                key={step.id}
-                index={index}
-                step={step}
-                progress={byStep.get(step.id) ?? null}
-                journeyId={journey.id}
-                slug={slug}
-                locale={locale}
-                dictionary={t}
-              />
-            ))}
-          </ul>
-        </GridRegion>
+      {/*
+       * The steps take the whole body column — Phase 12E.
+       *
+       * This used to nest a `PageGrid` here, splitting eight-of-twelve into another eight and
+       * four: the step rows got about 530px and the panels beside them about 265. Each step
+       * row carries a status select, two dates and a note field, so 530px made every one of
+       * them wrap into a column of stubs.
+       *
+       * The panels moved up into the page's own rail instead, where VR-05 and VR-06 both put
+       * them — one rail carrying the route's standing and the follower's own controls
+       * together, rather than two columns competing inside one.
+       */}
+      <ul className="mt-8 space-y-3">
+        {route.steps.map((step, index) => (
+          <StepProgressRow
+            key={step.id}
+            index={index}
+            step={step}
+            progress={byStep.get(step.id) ?? null}
+            journeyId={journey.id}
+            slug={slug}
+            locale={locale}
+            dictionary={t}
+          />
+        ))}
+      </ul>
+    </>
+  )
+}
 
-        <GridRegion span={4}>
-          <PersonalTasks journey={journey} slug={slug} dictionary={t} />
-          <CompletionPanel journey={journey} slug={slug} dictionary={t} />
-          <LeavePanel journey={journey} slug={slug} dictionary={t} />
-        </GridRegion>
-      </PageGrid>
+/** The follower's own controls, for the page rail rather than a column of their own. */
+function JourneyRail({
+  journey,
+  slug,
+  dictionary: t,
+}: {
+  journey: JourneyView
+  slug: string
+  dictionary: Dictionary
+}) {
+  return (
+    <>
+      <PersonalTasks journey={journey} slug={slug} dictionary={t} />
+      <CompletionPanel journey={journey} slug={slug} dictionary={t} />
+      <LeavePanel journey={journey} slug={slug} dictionary={t} />
     </>
   )
 }
@@ -280,7 +321,7 @@ function StepProgressRow({
   const isoDay = (date: Date | null): string => (date === null ? '' : date.toISOString().slice(0, 10))
 
   return (
-    <li className="rounded-xl border border-hairline bg-surface p-4">
+    <li className="rounded-panel border border-hairline bg-surface p-4">
       <div className="flex items-baseline gap-3">
         <span className="text-xs text-ink-500">{index + 1}</span>
         <span className="font-medium text-ink-900">{step.label}</span>
@@ -300,7 +341,7 @@ function StepProgressRow({
           <select
             name="status"
             defaultValue={progress?.status ?? JourneyStepStatus.not_started}
-            className="mt-1 block w-full rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900"
+            className="mt-1 block w-full rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900"
           >
             {JOURNEY_STEP_STATUSES.map((status) => (
               <option key={status} value={status}>
@@ -316,7 +357,7 @@ function StepProgressRow({
             type="date"
             name="targetDate"
             defaultValue={isoDay(progress?.targetDate ?? null)}
-            className="mt-1 block w-full rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900"
+            className="mt-1 block w-full rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900"
           />
         </label>
 
@@ -326,7 +367,7 @@ function StepProgressRow({
             type="date"
             name="actualDate"
             defaultValue={isoDay(progress?.actualDate ?? null)}
-            className="mt-1 block w-full rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900"
+            className="mt-1 block w-full rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900"
           />
         </label>
 
@@ -337,14 +378,14 @@ function StepProgressRow({
             rows={2}
             defaultValue={progress?.privateNote ?? ''}
             placeholder={t.journey.privateNotePlaceholder}
-            className="mt-1 block w-full rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900"
+            className="mt-1 block w-full rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900"
           />
         </label>
 
         <div className="sm:col-span-3">
           <button
             type="submit"
-            className="rounded-lg border border-brand-700 px-3 py-1.5 text-xs font-medium text-brand-700"
+            className="rounded-control border border-brand-700 px-3 py-1.5 text-xs font-medium text-brand-700"
           >
             {t.journey.save}
           </button>
@@ -355,7 +396,7 @@ function StepProgressRow({
           moment the follower's knowledge is worth the most. It offers CONFIRM and a route to
           UPDATE/CHALLENGE — no new contribution type is invented for it. */}
       {progress?.status === JourneyStepStatus.completed ? (
-        <div className="mt-3 rounded-lg border border-brand-500/40 bg-brand-500/5 p-3">
+        <div className="mt-3 rounded-control border border-brand-500/40 bg-brand-500/5 p-3">
           <p className="text-sm font-medium text-ink-900">{t.contribute.stillAccurate}</p>
           <p className="mt-0.5 text-xs leading-5 text-ink-700">{t.contribute.stillAccurateLede}</p>
 
@@ -365,7 +406,7 @@ function StepProgressRow({
               <input type="hidden" name="slug" value={slug} />
               <button
                 type="submit"
-                className="rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-medium text-white"
+                className={buttonClass('primary', { size: 'compact' })}
               >
                 {t.contribute.yesAccurate}
               </button>
@@ -396,7 +437,7 @@ function PersonalTasks({
   dictionary: Dictionary
 }) {
   return (
-    <section className="rounded-xl border border-hairline bg-surface p-4">
+    <section className="rounded-panel border border-hairline bg-surface p-4">
       <h3 className="text-sm font-semibold text-ink-900">{t.journey.tasksTitle}</h3>
       <p className="mt-1 text-xs leading-5 text-ink-500">{t.journey.tasksLede}</p>
 
@@ -436,9 +477,9 @@ function PersonalTasks({
           type="text"
           name="label"
           placeholder={t.journey.taskPlaceholder}
-          className="min-w-0 flex-1 rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm"
+          className="min-w-0 flex-1 rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm"
         />
-        <button type="submit" className="rounded-lg border border-brand-700 px-3 text-xs text-brand-700">
+        <button type="submit" className="rounded-control border border-brand-700 px-3 text-xs text-brand-700">
           {t.journey.addTask}
         </button>
       </form>
@@ -458,7 +499,7 @@ function CompletionPanel({
   const completed = journey.selfReportedCompletedAt !== null
 
   return (
-    <section className="mt-4 rounded-xl border border-hairline bg-surface p-4">
+    <section className="mt-4 rounded-panel border border-hairline bg-surface p-4">
       <form action={setCompletionAction}>
         <input type="hidden" name="journeyId" value={journey.id} />
         <input type="hidden" name="slug" value={slug} />
@@ -483,7 +524,7 @@ function LeavePanel({
   dictionary: Dictionary
 }) {
   return (
-    <section className="mt-4 rounded-xl border border-hairline bg-surface p-4">
+    <section className="mt-4 rounded-panel border border-hairline bg-surface p-4">
       {/* Unfollowing keeps the data; deleting is a separate action that says what it does.
           A student should never lose months of notes to a mis-click, and should always be
           able to remove them on purpose. */}
@@ -552,7 +593,7 @@ async function ChangesSinceStarted({
     pressing.length === 0 && disrupting.length === 0 && !shadow.comparison.structureChanged
 
   return (
-    <section className="mt-8 rounded-xl border border-hairline bg-surface p-4">
+    <section className="mt-8 rounded-panel border border-hairline bg-surface p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-ink-900">{t.changes.yourPositionTitle}</h2>
         <Link
@@ -570,7 +611,7 @@ async function ChangesSinceStarted({
           {disrupting.map((entry) => (
             <li
               key={entry.disruption.id}
-              className="rounded-lg border border-caution-500/40 bg-caution-50 px-3 py-2"
+              className="rounded-control border border-caution-500/40 bg-caution-50 px-3 py-2"
             >
               <p className="text-xs font-medium text-caution-900">{entry.disruption.title}</p>
               <p className="mt-0.5 text-xs leading-5 text-ink-700">
@@ -581,7 +622,7 @@ async function ChangesSinceStarted({
           {pressing.map((entry) => (
             <li
               key={entry.change.id}
-              className="rounded-lg border border-caution-500/40 bg-caution-50 px-3 py-2"
+              className="rounded-control border border-caution-500/40 bg-caution-50 px-3 py-2"
             >
               <p className="text-xs font-medium text-caution-900">{entry.change.title}</p>
               <p className="mt-0.5 text-xs leading-5 text-ink-700">

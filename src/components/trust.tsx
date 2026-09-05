@@ -100,7 +100,7 @@ export function FieldSignals({
   if (cautions.length === 0) return null
 
   return (
-    <div className="mt-2 space-y-1 rounded-md border border-caution-500/40 bg-caution-50 px-2.5 py-2">
+    <div className="mt-2 space-y-1 rounded-control border border-caution-500/40 bg-caution-50 px-2.5 py-2">
       {cautions.map((signal) => (
         <Caution key={signal.id}>{cautionText(signal, t)}</Caution>
       ))}
@@ -246,7 +246,7 @@ export function RoutePassportPanel({
   return (
     <section
       aria-label={t.trust.passport.title}
-      className="rounded-xl border border-hairline bg-surface p-4"
+      className="rounded-panel border border-hairline bg-surface p-4"
     >
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full border border-hairline px-3 py-1 text-xs font-medium text-ink-900">
@@ -285,7 +285,7 @@ export function RoutePassportPanel({
       )}
 
       {passport.cautions.length === 0 ? null : (
-        <div className="mt-3 space-y-1 rounded-md border border-caution-500/40 bg-caution-50 px-2.5 py-2">
+        <div className="mt-3 space-y-1 rounded-control border border-caution-500/40 bg-caution-50 px-2.5 py-2">
           <p className="text-xs font-medium text-caution-900">{t.trust.passport.readWithCare}</p>
           {passport.cautions.map((caution) => (
             <Caution key={caution}>{t.trust.routeCaution[caution]}</Caution>

@@ -37,7 +37,7 @@ import type { RelevantChange, RelevantDisruption } from '@/server/journeys/chang
  */
 
 const INPUT =
-  'mt-1 block w-full rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
+  'mt-1 block w-full rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════
    Severity and dates
@@ -112,7 +112,7 @@ export function AnnouncedChangeCard({
   children?: React.ReactNode
 }) {
   return (
-    <li className="rounded-xl border border-hairline bg-surface p-4">
+    <li className="rounded-panel border border-hairline bg-surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <h3 className="text-sm font-semibold text-ink-900">{change.title}</h3>
         <div className="flex flex-wrap gap-1.5">
@@ -174,7 +174,7 @@ function RelevanceNote({
 
   if (relevance.weight === 'caution') {
     return (
-      <div className="mt-3 rounded-lg border border-caution-500/40 bg-caution-50 px-3 py-2">
+      <div className="mt-3 rounded-control border border-caution-500/40 bg-caution-50 px-3 py-2">
         {body}
       </div>
     )
@@ -247,7 +247,7 @@ function StanceControl({
             type="submit"
             name="stance"
             value={stance}
-            className="rounded-lg border border-hairline px-2.5 py-1 text-xs text-ink-900 hover:border-brand-700 hover:text-brand-900"
+            className="rounded-control border border-hairline px-2.5 py-1 text-xs text-ink-900 hover:border-brand-700 hover:text-brand-900"
           >
             {t.changes.stance[stance]}
           </button>
@@ -342,7 +342,7 @@ export function DisruptionCard({
 
   return (
     <li
-      className={`rounded-xl border p-4 ${
+      className={`rounded-panel border p-4 ${
         disruption.active
           ? 'border-caution-500/40 bg-caution-50'
           : 'border-hairline bg-surface opacity-80'
@@ -399,7 +399,7 @@ export function DisruptionCard({
 
       {relevance === undefined || relevance.weight === null ? null : relevance.weight ===
         'caution' ? (
-        <div className="mt-3 rounded-lg border border-caution-500/40 bg-surface px-3 py-2">
+        <div className="mt-3 rounded-control border border-caution-500/40 bg-surface px-3 py-2">
           <Caution>{t.changes.disruptionBearing[relevance.bearing]}</Caution>
         </div>
       ) : (
@@ -453,7 +453,7 @@ export function ResolveDisruptionControl({
       </label>
       <button
         type="submit"
-        className="rounded-lg border border-hairline px-2.5 py-1.5 text-xs text-ink-900 hover:border-brand-700 hover:text-brand-900"
+        className="rounded-control border border-hairline px-2.5 py-1.5 text-xs text-ink-900 hover:border-brand-700 hover:text-brand-900"
       >
         {t.changes.resolveDisruption}
       </button>
@@ -538,7 +538,7 @@ export function ExactChange({
       {shadow.fieldChanges.length === 0 ? null : (
         <ul className="mt-2 space-y-2">
           {shadow.fieldChanges.map((entry) => (
-            <li key={entry.revisionId} className="rounded-lg border border-hairline p-2.5">
+            <li key={entry.revisionId} className="rounded-control border border-hairline p-2.5">
               {entry.before === null ? (
                 <p className="text-xs text-ink-500">{t.changes.valueAdded}</p>
               ) : (

@@ -363,6 +363,59 @@ describe('the hard shapes produce the structure they claim', () => {
     }
   })
 
+  /**
+   * **The ribbon comes out the same width whatever the route's shape** — Phase 12E.
+   *
+   * `fitWidth` exists so a ribbon fills its row in a list of search results. If a one-step
+   * route drew narrower than a ten-step one, the list would look ragged and each ribbon would
+   * be claiming a different amount of the reader's attention for no reason connected to the
+   * route.
+   *
+   * This is a regression test for a real defect: `gaps` was clamped to a minimum of 1 while
+   * the width formula still added `0 · columnWidth` for a single-rank route, so the two
+   * disagreed and a one-rank ribbon came out **474 units instead of 960** — half width.
+   * Every fixture with two or more ranks was correct, which is exactly why it survived, and
+   * whether the browser test caught it depended on which route happened to be newest.
+   */
+  it('normalises the ribbon to one width whatever the rank count', () => {
+    const make = (ranks: number): RouteGraph => {
+      const steps = Array.from({ length: ranks }, (_, i) => ({
+        id: `s${i}`,
+        label: `Step ${i}`,
+        category: StepCategory.documents_preparation,
+        archived: false,
+        earliestStartOffsetDays: null,
+        typicalDurationDays: null,
+      }))
+      return {
+        steps,
+        edges: steps.slice(1).map((step, i) => ({
+          id: `e${i}`,
+          fromStepId: steps[i]?.id ?? '',
+          toStepId: step.id,
+          kind: StepEdgeKind.sequential,
+          archived: false,
+        })),
+      }
+    }
+
+    for (const ranks of [1, 2, 3, 5, 12]) {
+      expect(Math.round(layout(make(ranks), RIBBON).width), `${ranks} ranks`).toBe(960)
+    }
+
+    // Concurrent steps are one rank with two lanes, and must normalise the same way.
+    const parallel = make(1)
+    expect(
+      Math.round(
+        layout(
+          { ...parallel, steps: [...parallel.steps, { ...parallel.steps[0]!, id: 'b' }] },
+          RIBBON,
+        ).width,
+      ),
+      'one rank, two lanes',
+    ).toBe(960)
+  })
+
   it('fits a 15-step route inside 360px at the narrow density', () => {
     // The whole mobile strategy: a density constant, not a second renderer.
     const frame = layout(FIXTURES['F8 wrapping15'] as RouteGraph, ROAD_NARROW)

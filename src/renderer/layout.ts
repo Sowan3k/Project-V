@@ -285,7 +285,7 @@ export function layout(graph: RouteGraph, density: Density): Layout {
   const columnsOnWidestRow = Number.isFinite(perRow)
     ? Math.min(perRow, maxRank + 1)
     : maxRank + 1
-  const gaps = Math.max(1, columnsOnWidestRow - 1)
+  const gaps = columnsOnWidestRow - 1
 
   /**
    * Marker width as a fraction of its column, when `fillColumns` is on. Just under 1 so a
@@ -301,6 +301,18 @@ export function layout(graph: RouteGraph, density: Density): Layout {
    * becomes `width = 2·padding + columnWidth·(FILL + columns − 1)` — still one unknown, and
    * still solvable directly. Making the marker depend on the column and the column depend on
    * the marker would be circular; this substitutes rather than iterating.
+   *
+   * ───────────────────────────────────────────────────────────────────────────────────────
+   * **`gaps` is `columns − 1`, and clamping it to a minimum of 1 was a bug.** The clamp made
+   * the denominator `FILL + 1` for a single-rank route while the width formula still added
+   * `0 · columnWidth`, so the two disagreed and a one-rank ribbon came out **474 units wide
+   * instead of 960** — half width, in a row sized for a full one.
+   *
+   * It only showed on routes with exactly one rank, which is why it survived: every fixture
+   * with two or more was correct, and whether the E2E caught it depended on which route
+   * happened to be newest in search. The denominator has to be exactly the coefficient of
+   * `columnWidth` in the width formula, and now is. `FILL` is non-zero, so there is no
+   * division by zero to guard against.
    */
   const columnWidth =
     density.fitWidth === undefined

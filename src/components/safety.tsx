@@ -17,9 +17,9 @@ import type { FieldView, RouteDetail, StepView } from '@/server/routes/read'
  * have made in a minute (§23.1, §23.3).
  */
 
-const FORM = 'mt-2 grid gap-2 rounded-lg border border-caution-500/40 bg-caution-50 p-3'
+const FORM = 'mt-2 grid gap-2 rounded-control border border-caution-500/40 bg-caution-50 p-3'
 const INPUT =
-  'mt-1 block w-full rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
+  'mt-1 block w-full rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
 const LABEL = 'text-xs text-ink-700'
 
 /** FR-35, FR-37. Any signed-in user; nothing about the field changes. */
@@ -68,7 +68,7 @@ export function ReportAction({
 
         <button
           type="submit"
-          className="justify-self-start rounded-lg bg-caution-900 px-3 py-1.5 text-xs font-medium text-white"
+          className="justify-self-start rounded-control bg-caution-900 px-3 py-1.5 text-xs font-medium text-white"
         >
           {t.safety.submitReport}
         </button>
@@ -103,7 +103,7 @@ export function QuarantineNotice({
   if (!field.quarantined) return null
 
   return (
-    <div className="mt-1 rounded-md border border-caution-500/40 bg-caution-50 px-2.5 py-2">
+    <div className="mt-1 rounded-control border border-caution-500/40 bg-caution-50 px-2.5 py-2">
       <p className="text-xs font-medium text-caution-900">{t.safety.quarantinedTitle}</p>
       <p className="mt-1 text-xs leading-5 text-ink-700">{t.safety.quarantinedBody}</p>
 

@@ -28,12 +28,26 @@ export function RouteContext({
   dictionary: t,
   locale,
   tab,
+  rail,
   children,
 }: {
   route: RouteDetail
   dictionary: Dictionary
   locale: string
   tab: RouteTab
+  /**
+   * Panels a tab contributes to the page's own right rail — Phase 12E.
+   *
+   * Without this, a tab that wanted a rail had to nest a second `PageGrid` inside the body's
+   * eight-of-twelve region, which gave its rail about 265px and squeezed the main column to
+   * roughly 530. The journey tab did exactly that. `PageGrid` describes the *page* canvas;
+   * nesting one inside a region of itself is what produces those numbers.
+   *
+   * VR-05 and VR-06 both show one rail carrying route maturity *and* the journey's own
+   * panels together, which is what this makes possible: the tab hands its panels up rather
+   * than building a second column inside its own.
+   */
+  rail?: React.ReactNode
   children: React.ReactNode
 }) {
   const base = `/${locale}/routes/${route.slug}`
@@ -182,8 +196,12 @@ export function RouteContext({
         <PageGrid>
           <GridRegion span={8}>{children}</GridRegion>
           <GridRegion span={4}>
-            <div className="space-y-3 lg:sticky lg:top-6">
+            {/* Not sticky when a tab contributes panels: a rail that scrolls with the reader
+                is right when it holds one summary, and wrong when it holds a column of
+                content taller than the viewport. */}
+            <div className={`space-y-3 ${rail === undefined ? 'lg:sticky lg:top-6' : ''}`}>
               <RoutePassportPanel trust={route.trust} dictionary={t} />
+              {rail}
             </div>
           </GridRegion>
         </PageGrid>

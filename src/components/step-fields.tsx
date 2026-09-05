@@ -132,7 +132,7 @@ function FieldRow({
   const trust = toFieldTrustInput(field)
 
   return (
-    <li className="rounded-lg border border-hairline bg-surface-muted p-3">
+    <li className="rounded-control border border-hairline bg-surface-muted p-3">
       <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">
         {t.fieldCategory[field.category]}
       </p>

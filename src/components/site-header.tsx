@@ -49,7 +49,7 @@ export async function SiteHeader({
           </Link>
 
           {viewer === null ? (
-            <Link href={`/${locale}/signin`} className={buttonClass('secondary', 'py-2')}>
+            <Link href={`/${locale}/signin`} className={buttonClass('secondary', { className: 'py-2' })}>
               {t.auth.signIn}
             </Link>
           ) : (

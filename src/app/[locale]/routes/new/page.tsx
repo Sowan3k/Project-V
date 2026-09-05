@@ -23,7 +23,7 @@ import { createRouteAction } from './actions'
 export const dynamic = 'force-dynamic'
 
 const INPUT =
-  'mt-1 block w-full rounded-lg border border-hairline bg-surface px-3 py-2 text-sm text-ink-900'
+  'mt-1 block w-full rounded-control border border-hairline bg-surface px-3 py-2 text-sm text-ink-900'
 const LABEL = 'block text-sm text-ink-700'
 
 /**
@@ -158,7 +158,7 @@ export default async function NewRoutePage({
             <textarea name="summary" rows={3} className={INPUT} />
           </label>
 
-          <button type="submit" className={buttonClass('primary', 'justify-self-start')}>
+          <button type="submit" className={buttonClass('primary', { className: 'justify-self-start' })}>
             {t.contribute.publish}
           </button>
         </form>

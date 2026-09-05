@@ -93,7 +93,7 @@ export default async function RoutePage({
       <section>
         <h2 className="sr-only">{t.route.roadLabel}</h2>
         {/* Wide content scrolls in its own container; the page never scrolls sideways. */}
-        <div className="overflow-x-auto rounded-xl border border-hairline bg-surface p-4">
+        <div className="overflow-x-auto rounded-panel border border-hairline bg-surface p-4">
           <ResponsiveRoad graph={route.graph} strings={rendererStrings(t)} />
         </div>
       </section>
@@ -123,7 +123,7 @@ export default async function RoutePage({
                       href={href}
                       scroll={false}
                       aria-current={isOpen ? 'true' : undefined}
-                      className={`flex items-baseline gap-3 rounded-xl border p-4 ${
+                      className={`flex items-baseline gap-3 rounded-panel border p-4 ${
                         isOpen
                           ? 'border-brand-500 bg-brand-500/5'
                           : 'border-hairline bg-surface hover:border-ink-500/30'
@@ -167,11 +167,11 @@ export default async function RoutePage({
             a phone — so selecting a step never replaces the journey it belongs to. */}
         <GridRegion span={7}>
           {openStep === null ? (
-            <div className="rounded-xl border border-dashed border-hairline p-6 text-sm text-ink-500">
+            <div className="rounded-panel border border-dashed border-hairline p-6 text-sm text-ink-500">
               {t.route.selectAStep}
             </div>
           ) : (
-            <div className="rounded-xl border border-hairline bg-surface p-4 lg:sticky lg:top-6">
+            <div className="rounded-panel border border-hairline bg-surface p-4 lg:sticky lg:top-6">
               <StepFields
                 step={openStep}
                 fields={fields}

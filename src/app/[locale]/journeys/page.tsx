@@ -102,7 +102,7 @@ export default async function JourneysPage({
                 (row) => row.status === JourneyStepStatus.completed,
               ).length
               return (
-                <li key={journey.id} className="rounded-xl border border-hairline bg-surface">
+                <li key={journey.id} className="rounded-panel border border-hairline bg-surface">
                   <Link href={`/${locale}/routes/${journey.routeSlug}/journey`} className="block p-4">
                     <p className="font-medium text-ink-900">{journey.routeTitle}</p>
                     <p className="mt-1 text-xs text-ink-500">

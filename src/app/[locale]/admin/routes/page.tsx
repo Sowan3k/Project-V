@@ -61,7 +61,7 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 const INPUT =
-  'mt-1 block w-full rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
+  'mt-1 block w-full rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
 const LABEL = 'block text-xs text-ink-700'
 
 export default async function AdminRoutesPage({
@@ -98,7 +98,7 @@ export default async function AdminRoutesPage({
           <input type="hidden" name="locale" value={locale} />
           <button
             type="submit"
-            className="rounded-lg border border-brand-700 px-3 py-1.5 text-xs font-medium text-brand-700"
+            className="rounded-control border border-brand-700 px-3 py-1.5 text-xs font-medium text-brand-700"
           >
             {t.admin.runReview}
           </button>
@@ -118,7 +118,7 @@ export default async function AdminRoutesPage({
           ) : (
             <ul className="mt-3 space-y-3">
               {flags.map((flag) => (
-                <li key={flag.id} className="rounded-xl border border-hairline bg-surface p-4">
+                <li key={flag.id} className="rounded-panel border border-hairline bg-surface p-4">
                   <p className="text-sm text-ink-900">
                     <Link
                       href={`/${locale}/routes/${flag.routeSlug}`}
@@ -150,7 +150,7 @@ export default async function AdminRoutesPage({
                     </label>
                     <button
                       type="submit"
-                      className="rounded-lg border border-hairline px-2.5 py-1.5 text-xs text-ink-900"
+                      className="rounded-control border border-hairline px-2.5 py-1.5 text-xs text-ink-900"
                     >
                       {t.admin.notDuplicate}
                     </button>
@@ -196,7 +196,7 @@ function RouteMaintenanceRow({
   dictionary: Dictionary
 }) {
   return (
-    <li className="rounded-xl border border-hairline bg-surface p-4">
+    <li className="rounded-panel border border-hairline bg-surface p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <Link
           href={`/${locale}/routes/${route.slug}`}
@@ -236,7 +236,7 @@ function RouteMaintenanceRow({
             </label>
             <button
               type="submit"
-              className="justify-self-start rounded-lg border border-brand-700 px-3 py-1.5 text-xs font-medium text-brand-700"
+              className="justify-self-start rounded-control border border-brand-700 px-3 py-1.5 text-xs font-medium text-brand-700"
             >
               {t.admin.setState}
             </button>
@@ -267,7 +267,7 @@ function RouteMaintenanceRow({
               </label>
               <button
                 type="submit"
-                className="justify-self-start rounded-lg border border-hairline px-3 py-1.5 text-xs text-ink-900"
+                className="justify-self-start rounded-control border border-hairline px-3 py-1.5 text-xs text-ink-900"
               >
                 {t.admin.mergeSubmit}
               </button>

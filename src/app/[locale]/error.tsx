@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 
+import { buttonClass } from '@/components/ui'
+
 import { PageCanvas } from '@/components/layout'
 
 /**
@@ -48,13 +50,13 @@ export default function ErrorBoundary({
           <button
             type="button"
             onClick={reset}
-            className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white"
+            className={buttonClass()}
           >
             Try again
           </button>
           <Link
             href="/en"
-            className="rounded-lg border border-hairline px-4 py-2 text-sm text-ink-900"
+            className={buttonClass('secondary')}
           >
             Go to the start
           </Link>

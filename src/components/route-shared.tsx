@@ -83,7 +83,7 @@ export function FlyWindowNote({
   }
 
   return (
-    <div className="rounded-lg border border-hairline bg-surface-muted p-3 text-sm">
+    <div className="rounded-control border border-hairline bg-surface-muted p-3 text-sm">
       <p className="font-medium text-ink-900">{t.flyWindow.label}</p>
       <p className="mt-0.5 text-ink-700">{value}</p>
       <p className="mt-1 text-xs text-ink-500">{t.flyWindow.estimate}</p>

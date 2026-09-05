@@ -82,7 +82,7 @@ export function MergedNotice({
   if (route.mergedInto === null) return null
 
   return (
-    <section className="mt-4 rounded-xl border border-brand-500/40 bg-brand-500/5 p-4">
+    <section className="mt-4 rounded-panel border border-brand-500/40 bg-brand-500/5 p-4">
       <h2 className="text-sm font-semibold text-brand-900">{t.lifecycle.mergedTitle}</h2>
       <p className="mt-1 text-sm leading-6 text-ink-700">
         {t.lifecycle.mergedBody(route.mergedInto.title)}
@@ -154,7 +154,7 @@ export function LifecycleHistory({
       ) : (
         <ul className="mt-3 space-y-2">
           {events.map((event) => (
-            <li key={event.id} className="rounded-lg border border-hairline bg-surface px-3 py-2">
+            <li key={event.id} className="rounded-control border border-hairline bg-surface px-3 py-2">
               <p className="text-sm text-ink-900">
                 {t.routeLifecycle[event.fromState]} → {t.routeLifecycle[event.toState]}
               </p>
@@ -229,7 +229,7 @@ export function FlagDuplicateForm({
       ) : (
         <form
           action={action}
-          className="mt-2 grid gap-2 rounded-lg border border-hairline bg-surface p-3"
+          className="mt-2 grid gap-2 rounded-control border border-hairline bg-surface p-3"
         >
           <input type="hidden" name="locale" value={locale} />
           <input type="hidden" name="slug" value={route.slug} />
@@ -241,7 +241,7 @@ export function FlagDuplicateForm({
             {t.lifecycle.flagDuplicateOf}
             <select
               name="duplicateOfId"
-              className="mt-1 block w-full rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900"
+              className="mt-1 block w-full rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900"
             >
               <option value="">—</option>
               {candidates.map((candidate) => (
@@ -257,13 +257,13 @@ export function FlagDuplicateForm({
             <textarea
               name="duplicateNote"
               rows={2}
-              className="mt-1 block w-full rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900"
+              className="mt-1 block w-full rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900"
             />
           </label>
 
           <button
             type="submit"
-            className="justify-self-start rounded-lg border border-hairline px-3 py-1.5 text-xs text-ink-900"
+            className="justify-self-start rounded-control border border-hairline px-3 py-1.5 text-xs text-ink-900"
           >
             {t.lifecycle.flagDuplicateSubmit}
           </button>

@@ -24,7 +24,7 @@ export function RouteRibbon({
   locale: string
 }) {
   return (
-    <li className="rounded-xl border border-hairline bg-surface transition-shadow hover:shadow-sm">
+    <li className="rounded-panel border border-hairline bg-surface transition-shadow hover:shadow-sm">
       <Link href={`/${locale}/routes/${route.slug}`} className="block p-4 focus:outline-2">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <h3 className="text-base font-semibold text-ink-900">{route.title}</h3>

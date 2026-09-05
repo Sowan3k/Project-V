@@ -95,7 +95,7 @@ export function ChangeScale({
   if (fieldsChanged) lines.push(t.changes.fieldsChanged(fieldsChanged))
 
   return (
-    <section className="rounded-xl border border-hairline bg-surface p-4">
+    <section className="rounded-panel border border-hairline bg-surface p-4">
       <h2 className="text-sm font-semibold text-ink-900">{t.changes.summaryTitle}</h2>
       {lines.length === 0 ? (
         <p className="mt-2 text-sm text-ink-700">{t.changes.nothingYet}</p>
@@ -133,7 +133,7 @@ function RoadPanel({
   annotations?: RouteAnnotations
 }) {
   return (
-    <section className="rounded-xl border border-hairline bg-surface p-4">
+    <section className="rounded-panel border border-hairline bg-surface p-4">
       <h3 className="text-sm font-semibold text-ink-900">{heading}</h3>
       <p className="mt-0.5 text-xs text-ink-500">{subheading}</p>
       {/* Wide content scrolls inside its own box; the page never scrolls sideways. */}
@@ -197,7 +197,7 @@ export function ComparisonRows({
   dictionary: Dictionary
 }) {
   return (
-    <section className="mt-6 rounded-xl border border-hairline bg-surface">
+    <section className="mt-6 rounded-panel border border-hairline bg-surface">
       <div className="hidden border-b border-hairline sm:grid sm:grid-cols-[1fr_auto_1fr] sm:gap-4 sm:px-4 sm:py-2">
         <h3 className="text-xs font-medium tracking-wide text-ink-500 uppercase">
           {beforeHeading}

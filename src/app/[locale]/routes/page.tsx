@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { ROUTE_MECHANISMS, STUDY_LEVELS } from '@/domain/enums'
+import { buttonClass } from '@/components/ui'
 import type { RouteMechanism, StudyLevel } from '@/domain/enums'
 import { GridRegion, PageCanvas, PageGrid } from '@/components/layout'
 import { Chip, EmptyState, LinkButton } from '@/components/ui'
@@ -111,7 +112,7 @@ export default async function RouteSearchPage({
           <select
             name="from"
             defaultValue={one(query.from) ?? ''}
-            className="mt-1 w-full rounded-lg border border-hairline bg-surface px-3 py-2"
+            className="mt-1 w-full rounded-control border border-hairline bg-surface px-3 py-2"
           >
             <option value="">{t.search.any}</option>
             {options.origins.map((code) => (
@@ -127,7 +128,7 @@ export default async function RouteSearchPage({
           <select
             name="to"
             defaultValue={one(query.to) ?? ''}
-            className="mt-1 w-full rounded-lg border border-hairline bg-surface px-3 py-2"
+            className="mt-1 w-full rounded-control border border-hairline bg-surface px-3 py-2"
           >
             <option value="">{t.search.any}</option>
             {options.destinations.map((code) => (
@@ -143,7 +144,7 @@ export default async function RouteSearchPage({
           <select
             name="level"
             defaultValue={level ?? ''}
-            className="mt-1 w-full rounded-lg border border-hairline bg-surface px-3 py-2"
+            className="mt-1 w-full rounded-control border border-hairline bg-surface px-3 py-2"
           >
             <option value="">{t.search.any}</option>
             {STUDY_LEVELS.map((value) => (
@@ -159,7 +160,7 @@ export default async function RouteSearchPage({
           <select
             name="mechanism"
             defaultValue={mechanism ?? ''}
-            className="mt-1 w-full rounded-lg border border-hairline bg-surface px-3 py-2"
+            className="mt-1 w-full rounded-control border border-hairline bg-surface px-3 py-2"
           >
             <option value="">{t.search.any}</option>
             {ROUTE_MECHANISMS.map((value) => (
@@ -173,7 +174,7 @@ export default async function RouteSearchPage({
         <div className="flex items-center gap-3 sm:col-span-2 lg:col-span-1">
           <button
             type="submit"
-            className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-900"
+            className={buttonClass()}
           >
             {t.search.submit}
           </button>
