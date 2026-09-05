@@ -533,8 +533,21 @@ export const en = {
       'You never need an account to read this platform. Signing in lets you contribute corrections and keep a private journey.',
     withGoogle: 'Continue with Google',
     whatWeStore: 'What we keep',
+    /**
+     * The complete list, checked against the database — audit F13.
+     *
+     * This used to read "Your email address … Nothing else", which was not true: the account
+     * row also held Google's access token and id token, and an id token is a signed JWT
+     * carrying the name and photograph the sentence promised we did not keep. The tokens are
+     * gone now — dropped from the schema and no longer written — but the lesson is that a
+     * closed claim like "nothing else" has to be checkable, so this enumerates instead.
+     *
+     * Four things, and each is here because something breaks without it: the email
+     * recognises a returning person, the Google account id is what the sign-in resolves
+     * through, the handle is how contributions appear, and the date is when the row began.
+     */
     whatWeStoreBody:
-      'Your email address, so we recognise you when you come back. Nothing else — not your name, not your photograph. You appear to other people only as a generated handle.',
+      'Four things: your email address, so we recognise you when you come back; the account identifier Google gives us, which is how signing in finds you again; the handle we generate for you; and the date your account started. Not your name, not your photograph, and no sign-in tokens. You appear to other people only as your handle.',
     yourHandle: 'Your public handle',
     handleExplainer: 'This is how contributions appear to others. It is not your name.',
     notConfigured:
@@ -767,6 +780,28 @@ export const en = {
     mergeNote: 'Why (kept with the decision)',
     mergeExplainer:
       'The duplicate keeps every step, field, revision and follower it has. It leaves search and sends readers to the surviving route. Nothing is copied, moved or deleted, and the merge can be undone.',
+    /**
+     * Only routes that could be the same journey are offered — audit F5.
+     *
+     * The words say what the filter did, because an administrator who cannot find the route
+     * they expected needs to know it was excluded rather than missing.
+     */
+    mergeCandidatesHint:
+      'Only routes with the same origin, destination and study level. Two routes that differ on any of those are different journeys, not two descriptions of one.',
+    mergeNoCandidates:
+      'No other route shares this route’s origin, destination and study level, so there is nothing it could be a duplicate of.',
+    /**
+     * Named beside a candidate, never used to hide it.
+     *
+     * §40.1 says a mechanism is what makes two routes for the same pair materially different,
+     * and §40.4 equally permits judging that one of them is simply mislabelled. The baseline
+     * does not say which reading wins, so this is shown to the person deciding rather than
+     * decided for them (src/domain/merge.ts).
+     */
+    mergeCaution: {
+      differing_mechanism: 'different funding route',
+      differing_intake: 'different intake',
+    },
     unmergeSubmit: 'Undo this merge',
     notDuplicate: 'They are different journeys',
     setState: 'Set standing',

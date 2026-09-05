@@ -1,13 +1,12 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * Phase 0 smoke coverage.
+ * End-to-end coverage.
  *
  * By default this starts nothing remote: it builds and runs the production build locally,
- * so the smoke suite is meaningful from a clean checkout with no deployment.
+ * so the suite is meaningful from a clean checkout with no deployment.
  *
- * Point the same specs at a deployed Vercel preview with E2E_BASE_URL — that is the
- * Phase 0 exit criterion "Playwright smoke test loads the deployed preview":
+ * Point the same specs at a deployed Vercel preview with E2E_BASE_URL:
  *
  *   E2E_BASE_URL=https://<deployment> npm run test:e2e
  *
@@ -19,6 +18,47 @@ const usingDeployedTarget = Boolean(process.env.E2E_BASE_URL)
 
 /** Where the setup project saves the deployment-protection bypass cookie. */
 export const STORAGE_STATE = 'test-results/.deployment-access.json'
+
+/**
+ * Local Auth.js configuration, made deterministic — audit F23.
+ *
+ * Four specs fabricate a session row and set the cookie Auth.js reads. That only works if
+ * Auth.js has a secret and trusts the host: without them every session read returns null,
+ * the signed-in specs silently exercise the signed-out product, and the failures read as
+ * missing UI rather than as missing configuration. `.env.test.local` carries database URLs
+ * and nothing else, and it is gitignored, so it could not be relied on to carry these.
+ *
+ * Assigned onto this process rather than passed only to the server, for two reasons: the
+ * spawned server inherits this environment, and `e2e/database-guard.setup.ts` can then assert
+ * the arrangement holds instead of hoping it does.
+ *
+ * The secret is local-only and public by design — it signs cookies for a server this config
+ * starts and stops. The deployment's own secret lives in Vercel and never appears here.
+ */
+if (!usingDeployedTarget) {
+  process.env.AUTH_SECRET ??= 'e2e-only-secret-not-used-anywhere-else'
+  process.env.AUTH_URL ??= baseURL
+  process.env.AUTH_TRUST_HOST ??= 'true'
+}
+
+/**
+ * Reusing a server is opt-in, and it used to be the default — audit F23.
+ *
+ * `reuseExistingServer: !CI` meant a local run attached to whatever was already listening on
+ * port 3100 and trusted it completely. During the audit that was a stale process serving
+ * uncompiled CSS, and the suite reported failures against code nobody was running. A test
+ * result about an unidentified binary is not a result.
+ *
+ * The fix is to own the server rather than to identify it: Playwright builds and starts its
+ * own, and if the port is busy the run fails with "port already used", which is a true
+ * statement rather than a silent substitution.
+ *
+ * `E2E_REUSE_SERVER=1` restores the old behaviour for a developer iterating on specs against
+ * a server they started themselves and can vouch for. It is never set in CI, and the
+ * disposable-database guard still runs either way — that check is about the database, which
+ * is the part a wrong answer cannot be undone on.
+ */
+const reuseExistingServer = process.env.E2E_REUSE_SERVER === '1'
 
 const viewports = {
   // 360px is a first-class target, not an afterthought (CLAUDE.md §7).
@@ -42,7 +82,19 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [
-    { name: 'setup', testMatch: /.*\.setup\.ts/ },
+    /**
+     * Runs before anything that writes, and everything else depends on it transitively.
+     *
+     * Its own project rather than another file in `setup`, because Playwright runs the files
+     * within one project in parallel: a guard that raced the seed it exists to guard would be
+     * decorative. A dependency is an ordering the runner enforces.
+     */
+    { name: 'guard', testMatch: /database-guard\.setup\.ts/ },
+    {
+      name: 'setup',
+      testMatch: /(deployment-access|seed-route)\.setup\.ts/,
+      dependencies: ['guard'],
+    },
     ...Object.entries(viewports).map(([name, viewport]) => ({
       name,
       use: { ...devices['Desktop Chrome'], viewport, storageState: STORAGE_STATE },
@@ -52,19 +104,20 @@ export default defineConfig({
   webServer: usingDeployedTarget
     ? undefined
     : {
-        // The local server runs against the TEST database, never production. The route
-        // journey spec seeds a route to walk through, and seeded test data must not reach
-        // production (content track rules, content/README.md).
+        // The local server runs against the TEST database, never production. That is now
+        // *proved* by `e2e/database-guard.setup.ts` rather than asserted by this comment —
+        // the seed and the specs write through the Playwright process, which this prefix
+        // never reached (audit F2).
         //
         // On a workstation that database is named in `.env.test.local`. In CI there is no
         // such file — the workflow supplies `DATABASE_URL` for a throwaway Postgres service
         // container directly, so prefixing with `dotenv -e` there would fail on a missing
-        // file. Same guarantee either way: never production.
+        // file.
         command: process.env.CI
           ? 'npm run build && npm run start -- --port 3100'
           : 'npm run build && dotenv -e .env.test.local -- npm run start -- --port 3100',
         url: baseURL,
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer,
         timeout: 180_000,
       },
 })

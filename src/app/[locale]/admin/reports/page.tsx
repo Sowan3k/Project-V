@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 import { ContentColumn, GridRegion, PageCanvas, PageGrid } from '@/components/layout'
-import { REPORT_OUTCOMES } from '@/domain/enums'
+import { RECORDABLE_REPORT_OUTCOMES } from '@/domain/enums'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { currentViewer } from '@/server/auth'
@@ -147,8 +147,19 @@ export default async function AdminReportsPage({
                       <input type="hidden" name="fieldId" value={summary.fieldId} />
                       <label className="text-xs text-ink-700">
                         {t.admin.outcome}
+                        {/*
+                          Only outcomes this product can actually perform — audit F11.
+
+                          The list used to be every outcome in the baseline's vocabulary, and
+                          recording one did nothing but set a column: "content removed" beside
+                          a field that was still public. An outcome is a claim that something
+                          happened, so the queue now offers only the claims it can make true.
+                          A correction is a revision somebody makes on the route, and permanent
+                          removal is a separate audited surface that does not exist yet
+                          (src/domain/enums.ts, RECORDABLE_REPORT_OUTCOMES).
+                        */}
                         <select name="outcome" className={INPUT}>
-                          {REPORT_OUTCOMES.map((outcome) => (
+                          {RECORDABLE_REPORT_OUTCOMES.map((outcome) => (
                             <option key={outcome} value={outcome}>
                               {t.reportOutcome[outcome]}
                             </option>

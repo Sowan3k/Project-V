@@ -4,6 +4,7 @@ import Link from 'next/link'
 
 import { ContentColumn, GridRegion, PageCanvas, PageGrid } from '@/components/layout'
 import { ROUTE_LIFECYCLE_STATES } from '@/domain/enums'
+import { mergeCompatibility } from '@/domain/merge'
 import { isLocale } from '@/i18n/config'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 import { getDictionary } from '@/i18n/get-dictionary'
@@ -195,6 +196,18 @@ function RouteMaintenanceRow({
   locale: string
   dictionary: Dictionary
 }) {
+  /**
+   * Routes this one could genuinely be a duplicate of — audit F5.
+   *
+   * Same origin, destination and study level: the route's search identity (FR-01, §9). A
+   * differing mechanism or intake does not disqualify a candidate but is named beside it, so
+   * the administrator weighs it rather than discovering it afterwards.
+   */
+  const candidates = routes
+    .filter((other) => other.id !== route.id)
+    .map((other) => ({ other, ...mergeCompatibility(route, other) }))
+    .filter((candidate) => candidate.compatible)
+
   return (
     <li className="rounded-panel border border-hairline bg-surface p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -250,16 +263,31 @@ function RouteMaintenanceRow({
               <input type="hidden" name="duplicateRouteId" value={route.id} />
               <label className={LABEL}>
                 {t.admin.mergeInto}
+                {/*
+                  Only routes describing the same journey — audit F5.
+
+                  This used to offer every other route, so declaring a Bangladesh→Germany
+                  Master's route superseded by a Bangladesh→Malaysia one was two clicks. The
+                  filter is a convenience, not the rule: `mergeRoutes` refuses an incompatible
+                  pair server-side, because a hidden option is not a permission (CLAUDE.md §9).
+
+                  A differing mechanism or intake is shown rather than hidden — that is a
+                  judgement the baseline leaves to a person (src/domain/merge.ts).
+                */}
                 <select name="canonicalRouteId" className={INPUT}>
                   <option value="">—</option>
-                  {routes
-                    .filter((other) => other.id !== route.id)
-                    .map((other) => (
-                      <option key={other.id} value={other.id}>
-                        {other.title}
-                      </option>
-                    ))}
+                  {candidates.map(({ other, cautions }) => (
+                    <option key={other.id} value={other.id}>
+                      {other.title}
+                      {cautions.length === 0
+                        ? ''
+                        : ` — ${cautions.map((c) => t.admin.mergeCaution[c]).join(', ')}`}
+                    </option>
+                  ))}
                 </select>
+                <span className="mt-0.5 block text-ink-500">
+                  {candidates.length === 0 ? t.admin.mergeNoCandidates : t.admin.mergeCandidatesHint}
+                </span>
               </label>
               <label className={LABEL}>
                 {t.admin.mergeNote}

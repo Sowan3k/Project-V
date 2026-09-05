@@ -139,20 +139,33 @@ model JourneyTask {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// One external sign-in provider linked to a user. Written only by the Auth.js adapter.
+///
+/// **The OAuth credential columns are deliberately absent** — audit F13, fixed 2026-09-05.
+///
+/// The standard Auth.js schema carries `access_token`, `refresh_token`, `id_token`, `scope`,
+/// `token_type`, `expires_at` and `session_state`, and `PrismaAdapter.linkAccount` writes all
+/// of them. This model had them, so a sign-in stored Google's access token and an id token —
+/// a signed JWT carrying the name and photograph the `User` row goes to some trouble not to
+/// keep — while the sign-in page said "your email address … nothing else".
+///
+/// They exist so an application can call the provider's API on a user's behalf. This one
+/// never does. What remains is exactly what recognises a returning person:
+/// `getUserByAccount` resolves `(provider, providerAccountId)` to a user, and reads nothing
+/// else. Token material is sensitive at rest, and the cheapest protection for a secret is not
+/// to hold one (§24.2, §24.3, invariant 7).
+///
+/// The adapter in src/server/auth/config.ts also declines to write them, so this is stated
+/// twice rather than resting on a missing column — the same arrangement `User` uses for
+/// `name` and `image`.
 model Account {
   id                String  @id @default(cuid())
   userId            String
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Auth.js's own account kind — `oidc` for Google. Part of the adapter contract.
   type              String
   provider          String
+  /// The provider's stable subject id. The whole of how a returning person is recognised.
   providerAccountId String
-  refresh_token     String?
-  access_token      String?
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?
-  session_state     String?
 
   @@unique([provider, providerAccountId])
   @@index([userId])

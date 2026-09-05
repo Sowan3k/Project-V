@@ -2,9 +2,17 @@
 
 import { redirect } from 'next/navigation'
 
-import type { RouteMechanism, StudyLevel } from '@/domain/enums'
-import { ROUTE_MECHANISMS, STUDY_LEVELS, StudyLevel as Level } from '@/domain/enums'
-import { optionalText, text } from '@/lib/form-fields'
+import { ROUTE_MECHANISMS, STUDY_LEVELS } from '@/domain/enums'
+import {
+  boundedOptionalText,
+  ContributionInputError,
+  countryCode,
+  LIMITS,
+  optionalEnum,
+  requiredEnum,
+  requiredText,
+} from '@/lib/contribution-input'
+import { text } from '@/lib/form-fields'
 import { currentViewer } from '@/server/auth'
 import { createRoute } from '@/server/revisions/service'
 
@@ -45,37 +53,61 @@ function slugFrom(title: string, origin: string, destination: string): string {
   return `${origin.toLowerCase()}-${destination.toLowerCase()}-${words || 'route'}-${suffix}`
 }
 
-function oneOf<T extends string>(values: readonly T[], raw: string, fallback: T): T {
-  return (values as readonly string[]).includes(raw) ? (raw as T) : fallback
-}
-
+/**
+ * Everything below is validated here rather than by the form — audit F9.
+ *
+ * This action is a POST endpoint reachable without the page ever rendering, so `required`,
+ * `maxlength` and a `<select>` of valid options are advisory. What is published is decided
+ * here, and a route is public knowledge somebody else will rely on (FR-13, FR-75).
+ *
+ * Three specific failures this closes, all of which produced a *published* route:
+ *
+ *   * `.slice(0, 2)` on the country turned "Bangladesh" into "BA" — Bosnia and Herzegovina —
+ *     and `Char(2)` accepted it.
+ *   * An unrecognised study level became `masters`, so a PhD route published as a Master's.
+ *   * A whitespace-only title became an empty one, giving a route no name at all — and the
+ *     slug is derived from the title, so it became `bd-de-route-<random>`.
+ *
+ * Refusal rather than substitution, throughout: publishing something under a contributor's
+ * name that they did not choose is not the safe side of a guess.
+ */
 export async function createRouteAction(formData: FormData): Promise<void> {
   const locale = text(formData, 'locale')
   const viewer = await currentViewer()
   if (!viewer) redirect(`/${locale}/signin?next=${encodeURIComponent(`/${locale}/routes/new`)}`)
 
-  const title = text(formData, 'title').trim()
-  const origin = text(formData, 'originCountry').trim().toUpperCase().slice(0, 2)
-  const destination = text(formData, 'destinationCountry').trim().toUpperCase().slice(0, 2)
-  const slug = slugFrom(title, origin, destination)
+  const title = requiredText(formData, 'title', { max: LIMITS.title, label: 'A route title' })
+  const origin = countryCode(formData, 'originCountry', 'The origin country')
+  const destination = countryCode(formData, 'destinationCountry', 'The destination country')
 
-  const mechanism = oneOf<RouteMechanism | ''>(
-    [...ROUTE_MECHANISMS, ''],
-    text(formData, 'mechanism'),
-    '',
-  )
+  // A route from a country to itself is not a route to study abroad, and the whole search
+  // model is origin → destination (FR-01, §9).
+  if (origin === destination) {
+    throw new ContributionInputError(
+      'destinationCountry',
+      'A route needs a different origin and destination. This one has the same country for both.',
+    )
+  }
+
+  const slug = slugFrom(title, origin, destination)
 
   await createRoute({
     actor: { id: viewer.id },
     slug,
     originCountry: origin,
     destinationCountry: destination,
-    studyLevel: oneOf<StudyLevel>(STUDY_LEVELS, text(formData, 'studyLevel'), Level.masters),
-    intake: optionalText(formData, 'routeIntake'),
-    mechanism: mechanism === '' ? null : mechanism,
+    studyLevel: requiredEnum(formData, 'studyLevel', STUDY_LEVELS, 'Study level'),
+    intake: boundedOptionalText(formData, 'routeIntake', {
+      max: LIMITS.intake,
+      label: 'The intake',
+    }),
+    mechanism: optionalEnum(formData, 'mechanism', ROUTE_MECHANISMS, 'Route type'),
     title,
-    summary: optionalText(formData, 'summary'),
-    reason: optionalText(formData, 'reason'),
+    summary: boundedOptionalText(formData, 'summary', {
+      max: LIMITS.summary,
+      label: 'The summary',
+    }),
+    reason: boundedOptionalText(formData, 'reason', { max: LIMITS.note, label: 'The reason' }),
   })
 
   // Straight to the route, which is where the rest of VR-09's stages happen: add the steps,

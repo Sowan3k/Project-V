@@ -11,6 +11,7 @@ import type {
   StepEdgeKind as StepEdgeKindT,
   StudyLevel as StudyLevelT,
 } from '@/domain/enums'
+import { StepEdgeKind } from '@/domain/enums'
 import { prisma } from '@/server/db/client'
 import { runInRevisionWrite } from '@/server/write-guard'
 
@@ -48,6 +49,14 @@ export interface Change {
   readonly reason?: string | null
 }
 
+/** A structural change that would produce a graph the renderer and diff cannot describe. */
+export class GraphInputError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'GraphInputError'
+  }
+}
+
 export class RevisionConflictError extends Error {
   constructor(
     message: string,
@@ -60,6 +69,40 @@ export class RevisionConflictError extends Error {
 }
 
 type Tx = Prisma.TransactionClient
+
+/**
+ * The transaction handle, exported so a caller can join one rather than open a second.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **Why this is exported at all** — audit F4.
+ *
+ * Some writes to a revisioned model are only half a decision. A lifecycle transition changes
+ * `Route.lifecycleState` *and* records a `RouteLifecycleEvent` saying who moved it and on
+ * what evidence; a merge sets a pointer *and* records the merge. Those pairs were two
+ * transactions, so a failure between them left the visible state changed with no record of
+ * why — which is the one failure the event table exists to prevent.
+ *
+ * The tempting fix is to let `src/server/lifecycle` open its own transaction and write both.
+ * That would break the Phase 3 boundary: only this module may write a revisioned model, and
+ * the boundary is what makes "every change to shared knowledge appends a revision" a property
+ * rather than a habit.
+ *
+ * So the boundary bends the other way. The revision service still owns the transaction and
+ * still performs the revisioned write; a caller may hand it further work to do *inside* that
+ * transaction. The caller never gets a client of its own — the ESLint boundary, the runtime
+ * write guard and the database triggers all still apply to whatever it does with this handle,
+ * so a caller that tried to smuggle a revisioned write through it would be refused exactly as
+ * before.
+ */
+export type RevisionTransaction = Tx
+
+/**
+ * Extra work to commit with a revisioned write, or fail with it.
+ *
+ * Non-revisioned rows only — a `RouteLifecycleEvent`, a `Report` outcome. Anything revisioned
+ * belongs in a function of this module's own.
+ */
+export type WithinRevisionWrite = (tx: RevisionTransaction) => Promise<void>
 
 /**
  * Runs a unit of work inside the sanctioned write context and one database transaction.
@@ -237,6 +280,97 @@ export async function addStep(input: AddStepInput): Promise<{ stepId: string; re
     })
     await tx.step.update({ where: { id: step.id }, data: { currentRevisionId: revision.id } })
     return { stepId: step.id, revisionId: revision.id }
+  })
+}
+
+/**
+ * Add a step and, in the same breath and the same transaction, connect it — audit F7.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **Why this exists rather than two calls.**
+ *
+ * `addStepAction` created the step, then created the edge. Two transactions, so a failure
+ * between them — a predecessor that had been archived, a forged id, a dropped connection —
+ * left a step in the route with no edges at all. That row is a valid graph node and an
+ * invisible one: it does not appear on the road, nothing leads to it, and the only way back
+ * is a repair nobody has a control for.
+ *
+ * **`connectAfterStepId` is validated against the route.** A step id from a *different*
+ * route satisfies every foreign key — `StepEdge` references `steps` without caring which
+ * route they belong to — and would have produced an edge spanning two routes, which the graph
+ * validator, the renderer and the shadow diff all assume cannot exist. The check is here
+ * because this is where the write happens; the form's dropdown is a convenience, not a rule.
+ *
+ * A step with no connection is still permitted, deliberately. Somebody adding three stages
+ * before wiring them together is contributing normally, and refusing the first two until the
+ * third exists would be a worse product than an unconnected node they can see and connect.
+ */
+export interface AddStepWithConnectionInput extends AddStepInput {
+  /** Null or absent adds an unconnected step, which is a legitimate intermediate state. */
+  readonly connectAfterStepId?: string | null
+  readonly edgeKind?: StepEdgeKindT
+}
+
+export async function addStepWithConnection(
+  input: AddStepWithConnectionInput,
+): Promise<{ stepId: string; revisionId: string; edgeId: string | null }> {
+  return write(input, async (tx) => {
+    const predecessorId = input.connectAfterStepId?.trim() || null
+
+    if (predecessorId !== null) {
+      // Read before writing, so an invalid predecessor costs nothing. Inside the transaction,
+      // so a step archived between the check and the write cannot slip through either.
+      const predecessor = await tx.step.findUnique({
+        where: { id: predecessorId },
+        select: { routeId: true, archivedAt: true },
+      })
+      if (predecessor === null || predecessor.routeId !== input.routeId) {
+        throw new GraphInputError(
+          'The step this would follow is not part of this route. An edge may only join two ' +
+            'steps of the same route (FR-57, invariant 22).',
+        )
+      }
+      if (predecessor.archivedAt !== null) {
+        throw new GraphInputError(
+          'The step this would follow has been archived. Restore it first, or add this step ' +
+            'unconnected and connect it afterwards.',
+        )
+      }
+    }
+
+    const step = await tx.step.create({ data: { routeId: input.routeId } })
+    const revision = await tx.stepRevision.create({
+      data: {
+        stepId: step.id,
+        label: input.label,
+        category: input.category,
+        earliestStartOffsetDays: input.earliestStartOffsetDays ?? null,
+        typicalDurationDays: input.typicalDurationDays ?? null,
+        ...attribution(input),
+      },
+    })
+    await tx.step.update({ where: { id: step.id }, data: { currentRevisionId: revision.id } })
+
+    if (predecessorId === null) {
+      return { stepId: step.id, revisionId: revision.id, edgeId: null }
+    }
+
+    const edge = await tx.stepEdge.create({
+      data: { routeId: input.routeId, fromStepId: predecessorId, toStepId: step.id },
+    })
+    const edgeRevision = await tx.stepEdgeRevision.create({
+      data: {
+        stepEdgeId: edge.id,
+        kind: input.edgeKind ?? StepEdgeKind.sequential,
+        ...attribution(input),
+      },
+    })
+    await tx.stepEdge.update({
+      where: { id: edge.id },
+      data: { currentRevisionId: edgeRevision.id },
+    })
+
+    return { stepId: step.id, revisionId: revision.id, edgeId: edge.id }
   })
 }
 
@@ -599,9 +733,22 @@ export async function setFieldQuarantine(input: {
  * current views (FR-21, FR-45, BR-15, invariant 4). There is no delete counterpart to any
  * of these functions, and the runtime guard refuses `delete` on these models outright.
  */
-export async function archiveField(input: Change & { fieldId: string }): Promise<void> {
+export async function archiveField(
+  input: Change & {
+    fieldId: string
+    /**
+     * Committed with the archival — audit F11.
+     *
+     * A moderation outcome saying content was archived, written in the same transaction as
+     * the archival itself. Recording the decision separately is how a report could end up
+     * marked "content archived" beside a field that was still public.
+     */
+    alsoInTransaction?: WithinRevisionWrite
+  },
+): Promise<void> {
   await write(input, async (tx) => {
     await tx.field.update({ where: { id: input.fieldId }, data: { archivedAt: new Date() } })
+    await input.alsoInTransaction?.(tx)
   })
 }
 
@@ -654,12 +801,22 @@ export async function setRouteLifecycleState(input: {
   state: RouteLifecycleStateT
   /** Null for an automatic transition — the absence of a person, not an anonymous one. */
   actorId: string | null
+  /**
+   * The audit event, written in this same transaction — audit F4.
+   *
+   * The state and the record of why it moved commit together or not at all. They used to be
+   * two transactions, which meant a route could end up quietly reclassified with nothing
+   * saying who did it or on what evidence — and `RouteLifecycleEvent` exists precisely so
+   * that question has an answer.
+   */
+  alsoInTransaction?: WithinRevisionWrite
 }): Promise<void> {
   await write({ actor: { id: input.actorId, system: input.actorId === null } }, async (tx) => {
     await tx.route.update({
       where: { id: input.routeId },
       data: { lifecycleState: input.state },
     })
+    await input.alsoInTransaction?.(tx)
   })
 }
 
@@ -681,6 +838,8 @@ export async function setRouteMergePointer(input: {
   mergedIntoId: string | null
   actorId: string
   note?: string | null
+  /** The merge or unmerge record, committed with the pointer it describes — audit F4. */
+  alsoInTransaction?: WithinRevisionWrite
 }): Promise<void> {
   await write({ actor: { id: input.actorId } }, async (tx) => {
     await tx.route.update({
@@ -695,5 +854,6 @@ export async function setRouteMergePointer(input: {
               mergeNote: input.note ?? null,
             },
     })
+    await input.alsoInTransaction?.(tx)
   })
 }

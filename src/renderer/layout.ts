@@ -82,41 +82,32 @@ export interface Density {
 
 /** The expanded form: wraps across rows, labelled, generous (VR-04). */
 export const ROAD: Density = {
-  // Five, not four. At four a five-rank route wrapped onto a second row carrying a single
-  // card, and the row still claimed its full height — so the commonest route shape drew a
-  // long empty sweep and a band of dead space. VR-04 wraps a nine-step route at four per
-  // row, but its cards are wider relative to the canvas than ours.
-  columnsPerRow: 5,
+  // The Road normally shares a canvas with route context. Three readable stages fit that
+  // panel; five forced the type and icons to shrink into a thumbnail (FR-05, VR-04).
+  columnsPerRow: 3,
   columnWidth: 214,
-  rowHeight: 168,
-  laneGap: 84,
+  rowHeight: 174,
+  laneGap: 130,
   // Step *cards* rather than markers — VR-04 puts the number, icon, title and duration on
   // the road itself, and a 128×52 marker has room for a truncated title and nothing else.
   nodeWidth: 176,
-  nodeHeight: 74,
-  padding: 46,
+  nodeHeight: 116,
+  padding: 32,
   showLabels: true,
   carriageway: 30,
 }
 
 /**
- * The road in a panel rather than across a page — Phase 12D.
- *
- * Same cards as `ROAD`, wrapping at three per row instead of five, for a road that has to sit
- * inside a column of a page rather than own the width of one. The landing illustration is the
- * case it exists for: at `ROAD` a six-stage road puts five cards on the first row and one
- * marooned on the second, which looks like a mistake rather than a composition.
- *
- * A density constant, not a second renderer — the same thing `ROAD_NARROW` is, for a
- * different reason (Spike A).
+ * Landing-panel Road: the same three-column blocks as ROAD, with adjusted padding and a
+ * slightly narrower carriageway. A density constant, not a second renderer (invariant 25).
  */
 export const ROAD_COMPACT: Density = {
   columnsPerRow: 3,
   columnWidth: 214,
-  rowHeight: 150,
-  laneGap: 84,
+  rowHeight: 174,
+  laneGap: 130,
   nodeWidth: 176,
-  nodeHeight: 74,
+  nodeHeight: 116,
   padding: 34,
   showLabels: true,
   carriageway: 28,
@@ -131,41 +122,65 @@ export const ROAD_COMPACT: Density = {
  */
 export const ROAD_NARROW: Density = {
   columnsPerRow: 2,
-  columnWidth: 156,
-  rowHeight: 132,
-  laneGap: 68,
-  nodeWidth: 140,
-  nodeHeight: 62,
-  padding: 22,
+  columnWidth: 144,
+  rowHeight: 158,
+  laneGap: 126,
+  nodeWidth: 128,
+  nodeHeight: 114,
+  padding: 20,
   showLabels: true,
   carriageway: 24,
 }
 
 /**
- * The compressed form: one line, icon-only, wide. Same graph, same order, same layout pass.
- *
- * `fitWidth` is what makes it a band rather than a thumbnail — see the field's own note.
- * 960 is a target in user units, not pixels: the viewBox scales the result into whatever the
- * container gives it, so the same ribbon is right in a 1360px canvas and on a 360px phone.
+ * Single-row Ribbon, with labels where segments allow and icons on narrow screens.
+ * The 680/360 target widths preserve readable type and symbols. Long bands retain minimum
+ * segment spacing and scroll inside their container. Same graph, order and layout pass.
  */
 export const RIBBON: Density = {
   columnsPerRow: Number.POSITIVE_INFINITY,
   // The floor, not the value: `fillColumns` derives the real width from this. A very long
-  // route bottoms out here and the ribbon simply comes out wider than 960, which the viewBox
-  // scales back down.
+  // route bottoms out here and retains enough width for its symbols in a local scroller.
   columnWidth: 46,
-  rowHeight: 60,
+  /**
+   * ───────────────────────────────────────────────────────────────────────────────────────
+   * **These are ribbon proportions, and keeping them that way is the whole constraint.**
+   *
+   * An earlier pass raised `nodeHeight` to 78 and `laneGap` to 92 so the segments could carry
+   * a readable label. The label was the right idea and it stays — being able to read
+   * *Documents · IELTS · PTE* without opening the route is worth real estate. But at those
+   * numbers a three-step ribbon measured **359px tall inside a 522px card**, and a one-step
+   * route 158px, so a 1440px screen showed barely one result: the ribbon had become a second
+   * road, and D-33 and invariant 25 exist because it must be the road *compressed*. A list
+   * you cannot compare at a glance is not a list of ribbons.
+   *
+   * 52 is chosen against the label threshold rather than by eye — `RibbonSegment` draws
+   * captions at `h >= 50`, so this is the smallest band that still carries words. It gives
+   * 96px for any route on one rank, whatever its length, and the extra height a genuinely
+   * concurrent route needs is spent only when there is concurrency to show.
+   */
+  rowHeight: 68,
   // Must exceed nodeHeight, or concurrent steps stack on top of each other and the ribbon
   // silently shows fewer steps than the road. Spike A shipped that bug for an afternoon.
-  laneGap: 52,
+  laneGap: 60,
   // Ignored while `fillColumns` is on — kept as the shape this density would have without it.
   nodeWidth: 42,
-  nodeHeight: 42,
-  padding: 9,
+  nodeHeight: 52,
+  padding: 14,
   showLabels: false,
-  fitWidth: 960,
+  fitWidth: 680,
   fillColumns: true,
   carriageway: 0,
+}
+
+/** Readable symbols on a phone, using the same ranks and lanes as the labelled band. */
+export const RIBBON_NARROW: Density = {
+  ...RIBBON,
+  columnWidth: 40,
+  nodeHeight: 38,
+  laneGap: 48,
+  rowHeight: 54,
+  fitWidth: 360,
 }
 
 export interface PlacedNode {
@@ -363,7 +378,7 @@ export function layout(graph: RouteGraph, density: Density): Layout {
   // How far a wrap connector may hook outside the column grid. Bounded by the padding so it
   // stays on the canvas — an earlier version overshot by a fixed offset and the hooks were
   // silently clipped at both edges.
-  const hook = Math.min(columnWidth * 0.35, density.padding)
+  const hook = Math.min(columnWidth * 0.35, Math.max(0, density.padding - density.carriageway / 2 - 2))
   const rowOf = (node: PlacedNode): number => columnFor(node.rank).row
   const flowsRight = (node: PlacedNode): boolean => rowOf(node) % 2 === 0
 
@@ -399,8 +414,10 @@ export function layout(graph: RouteGraph, density: Density): Layout {
     const endY = to.y
 
     if (wraps) {
-      const outX = startX + (flowsRight(from) ? hook : -hook)
-      const inX = endX + (flowsRight(to) ? -hook : hook)
+      // Wrap around the outside of the blocks. A hook measured from their centres was
+      // hidden beneath the blocks and looked like a severed road at every row return.
+      const outX = startX + (flowsRight(from) ? 1 : -1) * (hook + (joinAtCentre ? from.width / 2 : 0))
+      const inX = endX + (flowsRight(to) ? -1 : 1) * (hook + (joinAtCentre ? to.width / 2 : 0))
       const midY = (startY + endY) / 2
       placedEdges.push({
         edge,

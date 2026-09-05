@@ -7,6 +7,121 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Audit remediation gate — 2026-09-05
+
+Independent Codex audit (against committed snapshot `d1150f3`) reconciled against current HEAD,
+then the confirmed A1–A9 gate findings fixed. Phase 12E deliberately **not** continued.
+
+Every finding was re-inspected in the working tree rather than taken on trust, because the
+audit explicitly excluded uncommitted Phase 12E work. Full reconciliation for F1–F27 is in
+[Test.md](Test.md) §16. Fourteen findings confirmed, one already fixed, none rejected outright;
+ten of the twenty-seven were confirmed against code that had not changed since the snapshot.
+
+### Fixed — the A1–A9 gate
+
+- **F2 / A1 — end-to-end seeding could write anywhere.** The integration suite has asserted a
+  `platform_meta` marker since Phase 3; the Playwright suite never did. Only the *webServer*
+  command carried `dotenv -e .env.test.local`, and the Node process doing the seeding (and
+  every spec creating users and sessions) used whatever `DATABASE_URL` it inherited. One shared
+  guard now decides for both, and it fails closed on an absent marker, a wrong marker, an
+  absent URL and an unreadable database. A second hole in the same family: `tests/db/setup.ts`
+  guarded `TEST_DATABASE_URL` while the tests connect through `DATABASE_URL`, so an unset
+  variable waved the suite through rather than skipping it.
+- **F23 / A2 — Playwright trusted an unidentified server.** `reuseExistingServer: !CI` is now
+  opt-in (`E2E_REUSE_SERVER=1`); a run owns its server or fails on a busy port. Local Auth.js
+  configuration is supplied deterministically by the config and asserted by the guard project,
+  so a signed-in spec can no longer quietly exercise the signed-out product.
+- **F14 / A3 — open redirect after sign-in.** `startsWith('/') && !startsWith('//')` let
+  `/\evil.example` through; browsers normalise the backslash and leave the site. Replaced with
+  origin-based URL validation, applied to the sign-in page *and* to Auth.js's own `redirect`
+  callback — `/api/auth/signin/google?callbackUrl=…` is a door of its own and skips the page.
+- **F13 / A4 — sign-in stored more than it claimed.** `PrismaAdapter.linkAccount` wrote Google's
+  access token and id token; the page said "your email address … nothing else". The adapter now
+  writes four columns, the credential columns are dropped by migration, and the copy enumerates
+  what is kept instead of making a closed claim.
+- **F4 / A5 — lifecycle and merge audit writes were a second transaction.** The revision service
+  now accepts work to commit inside its own transaction, so state and record move together
+  without weakening the Phase 3 write boundary.
+- **F5 / A6 — any route could be declared any route's successor.** Origin, destination and study
+  level must match, enforced server-side with the form filtered to agree. Mechanism and intake
+  differences are *shown*, not enforced — see the open question below.
+- **F11 / A7 — moderation outcomes recorded actions nobody performed.** `content_archived` now
+  archives the field in the same transaction; `quarantine_upheld` is checked against the field's
+  actual state; `content_corrected` and `content_removed` are refused, because a correction is a
+  revision a person makes and permanent removal does not exist yet.
+- **F7 / A8 — add-step and connect-edge could partially commit.** One operation now, validating
+  inside the transaction that the predecessor belongs to this route and is not archived.
+- **F9 / A9 — server-side validation was weaker than the HTML form.** `.slice(0, 2)` turned
+  "Bangladesh" into "BA"; an unreadable study level published as a Master's. Enums are refused
+  rather than defaulted, country codes required rather than produced, lengths bounded, and
+  origin must differ from destination.
+
+### Decisions taken
+
+- **Merge compatibility is exact match on three dimensions, never a similarity score.** A
+  threshold would need a number the baseline does not give, and FR-71's objection to opaque
+  derived judgements applies to a merge as much as to trust.
+- **An unperformable outcome is refused, not downgraded.** Silently recording
+  `no_action_needed` in place of an unreadable outcome is itself a decision about reported
+  content, and not the one anybody made.
+- **A malformed enum is refused rather than defaulted.** Publishing a route under somebody's
+  name that they did not choose is not the safe side of a guess.
+- **Validation failures throw and reach the error boundary.** Blunt, and deliberately the
+  smaller problem: field-level messages want `useActionState` on every form and belong with
+  Phase 12E's contribution surface work.
+
+### Open question raised, not answered
+
+**Does a differing `mechanism` or `intake` forbid a merge?** §40.1 makes mechanism what
+distinguishes two routes for the same pair, which reads like a fourth hard rule. But `mechanism`
+is nullable and means "not stated", and the commonest genuine duplicate is a route created
+without one beside the same route with one — so enforcing it would forbid the case merges exist
+for. §40.4 equally permits judging one of a differing pair mislabelled. The baseline does not
+say which reading wins, so a difference produces a caution the administrator reads. **This needs
+an owner decision.**
+
+### Blockers, unchanged and tracked
+
+- **Production is six migrations behind, now seven** (`20260905120000_drop_oauth_token_columns`
+  is the new one). No application query was softened to tolerate the stale schema. Deployment
+  remains the human-controlled procedure in CLAUDE.md §4.
+- **F4, F5, F7 and F11 are proved by database tests that need Postgres** — they run in
+  `npm run test:db` and the CI database job, and were **not** executed on this workstation.
+- The working tree was being modified concurrently by another session during this work
+  (renderer redesign, committed as `8fb24f2`). No file was edited by both.
+
+### Next step
+
+Await approval of this gate. Then Phase 12E, whose scope now explicitly includes F6 (contextual
+graph authoring), F8 (multi-revision announcements) and F12 (admin and contributor
+discoverability). Phases 12F, 12G and 13 are not started.
+
+---
+
+## Route block redesign — 2026-09-05
+
+Owner requested a more appealing, distinctive design for route blocks after the independent
+audit. Implemented in the existing SVG renderer (FR-04, FR-05, FR-57; invariants 24 and 25).
+
+- Road blocks now have a tinted category header, larger icon and stage number, two-line name,
+  subordinate duration when supplied, and a direction cue. Three columns on desktop and two
+  on phones preserve reading size; return curves run outside the blocks. Destination markers
+  follow the direction of their final row.
+- Ribbons use the same category treatment, names where space permits, and a compact phone
+  density. Long ribbons scroll within the result instead of shrinking every symbol. Search
+  results now give route identity and title a stronger hierarchy and retain visible focus.
+- The existing static renderer gallery loads the real CSS palette and includes an explicitly
+  illustrative six-stage fixture. Screenshots at 360/768/1280/1440 show no page overflow.
+- Focused renderer/presentation suite: 159 passed. Typecheck and scoped ESLint passed.
+  Full-worktree runs encountered unrelated failures in concurrently edited database/merge
+  tooling; exact results are recorded in Test.md. No database writes or migrations performed.
+
+Uncommitted work from other sessions was preserved. This is a reviewed implementation pass,
+not owner visual acceptance: the Phase 12C screenshot criterion and Gate 4 remain open.
+Previews are generated under `scripts/renderer/out/` (ignored development artifacts).
+
+---
+
 ## Session 15 — 2026-09-04
 
 **Goal:** begin the visual phases. Owner approved all six (12B–12G) and asked for the visuals

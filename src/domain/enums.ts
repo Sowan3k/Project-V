@@ -227,6 +227,54 @@ export const REPORT_OUTCOMES = [
 export type ReportOutcome = (typeof REPORT_OUTCOMES)[number]
 
 /**
+ * The outcomes an administrator may actually record from the reports queue — audit F11.
+ *
+ * The vocabulary above is the baseline's (§23.2) and stays complete. This is a narrower
+ * thing: which of those words this product can currently make *true* at the moment it
+ * writes them down.
+ *
+ * A recorded outcome is a claim that something happened. Until now the queue offered all
+ * five and performed none of them, so an administrator could mark eight reports
+ * "content removed" beside a field that was still public — a moderation record asserting a
+ * protective action that never occurred, which is worse than no record at all because
+ * somebody later reads it and stops looking.
+ *
+ * Two are recordable, and each is coupled to its effect in one transaction:
+ *
+ *   `no_action_needed`   nothing to do, so nothing to couple. Looked at, and it was fine.
+ *   `content_archived`   archives the field in the same transaction as the outcome.
+ *   `quarantine_upheld`  the quarantine already exists; this records that it stands, and the
+ *                        service checks that the field really is quarantined before saying so.
+ *
+ * Two are not, and the reasons differ:
+ *
+ *   `content_corrected`  a correction is a *revision*, made by a person editing the value —
+ *                        there is no approval queue and no moderator edit path anywhere in
+ *                        this product (FR-16, FR-69, §43.1), and there must not be one. An
+ *                        administrator who corrects something does it as a contributor, on
+ *                        the route; the report is then answered by that revision, exactly as
+ *                        a challenge is. Offering the word here would invite recording a
+ *                        correction nobody made.
+ *
+ *   `content_removed`    permanent deletion, which does not exist. The write guard refuses
+ *                        `delete` on `Field` outright and Postgres triggers refuse it below
+ *                        that (invariants 1 and 4). §23.2 reserves removal for abuse, legal
+ *                        and safety cases and CLAUDE.md §9 defers building it; the value stays
+ *                        in the vocabulary so that path can be built deliberately, as a
+ *                        separate audited surface, rather than as an option on a dropdown.
+ */
+export const RECORDABLE_REPORT_OUTCOMES = [
+  'no_action_needed',
+  'content_archived',
+  'quarantine_upheld',
+] as const satisfies readonly ReportOutcome[]
+export type RecordableReportOutcome = (typeof RECORDABLE_REPORT_OUTCOMES)[number]
+
+export function isRecordableReportOutcome(value: string): value is RecordableReportOutcome {
+  return (RECORDABLE_REPORT_OUTCOMES as readonly string[]).includes(value)
+}
+
+/**
  * Study levels — FR-01, REQUIREMENTS.md §9.
  * The baseline names three explicitly and allows "another supported higher-education
  * level". `other` is that escape hatch; inventing `diploma`/`foundation` would be

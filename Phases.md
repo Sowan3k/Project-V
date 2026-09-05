@@ -1146,6 +1146,17 @@ a serpentine with curved returns rather than shrinking.
 
 ---
 
+### Route-block design follow-up — 2026-09-05
+
+Owner requested less generic route blocks. The shared primitives now use a category header,
+larger icon/ordinal, two-line step name and direction-aware finish marker. Road density is
+three columns within a desktop route panel and two on phones; turns clear the block edges.
+Ribbons carry text where room permits and use a 360-unit compact density on phones. Existing
+graph-order, structural-equivalence and generative tests now include that density.
+
+Static-gallery screenshots were reviewed at 360/768/1280/1440. This supersedes the earlier
+176×74/five-column design description, but does not close owner acceptance or Gate 4.
+
 ## Phase 12D — Public read path composition
 
 **Goal:** the screens an anonymous visitor sees are composed the way the mockups compose them.

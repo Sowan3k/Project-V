@@ -3,8 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-import type { ReportOutcome } from '@/domain/enums'
-import { REPORT_OUTCOMES, ReportOutcome as Outcome } from '@/domain/enums'
+import type { RecordableReportOutcome } from '@/domain/enums'
+import { isRecordableReportOutcome } from '@/domain/enums'
 import { optionalText, text } from '@/lib/form-fields'
 import { currentViewer } from '@/server/auth'
 import { handleReportsForField, quarantineField, releaseField } from '@/server/safety/service'
@@ -53,10 +53,24 @@ export async function handleReportAction(formData: FormData): Promise<void> {
   const locale = text(formData, 'locale')
   const viewer = await requireSignedIn(locale)
 
+  /**
+   * A malformed outcome is refused, not defaulted — audit F11, audit F9.
+   *
+   * The old fallback silently recorded `no_action_needed`, which is itself a decision about
+   * reported content and not the one anybody made. A recorded outcome is a claim that
+   * something happened; the only honest response to an unreadable one is to record nothing.
+   *
+   * `content_corrected` and `content_removed` are refused here as well as in the service:
+   * the form no longer offers them, and the form is not the authority (CLAUDE.md §9).
+   */
   const raw = text(formData, 'outcome')
-  const outcome: ReportOutcome = (REPORT_OUTCOMES as readonly string[]).includes(raw)
-    ? (raw as ReportOutcome)
-    : Outcome.no_action_needed
+  if (!isRecordableReportOutcome(raw)) {
+    throw new Error(
+      `Unrecognised or unperformable report outcome "${raw}". Recording an outcome asserts ` +
+        `that it happened, so an outcome that cannot be performed is not written down.`,
+    )
+  }
+  const outcome: RecordableReportOutcome = raw
 
   await handleReportsForField({
     adminId: viewer.id,

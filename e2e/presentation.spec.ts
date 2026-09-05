@@ -173,7 +173,18 @@ test.describe('the road reflows rather than shrinking', () => {
     await expect(ribbon).toBeVisible()
 
     const ratio = await page.evaluate(() => {
-      const svg = document.querySelector('main [role="img"]')
+      /**
+       * The **visible** ribbon, not the first one in the DOM.
+       *
+       * The ribbon became a responsive pair — a narrow density and a wide one, with CSS
+       * hiding whichever does not suit the viewport, exactly as `ResponsiveRoad` works. The
+       * narrow one is first in source order, so at desktop `querySelector` returned the
+       * hidden element and this measured a ratio of 0. The road test above already reads the
+       * painted one for the same reason; this had not caught up.
+       */
+      const svg = [...document.querySelectorAll('main [role="img"]')].find(
+        (el) => el.getBoundingClientRect().width > 0,
+      )
       if (!svg) return 0
       // The nearest block ancestor is the row the ribbon is laid out in.
       const row = svg.parentElement?.getBoundingClientRect().width ?? 0

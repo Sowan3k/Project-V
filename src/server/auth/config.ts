@@ -3,9 +3,11 @@ import type { Adapter, AdapterUser } from 'next-auth/adapters'
 import Google from 'next-auth/providers/google'
 import type { NextAuthConfig } from 'next-auth'
 
+import { DEFAULT_LOCALE } from '@/i18n/config'
 import { prisma } from '@/server/db/client'
 
 import { generateHandle } from './handle'
+import { safeInternalRedirect } from './safe-redirect'
 
 /**
  * Auth.js configuration — Phase 7, FR-12, §24.2, §24.3.
@@ -77,6 +79,47 @@ function privacyPreservingAdapter(): Adapter {
       const stored = await prisma.user.findUniqueOrThrow({ where: { id: user.id } })
       return toAdapterUser(stored)
     },
+
+    /**
+     * Store the link, and none of the credentials that came with it — audit F13.
+     *
+     * `PrismaAdapter.linkAccount` is `p.account.create({ data })` with the *whole*
+     * `AdapterAccount`: Google's access token, its id token (a signed JWT carrying the
+     * profile we went to some trouble not to keep), the granted scope, the token type and
+     * the expiry. A refresh token joins them if `access_type=offline` is ever configured.
+     * The `User` row was minimised at the door; the `Account` row was not, so the sign-in
+     * page's "your email address … nothing else" was materially wider than the truth.
+     *
+     * Four columns are written, and each is load-bearing:
+     *
+     *   `userId`             whose account this is
+     *   `provider`           which provider
+     *   `providerAccountId`  Google's stable subject id
+     *   `type`               Auth.js's own account kind, `oidc` here
+     *
+     * `getUserByAccount` looks a person up by `(provider, providerAccountId)` alone, and that
+     * is the entire mechanism by which somebody signing in again is recognised as themselves.
+     * Nothing else is read. The tokens exist so an application can call the provider's API on
+     * a user's behalf later; this one never does, and never will — it wants an email address
+     * to recognise a returning student and nothing more (§24.2).
+     *
+     * OAuth token material is sensitive at rest, and the cheapest protection for a secret is
+     * not to hold one. The columns were dropped from the schema in the same change, so this
+     * and the database say the same thing rather than one relying on the other.
+     */
+    async linkAccount(account) {
+      await prisma.account.create({
+        data: {
+          userId: account.userId,
+          type: account.type,
+          provider: account.provider,
+          providerAccountId: account.providerAccountId,
+        },
+      })
+      // Auth.js ignores the return value; returning the account unchanged keeps the adapter
+      // contract honest without implying that any more of it was stored.
+      return account
+    },
   }
 }
 
@@ -122,6 +165,27 @@ export const authConfig: NextAuthConfig = {
     signIn: '/en/signin',
   },
   callbacks: {
+    /**
+     * Where Auth.js is allowed to send somebody afterwards — audit F14.
+     *
+     * The sign-in *page* validates its own `?next=`, but that page is not the only door:
+     * `/api/auth/signin/google?callbackUrl=…` and `/api/auth/signout?callbackUrl=…` are
+     * reachable directly, and a phishing link would use them precisely because they skip the
+     * page. Auth.js's default callback permits any URL on the configured origin, which is
+     * wider than this application should allow and — depending on how the value is parsed —
+     * wider than it looks.
+     *
+     * So the same validator decides both, and it is the parser rather than a prefix that
+     * decides. Anything that is not an internal page of this application lands on the default
+     * locale home, which is where an unauthenticated visitor would have started anyway.
+     */
+    redirect({ url, baseUrl }) {
+      // `baseUrl` is Auth.js's own view of this site's origin, including the
+      // `AUTH_TRUST_HOST` case where nothing is configured. Measuring against it rather than
+      // recomputing means the two cannot disagree about where "here" is.
+      return safeInternalRedirect(url, DEFAULT_LOCALE, baseUrl)
+    },
+
     /**
      * Put the pseudonymous handle on the session, and nothing else.
      *

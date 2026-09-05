@@ -1570,3 +1570,116 @@ you know is fresh. **What not to trust:** a full parallel run's failure list.
 `CI` is set, and a database on localhost. That is the authoritative gate, and it is why the
 Phase 12D/12E work was pushed to CI once the affected specs passed in isolation rather than
 waiting for a green local full run that this environment cannot reliably produce.
+
+---
+
+## Route block redesign verification — 2026-09-05
+
+Scope: SVG Road/Ribbon primitives, densities, result-row presentation and the existing static
+gallery. No database, auth or lifecycle behavior was changed by this design work.
+
+| Check | Result |
+|---|---|
+| Typecheck | Passed, including after final renderer changes |
+| Scoped ESLint: renderer, RouteRibbon, gallery, renderer layout test | Passed |
+| Focused renderer/presentation suite | 159 passed across four files |
+| Full suite, first run during concurrent test-infrastructure changes | 698 passed, 1 failed in disposable-database source guard |
+| Full suite, second run | 775 passed, 1 failed: enum-single-source found `intake` in concurrently added `src/domain/merge.ts` |
+| Full ESLint, first run | Seven require-await failures in concurrently added disposable-database helpers/tests; no design-file errors |
+| Full ESLint, second run | Same seven failures plus no-control-regex in concurrently added safe-redirect.ts; no design-file errors |
+| `renderer:gallery` / `renderer:shoot` | Passed, 360/768/1280/1440; zero page-wide horizontal overflow |
+| Scoped `git diff --check` | Passed |
+
+Visual review used the actual renderer with CSS tokens loaded from globals.css. Fixtures cover
+an illustrative six-stage journey, alternatives, parallel activity, shadow/added/disrupted
+steps, and 15/20-step stress graphs. Inspection caught and corrected mid-word label breaks and
+the destination marker appearing on the wrong side of a reverse row. Read-only peer review
+caught a clipped keyboard focus outline; outer clipping was removed. RIBBON_NARROW was added
+to the existing geometry test matrix, and order equality now checks every density.
+
+Previews: `scripts/renderer/out/route-blocks-{360,768,1280,1440}.png`, full gallery captures and
+per-fixture detail captures. These are ignored artifacts, not route content. Live in-app
+browser discovery returned no available browsers; the repository screenshot runner was used
+for the static gallery. Full authenticated application E2E and owner acceptance remain open.
+
+---
+
+## §16 — Independent audit reconciliation and the A1–A9 remediation gate (2026-09-05)
+
+The independent Codex audit was performed against committed snapshot `d1150f3` and explicitly
+excluded the later uncommitted Phase 12E work. **Nothing below was taken on trust.** Every
+finding was re-inspected against the working tree before any code changed, and the status
+column records what was true at reconciliation, not what the audit reported.
+
+### Reconciliation — F1 to F27
+
+| ID | Status at HEAD | Evidence | Action | Owner / phase |
+|---|---|---|---|---|
+| F1 | **CONFIRMED** | `prisma/migrations/` holds ten committed migrations; `Status.md` already records production six behind (Phases 7–11). `route.prisma` selects `mergedAt`, which production lacks. | None in code. Deployment stays the human-controlled procedure (CLAUDE.md §4). **Now seven behind** — A4 adds `20260905120000_drop_oauth_token_columns`. | Release operations (gate B) |
+| F2 | **CONFIRMED** | `e2e/seed-route.setup.ts` writes through the revision service using ambient `DATABASE_URL`; only the *webServer* command carried `dotenv -e .env.test.local`. The `journey`, `contribute`, `changes` and `safety` specs additionally create users and sessions the same way. Worse than reported: `tests/db/setup.ts` guarded `TEST_DATABASE_URL` while the tests connect through `DATABASE_URL`, so an unset variable waved the suite through rather than skipping it. | **Fixed — A1.** One shared guard (`tests/support/disposable-database.ts`) used by both runners; a Playwright `guard` project that `setup` depends on; the CI e2e job now marks its container. | Done |
+| F3 | **CONFIRMED (observation)** | Revision triggers, `onDelete: Restrict` throughout, ordered additive migrations — all present and unchanged. | None. Preserved as instructed. | — |
+| F4 | **CONFIRMED** | `src/server/lifecycle/service.ts`: `setRouteLifecycleState(...)` followed by a separate `prisma.$transaction([...create event])`, in all four of `applyProposedLifecycle`, `setLifecycleState`, `mergeRoutes` and `unmergeRoute`. | **Fixed — A5.** The revision service accepts work to run inside its own transaction; the Phase 3 boundary is unchanged, because the caller never holds a client. Rollback proved by a database test. | Done |
+| F5 | **CONFIRMED** | `mergeRoutes` validated self-merge, already-merged and cycle only. The admin page offered `routes.filter(other => other.id !== route.id)` — every route in the database. | **Fixed — A6.** Exact match on origin, destination and study level; server authoritative, form filtered to agree. Mechanism and intake differences are surfaced as a caution — **open modelling question raised, not answered.** | Done + owner decision pending |
+| F6 | **CONFIRMED** | `reviseStep`, `reviseRoute`, `reviseEdge`, `archiveStep`, `archiveEdge`, `archiveField` and `restoreField` exist in the service with **zero references anywhere in `src/app`**. `AddStepForm` has no `edgeKind` control at all, so the action's fallback made every edge `sequential`. | Deferred to Phase 12E C1, as instructed. | Phase 12E |
+| F7 | **CONFIRMED** | `addStepAction` called `addStep` then `addEdge` — two transactions. Nothing checked that `afterStepId` belonged to the route; `StepEdge` foreign keys do not constrain it. | **Fixed — A8.** `addStepWithConnection` commits both or neither and validates the predecessor inside the transaction. | Done |
+| F8 | **CONFIRMED** | `announceChange` accepts arrays of revision ids; `describedRevision()` parses a single `"<kind>:<id>"` from one `<select name="describesRevision">`. The domain capability exists; the reachable capability is one revision. | Deferred to Phase 12E C4. | Phase 12E |
+| F9 | **CONFIRMED** | `createRouteAction`: `.trim().toUpperCase().slice(0, 2)` turns "Bangladesh" into "BA"; no origin≠destination check; a whitespace-only title survives; `oneOf(values, raw, fallback)` substitutes defaults. The same helper appears in the step and field actions. | **Fixed — A9.** `src/lib/contribution-input.ts`; enums refused rather than defaulted. | Done |
+| F10 | **CONFIRMED** | `src/app/[locale]/routes/[slug]/page.tsx:30` says "Anonymous throughout. No session is read anywhere in this file"; line 69 calls `currentViewer()`. Anonymous reading still works — the *claim* is stale, not the behaviour. | Not in the A-gate. Comment correction and narrower guard wording. | Phase 12E / docs |
+| F11 | **CONFIRMED** | `handleReportsForField` updated report columns only. The form offered all five outcomes including `content_removed`, and `archiveField` was reachable from no admin surface. | **Fixed — A7.** `content_archived` archives in the same transaction; `quarantine_upheld` is verified against the field's actual state; `content_corrected` and `content_removed` are refused and removed from the form. | Done |
+| F12 | **CONFIRMED** | `src/components/site-header.tsx` links only `/routes`, `/journeys` and `/signin` — no admin entry at any role. `contributors/[handle]` is referenced by nothing outside its own file. | Deferred to Phase 12E C5. | Phase 12E |
+| F13 | **CONFIRMED** | `Account` carried `access_token`, `refresh_token`, `id_token`, `scope`, `token_type`, `expires_at` and `session_state`; `PrismaAdapter.linkAccount` is `p.account.create({ data })` with the whole `AdapterAccount`, and the adapter overrode only `createUser` and `updateUser`. The copy read "Nothing else". Verified against `@auth/prisma-adapter` and `@auth/core/providers/google` in `node_modules`: Google's default flow yields no refresh token, but access and id tokens were stored, and an id token is a signed JWT carrying the name and photograph `User` deliberately omits. | **Fixed — A4.** `linkAccount` overridden to four columns; a migration drops the credential columns; the copy enumerates. `getUserByAccount` reads only `(provider, providerAccountId)`, so nothing is lost. | Done |
+| F14 | **CONFIRMED** | `signin/page.tsx`: `requested?.startsWith('/') && !requested.startsWith('//')`. `/\evil.example` passes and normalises to an off-site host. Additionally the Auth.js API route accepts `callbackUrl` directly, skipping the page entirely — the door a phishing link would actually use. | **Fixed — A3.** Origin-based URL validation at both doors. 59 security tests. | Done |
+| F15 | **CONFIRMED (observation)** | Journey queries scoped by `userId`; private pages `noindex`; admin 404s for non-admins; `robots.ts` disallows. Unchanged. | None. Preserved. | — |
+| F16 | **CONFIRMED** | `Phases.md` records 12E in progress; 12F and 12G unstarted; owner acceptance open. | Out of A-gate scope by instruction. | Phase 12E/F/G |
+| F17 | **PARTIALLY CONFIRMED** | The renderer framing findings were made against `d1150f3`. Another session committed a route-block redesign (`8fb24f2`) during this reconciliation that changes exactly this surface, so the audit's measurements are stale. | Re-measure once the redesign settles. | Phase 12F/12G |
+| F18 | **CONFIRMED** | No `sitemap.ts`; the 404 has no recovery action; sign-in and the signed-out journey leave large vacant canvas at 1280/1440. | Deferred. | Phase 12E/12G |
+| F19 | **CONFIRMED** | No `src/app/sitemap.ts`; no `metadataBase`, no `alternates.canonical`, no Open Graph image; `contributors/[handle]/page.tsx` has no `generateMetadata`. | Deferred, as instructed. | Phase 12G |
+| F20 | **CONFIRMED (observation)** | `robots.ts`, per-page `robots: { index: false }`, an opaque error digest, external-link host exposure — all present. | None. Preserved. | — |
+| F21 | **CONFIRMED** | `routes/[slug]/page.tsx` awaits dictionary → route → viewer → step fields sequentially; `searchRoutes` and `getRouteBySlug` likewise; `fieldsWithOpenReports` issues one `openReportsFor` per grouped field. | Deferred. **Measure server timings before and after; add no speculative caching.** | Phase 13 |
+| F22 | **CONFIRMED** | `src/app/[locale]/layout.tsx` uses `next/font/google` for Lexend and Anek Bangla — a build-time fetch. Runtime is unaffected. | Deferred. | Infrastructure / Phase 12G |
+| F23 | **CONFIRMED** | `playwright.config.ts` had `reuseExistingServer: !process.env.CI`. `.env.test.local` carries database URLs only, so there is no `AUTH_SECRET` or `AUTH_URL` locally and every session read returned null — signed-in specs silently ran signed-out. | **Fixed — A2.** Reuse is opt-in; local Auth.js configuration is deterministic and asserted by the guard project. | Done |
+| F24 | **CONFIRMED** | With `E2E_BASE_URL` set, `seed-route.setup.ts` returns immediately and every mutating spec calls `test.skip(!seeded, …)`. | Tracked, not fixed. Needs a protected production-shaped preview environment. | Infrastructure, before Phase 13 (gate D) |
+| F25 | **CONFIRMED** | Several architecture guards match source text. The A-gate work adds more of them — deliberately paired with behavioural database tests for every transactional claim (`tests/db/audit-remediation.db.test.ts`). | Tracked; guards retained. | Phase 13 / infrastructure |
+| F26 | **CONFIRMED** | The shared test branch holds roughly 359 accumulated routes; the ensure-shaped seed cannot delete them, correctly. | Tracked. A fresh disposable branch per full browser run. | Infrastructure (gate D) |
+| F27 | **CONFIRMED** | `content/routes/` holds one worksheet, partially sourced. Australia, USA and Malaysia absent. | None. The content track stays separate; no fake routes were seeded. | Content |
+
+**Summary: 27 findings — 22 confirmed, 1 partially confirmed (F17, superseded by concurrent
+work), 4 confirmed as observations to preserve (F3, F15, F20, and the guards F25 defends).
+Zero rejected, zero already fixed.** Nine confirmed findings were fixed in the A1–A9 gate; the
+rest are assigned to Phase 12E, 12F/12G, Phase 13, infrastructure or content.
+
+### Gate run after remediation
+
+| Check | Result |
+|---|---|
+| `npm run lint` | Passed, zero problems |
+| `npm run typecheck` | Passed |
+| `npm run test` | **813 passed, 0 failed, across 30 files** (776 before the new tests; 689 at session start) |
+| `npm run build` | Passed. Shared first-load JS 103 kB, unchanged |
+| `npm run test:db` | **Not run** — needs Postgres; no marked disposable database was reachable from this workstation |
+| `npm run test:e2e` | **Not run** — same reason, and the new guard now refuses rather than proceeding |
+
+### New tests
+
+| File | Proves |
+|---|---|
+| `tests/unit/disposable-database.test.ts` (10) | Every refusal branch of the shared guard — absent marker, wrong marker, unreadable database, absent URL — plus retry-before-refusing, that the verdict cannot depend on a filename or `NODE_ENV`, and that the guard is actually wired ahead of the seeding project |
+| `tests/unit/safe-redirect.test.ts` (59) | Sixteen escapes the old prefix check permitted, including `/\evil.example`, `/\/evil.example`, `/%5cevil.example`, tab and CR/LF forms and credential-embedded hosts; internal-but-not-a-page refusals; legitimate destinations; that nothing non-internal can be returned; and that both doors validate |
+| `tests/architecture/oauth-retention.test.ts` (18) | No credential column in the schema, none written by the adapter, a migration touching `accounts` only and dropping nothing else, and copy that enumerates rather than claiming "nothing else" |
+| `tests/unit/merge.test.ts` (14) | Compatibility rules, symmetry, mechanism and intake as caution rather than block, null meaning "not stated", server-side enforcement, the filtered form, and the absence of any similarity score |
+| `tests/unit/contribution-input.test.ts` (23) | "Bangladesh" no longer becomes "BA"; enums refused rather than defaulted; whitespace-only titles refused; `javascript:` and `data:` source URLs refused; bounds enforced; and the actions carrying no defaulting helper |
+| `tests/db/audit-remediation.db.test.ts` (14) | **Requires Postgres.** Lifecycle state rolls back when its audit insert fails; merge refuses incompatible pairs and moves nothing; a failed edge leaves no orphan step and no unrevisioned step; `content_archived` really archives while keeping history; unperformable outcomes record nothing |
+
+### What remains unproved
+
+- **The four transactional claims are unexecuted here.** F4, F5, F7 and F11 are asserted by
+  `tests/db/audit-remediation.db.test.ts`, which needs a marked disposable Postgres. They run in
+  the CI database job. Until that job is green, treat them as written but unverified.
+- **No browser run.** The E2E suite was not executed, so A2's server-ownership and Auth.js
+  changes are proved only by configuration assertions.
+- **Production is now seven migrations behind**, and one of them drops columns. It touches
+  `accounts` only, drops nothing else, and `production` does not yet have that table — but it is
+  the first non-additive migration in the repository and wants deliberate review.
+- **The working tree was being modified concurrently** by another session during this work
+  (renderer redesign, committed as `8fb24f2`). No file was edited by both, but the full-suite
+  numbers recorded in §15 during that window reflect this work in progress, not failures in it.

@@ -3,33 +3,31 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-import type {
-  ChallengeReason,
-  FieldApplicability,
-  FieldCategory,
-  SourceClass,
-  StepCategory,
-  StepEdgeKind as StepEdgeKindT,
-} from '@/domain/enums'
+import type { FieldApplicability } from '@/domain/enums'
 import {
   CHALLENGE_REASONS,
-  ChallengeReason as Reason,
   FIELD_APPLICABILITIES,
   FIELD_CATEGORIES,
-  FieldCategory as Category,
   SOURCE_CLASSES,
-  SourceClass as Source,
   STEP_CATEGORIES,
-  StepCategory as Stage,
+  STEP_EDGE_KINDS,
   StepEdgeKind,
 } from '@/domain/enums'
-import { optionalText, text } from '@/lib/form-fields'
+import {
+  boundedOptionalText,
+  LIMITS,
+  optionalId,
+  requiredEnum,
+  requiredId,
+  requiredText,
+  sourceUrl,
+} from '@/lib/contribution-input'
+import { text } from '@/lib/form-fields'
 import { currentViewer } from '@/server/auth'
 import { flagDuplicate } from '@/server/lifecycle/service'
 import {
-  addEdge,
   addField,
-  addStep,
+  addStepWithConnection,
   challengeField,
   confirmField,
   reviseField,
@@ -68,9 +66,15 @@ async function requireContributor(locale: string, next: string): Promise<{ id: s
   return viewer
 }
 
-function oneOf<T extends string>(values: readonly T[], raw: string, fallback: T): T {
-  return (values as readonly string[]).includes(raw) ? (raw as T) : fallback
-}
+/**
+ * Every value below is validated server-side — audit F9.
+ *
+ * These actions are POST endpoints reachable without the page rendering, so `required` and a
+ * `<select>` of valid options prove nothing about what arrives. The helpers in
+ * `@/lib/contribution-input` refuse a malformed enum rather than substituting a default,
+ * because publishing a source class or a category the contributor did not choose is a
+ * quieter failure than an error but a worse one: their name is on it (FR-33, invariant 11).
+ */
 
 /** Applicability is a set, so it arrives as repeated checkbox values (FR-81). */
 function applicabilities(form: FormData): FieldApplicability[] {
@@ -90,34 +94,31 @@ export async function addStepAction(formData: FormData): Promise<void> {
   const slug = text(formData, 'slug')
   const viewer = await requireContributor(locale, `/${locale}/routes/${slug}`)
 
-  const { stepId } = await addStep({
+  /**
+   * The step and its connection are one operation — audit F7.
+   *
+   * This used to be `addStep` followed by `addEdge`: two transactions, so a failure between
+   * them left a step in the route with no edges — a valid graph node that appears nowhere on
+   * the road and that no control can reconnect. `addStepWithConnection` commits both or
+   * neither, and validates inside the transaction that the predecessor belongs to this route
+   * and is not archived. A step id from another route satisfies every foreign key, so that
+   * check is the only thing between a form post and an edge spanning two routes.
+   */
+  await addStepWithConnection({
     actor: { id: viewer.id },
-    routeId: text(formData, 'routeId'),
-    label: text(formData, 'label').trim(),
-    category: oneOf<StepCategory>(
-      STEP_CATEGORIES,
-      text(formData, 'category'),
-      Stage.documents_preparation,
-    ),
-    reason: optionalText(formData, 'reason'),
+    routeId: requiredId(formData, 'routeId', 'The route'),
+    label: requiredText(formData, 'label', { max: LIMITS.stepLabel, label: 'A step name' }),
+    category: requiredEnum(formData, 'category', STEP_CATEGORIES, 'Step category'),
+    connectAfterStepId: optionalId(formData, 'afterStepId', 'The step this follows'),
+    // Only meaningful when a predecessor was named. Defaulting to `sequential` here is not a
+    // substitution of an unreadable value: the current form has no control for edge kind at
+    // all, which is audit F6 and belongs to Phase 12E's graph authoring work.
+    edgeKind:
+      text(formData, 'edgeKind').trim() === ''
+        ? StepEdgeKind.sequential
+        : requiredEnum(formData, 'edgeKind', STEP_EDGE_KINDS, 'Connection kind'),
+    reason: boundedOptionalText(formData, 'reason', { max: LIMITS.note, label: 'The reason' }),
   })
-
-  // Connect it after an existing step when one is named. A step with no edges is a valid
-  // graph node but an invisible one, so the form offers the connection in the same breath.
-  const afterStepId = text(formData, 'afterStepId')
-  if (afterStepId !== '') {
-    await addEdge({
-      actor: { id: viewer.id },
-      routeId: text(formData, 'routeId'),
-      fromStepId: afterStepId,
-      toStepId: stepId,
-      kind: oneOf<StepEdgeKindT>(
-        Object.values(StepEdgeKind),
-        text(formData, 'edgeKind'),
-        StepEdgeKind.sequential,
-      ),
-    })
-  }
 
   revalidatePath(`/${locale}/routes/${slug}`)
 }
@@ -132,27 +133,25 @@ export async function addFieldAction(formData: FormData): Promise<void> {
   await addField({
     actor: { id: viewer.id },
     stepId,
-    category: oneOf<FieldCategory>(
-      FIELD_CATEGORIES,
-      text(formData, 'category'),
-      Category.requirement,
-    ),
-    valueText: text(formData, 'valueText').trim(),
+    category: requiredEnum(formData, 'category', FIELD_CATEGORIES, 'Field category'),
+    valueText: requiredText(formData, 'valueText', {
+      max: LIMITS.fieldValue,
+      label: 'The information',
+    }),
     // Source class and applicability are asked separately, because they answer different
     // questions — who asserts this, and whom does it apply to (FR-81, D-47, invariant 11).
     // The default is `community_submission`, deliberately the least authoritative class.
     // A contributor may say a fact is official; the form does not assume it, because an
     // unstated provenance quietly promoted to "official" is the failure invariant 11 and
     // FR-33 exist to prevent.
-    sourceClass: oneOf<SourceClass>(
-      SOURCE_CLASSES,
-      text(formData, 'sourceClass'),
-      Source.community_submission,
-    ),
+    sourceClass: requiredEnum(formData, 'sourceClass', SOURCE_CLASSES, 'Source'),
     applicability: applicabilities(formData),
-    sourceUrl: optionalText(formData, 'sourceUrl'),
-    sourceNote: optionalText(formData, 'sourceNote'),
-    reason: optionalText(formData, 'reason'),
+    sourceUrl: sourceUrl(formData, 'sourceUrl'),
+    sourceNote: boundedOptionalText(formData, 'sourceNote', {
+      max: LIMITS.note,
+      label: 'The source note',
+    }),
+    reason: boundedOptionalText(formData, 'reason', { max: LIMITS.note, label: 'The reason' }),
   })
 
   revalidatePath(`/${locale}/routes/${slug}`)
@@ -175,22 +174,24 @@ export async function updateFieldAction(formData: FormData): Promise<void> {
 
   await reviseField({
     actor: { id: viewer.id },
-    fieldId: text(formData, 'fieldId'),
-    basedOnRevisionId: optionalText(formData, 'basedOnRevisionId'),
-    valueText: text(formData, 'valueText').trim(),
+    fieldId: requiredId(formData, 'fieldId', 'The field'),
+    basedOnRevisionId: optionalId(formData, 'basedOnRevisionId', 'The revision being corrected'),
+    valueText: requiredText(formData, 'valueText', {
+      max: LIMITS.fieldValue,
+      label: 'The information',
+    }),
     // The default is `community_submission`, deliberately the least authoritative class.
     // A contributor may say a fact is official; the form does not assume it, because an
     // unstated provenance quietly promoted to "official" is the failure invariant 11 and
     // FR-33 exist to prevent.
-    sourceClass: oneOf<SourceClass>(
-      SOURCE_CLASSES,
-      text(formData, 'sourceClass'),
-      Source.community_submission,
-    ),
+    sourceClass: requiredEnum(formData, 'sourceClass', SOURCE_CLASSES, 'Source'),
     applicability: applicabilities(formData),
-    sourceUrl: optionalText(formData, 'sourceUrl'),
-    sourceNote: optionalText(formData, 'sourceNote'),
-    reason: optionalText(formData, 'reason'),
+    sourceUrl: sourceUrl(formData, 'sourceUrl'),
+    sourceNote: boundedOptionalText(formData, 'sourceNote', {
+      max: LIMITS.note,
+      label: 'The source note',
+    }),
+    reason: boundedOptionalText(formData, 'reason', { max: LIMITS.note, label: 'The reason' }),
   })
 
   revalidatePath(`/${locale}/routes/${slug}`)
@@ -210,7 +211,10 @@ export async function confirmFieldAction(formData: FormData): Promise<void> {
   const stepId = text(formData, 'stepId')
   const viewer = await requireContributor(locale, `/${locale}/routes/${slug}?step=${stepId}`)
 
-  await confirmField({ actor: { id: viewer.id }, fieldId: text(formData, 'fieldId') })
+  await confirmField({
+    actor: { id: viewer.id },
+    fieldId: requiredId(formData, 'fieldId', 'The field'),
+  })
   revalidatePath(`/${locale}/routes/${slug}`)
 }
 
@@ -231,9 +235,9 @@ export async function challengeFieldAction(formData: FormData): Promise<void> {
 
   await challengeField({
     actor: { id: viewer.id },
-    fieldId: text(formData, 'fieldId'),
-    reason: oneOf<ChallengeReason>(CHALLENGE_REASONS, text(formData, 'reason'), Reason.other),
-    note: optionalText(formData, 'note'),
+    fieldId: requiredId(formData, 'fieldId', 'The field'),
+    reason: requiredEnum(formData, 'reason', CHALLENGE_REASONS, 'Challenge reason'),
+    note: boundedOptionalText(formData, 'note', { max: LIMITS.note, label: 'The note' }),
   })
 
   revalidatePath(`/${locale}/routes/${slug}`)
@@ -245,14 +249,14 @@ export async function flagDuplicateAction(formData: FormData): Promise<void> {
   const slug = text(formData, 'slug')
   const viewer = await requireContributor(locale, `/${locale}/routes/${slug}`)
 
-  const duplicateOfId = text(formData, 'duplicateOfId')
-  if (duplicateOfId === '') return
+  const duplicateOfId = optionalId(formData, 'duplicateOfId', 'The route it duplicates')
+  if (duplicateOfId === null) return
 
   await flagDuplicate({
     flaggedById: viewer.id,
-    routeId: text(formData, 'routeId'),
+    routeId: requiredId(formData, 'routeId', 'The route'),
     duplicateOfId,
-    note: optionalText(formData, 'duplicateNote'),
+    note: boundedOptionalText(formData, 'duplicateNote', { max: LIMITS.note, label: 'The note' }),
   })
 
   revalidatePath(`/${locale}/routes/${slug}`)

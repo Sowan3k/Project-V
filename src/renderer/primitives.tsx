@@ -146,6 +146,18 @@ function truncate(value: string, max: number): string {
   return value.length <= max ? value : `${value.slice(0, max - 1)}…`
 }
 
+/** Two bounded lines, including long unbroken names; the full label stays in SVG title. */
+function labelLines(value: string, max: number): readonly string[] {
+  const clean = value.trim().replace(/\s+/g, ' ')
+  if (clean.length <= max) return [clean]
+  const wordBreak = clean.lastIndexOf(' ', max)
+  if (wordBreak > 0) return [clean.slice(0, wordBreak), truncate(clean.slice(wordBreak).trim(), max)]
+  const nextSpace = clean.indexOf(' ')
+  return nextSpace === -1
+    ? [truncate(clean, max)]
+    : [truncate(clean.slice(0, nextSpace), max), truncate(clean.slice(nextSpace + 1), max)]
+}
+
 // ── Connectors ───────────────────────────────────────────────────────────────
 
 /** Road segment, curved segment and junction are all one primitive: a typed connector. */
@@ -188,6 +200,15 @@ export function RoadSegment({ placed, density }: { placed: PlacedEdge; density: 
       <path
         d={placed.path}
         fill="none"
+        stroke="var(--color-hairline, #e2e8f0)"
+        strokeWidth={width + 4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={minor ? 0.55 : 1}
+      />
+      <path
+        d={placed.path}
+        fill="none"
         stroke="var(--color-road-surface, #94a3b8)"
         strokeWidth={width}
         strokeLinecap="round"
@@ -215,10 +236,8 @@ export function RoadSegment({ placed, density }: { placed: PlacedEdge; density: 
  * swatches. The notch on the left receives the previous segment's point, so the band reads as
  * continuous even though every segment is drawn independently.
  *
- * Filled with the category's mid-tone and the icon reversed out in white — measured at 3.40:1
- * in the worst case, which clears WCAG 1.4.11's 3:1 for a graphical object. The pale `fill`
- * tone is right behind text on a page; at 40 units square with no label it is too faint to
- * carry the route's shape across a search result.
+ * Category ink on a pale fill keeps names readable. The stronger outline and upper stripe
+ * carry the segmented band, matching the icon/header treatment on the expanded blocks.
  */
 export function RibbonSegment({
   node,
@@ -249,6 +268,9 @@ export function RibbonSegment({
    * turns into a row of arrowheads.
    */
   const notch = Math.min(h * 0.5, w * 0.13)
+  const labelled = h >= 50 && w >= 70
+  const centreX = node.x + notch * 0.3
+  const captions = labelLines(node.step.label, Math.max(5, Math.floor((w - notch - 12) / 7)))
 
   const state = archived ? archivedLabel : added ? addedLabel : null
   const description = `${node.ordinal}. ${node.step.label} — ${categoryLabel}${state ? ` (${state})` : ''}`
@@ -258,20 +280,37 @@ export function RibbonSegment({
       <title>{description}</title>
       <path
         d={`M ${x} ${y} L ${x + w - notch} ${y} L ${x + w} ${y + h / 2} L ${x + w - notch} ${y + h} L ${x} ${y + h} L ${x + notch} ${y + h / 2} Z`}
-        fill={style.line}
-        stroke={added || archived ? style.ink : 'none'}
-        strokeWidth={added ? 2.5 : archived ? 1.5 : 0}
+        fill={style.fill}
+        stroke={added || archived ? style.ink : style.line}
+        strokeWidth={added ? 2.5 : 1.25}
         {...(archived ? { strokeDasharray: '4 3' } : {})}
       />
-      {/* Nudged right of centre: the left notch eats into the segment, so a mathematically
-          centred icon reads as sitting too far left. */}
+      <path
+        d={`M ${x + notch + 3} ${y + 3} H ${x + w - notch - 3}`}
+        stroke={style.line}
+        strokeWidth={3}
+        strokeLinecap="round"
+      />
       <CategoryIcon
         category={node.step.category}
-        cx={node.x + notch / 2}
-        cy={node.y}
-        size={h * 0.52}
-        colour="var(--color-road-line, #fff)"
+        cx={centreX}
+        cy={node.y - (labelled ? 19 : 0)}
+        size={labelled ? 24 : Math.min(23, h * 0.58)}
       />
+      {labelled ? (
+        <text
+          x={centreX}
+          y={node.y + 7}
+          fontSize={13}
+          fontWeight={600}
+          textAnchor="middle"
+          fill={style.ink}
+        >
+          {captions.map((line, index) => (
+            <tspan key={index} x={centreX} dy={index === 0 ? 0 : 15}>{line}</tspan>
+          ))}
+        </text>
+      ) : null}
     </g>
   )
 }
@@ -326,11 +365,12 @@ export interface StepMarkerProps {
 /**
  * A step marker. Carries category colour, glyph, ordinal and — where there is room — label.
  *
- * The `<title>` element is not decorative: at ribbon density there is no visible text, so it
- * is what makes the compressed form readable to a screen reader and on hover.
+ * The full `<title>` supplements abbreviated labels and icon-only segments with an
+ * accessible name. Category and duration strings are supplied by the caller.
  */
 export function StepMarker({
   node,
+  density,
   categoryLabel,
   duration,
   added = false,
@@ -343,92 +383,90 @@ export function StepMarker({
   const y = node.y - node.height / 2
 
   const state = archived ? archivedLabel : added ? addedLabel : null
-  const description = `${node.ordinal}. ${node.step.label} — ${categoryLabel}${state ? ` (${state})` : ''}`
+  const description = `${node.ordinal}. ${node.step.label} — ${categoryLabel}${duration ? ` — ${duration}` : ''}${state ? ` (${state})` : ''}`
 
-  /**
-   * A step **card**, not a marker — Phase 12C, VR-04.
-   *
-   * VR-04 puts the ordinal, the category icon, the step's name and its expected duration on
-   * the road itself, so the road answers "what is this journey" without the reader going
-   * anywhere. The previous 128×52 marker had room for a truncated title and nothing else,
-   * which is why the road read as a flowchart rather than as the primary view of a route.
-   *
-   * The card sits on white rather than the category tint, with a tinted rail down its left
-   * edge: at this size a full pastel fill washes the text out, and the rail carries the
-   * category just as clearly beside an icon that already carries it.
-   */
-  const railWidth = 5
-  const iconSize = 17
-  const numberR = 11
+  // A wayfinding block: category and stage number above a readable name, with timing kept
+  // subordinate. The geometry is shared by every route and every category (FR-05, FR-57).
+  const inset = 12
+  const fontSize = node.width < 150 ? 13.5 : 15.5
+  const lines = labelLines(node.step.label, Math.floor((node.width - inset * 2) / (fontSize * 0.64)))
+  const reverse = Math.floor(node.rank / density.columnsPerRow) % 2 === 1
+  const arrowX = x + node.width - 20
+  const arrowY = y + node.height - 15
 
   return (
     <g opacity={archived ? 0.42 : 1}>
       <title>{description}</title>
       <rect
         x={x}
+        y={y + 3}
+        width={node.width}
+        height={node.height}
+        rx={12}
+        fill="var(--color-ink-900, #0f172a)"
+        opacity={0.045}
+      />
+      <rect
+        x={x}
         y={y}
         width={node.width}
         height={node.height}
-        rx={11}
+        rx={12}
         fill="var(--color-surface, #fff)"
-        stroke={added || archived ? category.ink : 'var(--color-hairline, #e2e8f0)'}
+        stroke={added || archived ? category.ink : category.line}
+        strokeOpacity={added || archived ? 1 : 0.5}
         strokeWidth={added ? 2.5 : 1.25}
         {...(archived ? { strokeDasharray: '4 3' } : {})}
       />
-      {/* The category rail. Clipped to the card's radius by a second rounded rect rather
-          than a clipPath, which keeps this a pure shape with no document-level ids — two
-          roads on one page would otherwise collide on the id. */}
+      {/* Rounded upper corners without shared SVG ids: multiple Roads coexist safely. */}
       <path
-        d={`M ${x + 11} ${y} L ${x + railWidth} ${y} A 11 11 0 0 0 ${x} ${y + 11} L ${x} ${y + node.height - 11} A 11 11 0 0 0 ${x + railWidth} ${y + node.height} L ${x + 11} ${y + node.height} Z`}
-        fill={category.line}
+        d={`M ${x + 12} ${y + 1} H ${x + node.width - 12} Q ${x + node.width - 1} ${y + 1} ${x + node.width - 1} ${y + 12} V ${y + 42} H ${x + 1} V ${y + 12} Q ${x + 1} ${y + 1} ${x + 12} ${y + 1} Z`}
+        fill={category.fill}
       />
-
       <CategoryIcon
         category={node.step.category}
-        cx={x + railWidth + 6 + iconSize / 2}
-        cy={y + node.height / 2}
-        size={iconSize}
+        cx={x + inset + 12}
+        cy={y + 22}
+        size={25}
       />
-
       <text
-        x={x + railWidth + 12 + iconSize}
-        y={y + node.height / 2 - 3}
-        fontSize={12.5}
+        x={x + node.width - inset}
+        y={y + 29}
+        fontSize={22}
         fontWeight={600}
-        fill="var(--color-ink-900, #0f172a)"
+        textAnchor="end"
+        fill={category.ink}
+        style={{ fontVariantNumeric: 'tabular-nums' }}
       >
-        {truncate(node.step.label, 18)}
+        {String(node.ordinal).padStart(2, '0')}
+      </text>
+      <path d={`M ${x + inset} ${y + 42} h 24`} stroke={category.line} strokeWidth={2.5} />
+      <text x={x + inset} y={y + 63} fontSize={fontSize} fontWeight={600} fill="var(--color-ink-900, #0f172a)">
+        {lines.map((line, index) => (
+          <tspan key={index} x={x + inset} dy={index === 0 ? 0 : 18}>{line}</tspan>
+        ))}
       </text>
       {duration === null ? null : (
         <text
-          x={x + railWidth + 12 + iconSize}
-          y={y + node.height / 2 + 13}
-          fontSize={10.5}
+          x={x + inset}
+          y={y + node.height - 12}
+          fontSize={11}
           fill="var(--color-ink-500, #64748b)"
         >
-          {duration}
+          {truncate(duration, Math.floor((node.width - inset * 2) / 5.5))}
         </text>
       )}
-
-      {/* The ordinal, in a badge straddling the card's top-left corner (VR-04). */}
-      <circle
-        cx={x + numberR * 0.5}
-        cy={y}
-        r={numberR}
-        fill={category.line}
-        stroke="var(--color-surface, #fff)"
-        strokeWidth={2}
-      />
-      <text
-        x={x + numberR * 0.5}
-        y={y + 3.5}
-        fontSize={10.5}
-        fontWeight={700}
-        textAnchor="middle"
-        fill="var(--color-road-line, #fff)"
-      >
-        {node.ordinal}
-      </text>
+      {duration === null ? (
+        <path
+          d={reverse ? `M ${arrowX + 6} ${arrowY} h -12 m 4 -4 -4 4 4 4` : `M ${arrowX - 6} ${arrowY} h 12 m -4 -4 4 4 -4 4`}
+          fill="none"
+          stroke={category.ink}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        />
+      ) : null}
 
       {state === null ? null : (
         <text
@@ -456,12 +494,13 @@ export function StartMarker({ node, label }: { node: PlacedNode; label: string }
 }
 
 /** Where the journey ends — the fly marker (§20.1). */
-export function DestinationMarker({ node, label }: { node: PlacedNode; label: string }) {
-  const x = node.x + node.width / 2 + 8
+export function DestinationMarker({ node, label, reverse = false }: { node: PlacedNode; label: string; reverse?: boolean }) {
+  const direction = reverse ? -1 : 1
+  const x = node.x + direction * (node.width / 2 + 8)
   return (
     <g>
       <title>{label}</title>
-      <path d={`M ${x} ${node.y - 6} L ${x + 11} ${node.y} L ${x} ${node.y + 6} Z`} fill="var(--color-cat-travel-ink, #7e22ce)" />
+      <path d={`M ${x} ${node.y - 6} L ${x + direction * 11} ${node.y} L ${x} ${node.y + 6} Z`} fill="var(--color-cat-travel-ink, #7e22ce)" />
     </g>
   )
 }

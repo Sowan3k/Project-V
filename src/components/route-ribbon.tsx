@@ -24,25 +24,32 @@ export function RouteRibbon({
   locale: string
 }) {
   return (
-    <li className="rounded-panel border border-hairline bg-surface transition-shadow hover:shadow-sm">
-      <Link href={`/${locale}/routes/${route.slug}`} className="block p-4 focus:outline-2">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h3 className="text-base font-semibold text-ink-900">{route.title}</h3>
-          <p className="text-xs text-ink-500">
-            {route.originCountry} → {route.destinationCountry} ·{' '}
-            {t.studyLevel[route.studyLevel]} · {t.route.stepCount(route.stepCount)}
-          </p>
+    <li className="group rounded-panel border border-hairline bg-surface shadow-panel transition-shadow hover:shadow-raised">
+      <Link href={`/${locale}/routes/${route.slug}`} className="block p-4 focus:outline-2 sm:p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="mb-2 text-meta font-medium text-brand-700">
+              {route.originCountry} → {route.destinationCountry} ·{' '}
+              {t.studyLevel[route.studyLevel]} · {t.route.stepCount(route.stepCount)}
+            </p>
+            <h3 className="text-section font-semibold tracking-tight text-ink-900 group-hover:text-brand-700">{route.title}</h3>
+          </div>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-hairline text-brand-700 group-hover:border-brand-500 group-hover:bg-brand-50" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14m-6-6 6 6-6 6" />
+            </svg>
+          </span>
         </div>
 
         {route.summary === null ? null : (
           <p className="mt-1 text-sm leading-6 text-ink-700">{route.summary}</p>
         )}
 
-        <div className="mt-3 overflow-x-auto" aria-label={t.route.ribbonLabel}>
+        <div className="my-4 overflow-x-auto" aria-label={t.route.ribbonLabel}>
           <Ribbon graph={route.graph} strings={rendererStrings(t)} />
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-hairline pt-3 text-xs">
           {/* Maturity and a count of things to know — not the list. A search result is a
               place to choose what to open; the passport on the route itself is where the
               detail belongs (FR-74). Both start from `snapshotCautions`, so this can never

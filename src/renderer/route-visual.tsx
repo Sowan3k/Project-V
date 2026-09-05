@@ -1,7 +1,7 @@
 import type { StepCategory } from '@/domain/enums'
 import type { RouteGraph } from '@/domain/graph/types'
 
-import { layout, RIBBON, ROAD, ROAD_NARROW, type Density } from './layout'
+import { layout, RIBBON, RIBBON_NARROW, ROAD, ROAD_NARROW, type Density } from './layout'
 import {
   Connector,
   DestinationMarker,
@@ -118,15 +118,15 @@ function RouteVisual({
       aria-label={strings.summary(frame.order.length)}
       className={`h-auto w-full ${className ?? ''}`}
       /**
-       * Fill the container, but never magnify past natural size.
-       *
-       * Without the cap, `w-full` scales a three-step road up to whatever the canvas gives
-       * it and the cards come out enormous — the mirror image of the defect this phase is
-       * fixing. The ribbon is unaffected because `fitWidth` already normalises it to ~960
-       * units whatever the step count, so its cap is always above the container and it
-       * always fills.
+       * Road blocks are capped at their natural size; Ribbons fill their row. A minimum
+       * width on long bands preserves readable symbols inside the parent's local scroller.
        */
-      style={{ maxWidth: frame.width }}
+      style={{
+        maxWidth: density.showLabels ? frame.width : undefined,
+        // Long ribbons scroll within their own container instead of reducing every symbol
+        // to a few pixels. Both forms still share the same graph and canonical order.
+        minWidth: density.showLabels ? undefined : Math.min(frame.width, (Math.max(0, ...frame.nodes.map((n) => n.rank)) + 1) * 32 + 44),
+      }}
       // The interface face, so labels on the road match labels beside it. Falls back to the
       // system stack if the variable is unset — a road that renders in the wrong font is a
       // great deal better than one that does not render.
@@ -156,7 +156,9 @@ function RouteVisual({
       )}
 
       {first === undefined ? null : <StartMarker node={first} label={strings.start} />}
-      {last === undefined ? null : <DestinationMarker node={last} label={strings.destination} />}
+      {last === undefined ? null : (
+        <DestinationMarker node={last} label={strings.destination} reverse={Math.floor(last.rank / density.columnsPerRow) % 2 === 1} />
+      )}
 
       {frame.nodes.map((node) => {
         // An annotated departure is drawn exactly as a genuinely archived step is, by giving
@@ -225,7 +227,12 @@ export function Road(props: RouteVisualProps & { density?: Density }) {
  * Opening it unfolds the identical structure (D-33, FR-04, FR-05).
  */
 export function Ribbon(props: RouteVisualProps) {
-  return <RouteVisual {...props} density={RIBBON} />
+  return (
+    <>
+      <div className="sm:hidden"><RouteVisual {...props} density={RIBBON_NARROW} /></div>
+      <div className="hidden sm:block"><RouteVisual {...props} density={RIBBON} /></div>
+    </>
+  )
 }
 
 /**
@@ -262,7 +269,7 @@ export function ResponsiveRoad(props: RouteVisualProps) {
       <div className="sm:hidden">
         <RouteVisual {...props} density={ROAD_NARROW} />
       </div>
-      {/* Tablet and up: the full 5-column road. */}
+      {/* Tablet and up: three readable stages within the route's main panel. */}
       <div className="hidden sm:block">
         <RouteVisual {...props} density={ROAD} />
       </div>

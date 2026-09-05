@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { StepCategory, StepEdgeKind } from '../../src/domain/enums'
 import type { GraphEdge, GraphStep, RouteGraph } from '../../src/domain/graph/types'
-import { RIBBON, ROAD, ROAD_NARROW, layout, type Density } from '../../src/renderer/layout'
+import { RIBBON, RIBBON_NARROW, ROAD, ROAD_NARROW, layout, type Density } from '../../src/renderer/layout'
 
 /**
  * Phase 4 exit criteria, and Test.md tests 24, 24b, 25 and 25b.
@@ -129,6 +129,7 @@ const DENSITIES: [string, Density][] = [
   ['ROAD', ROAD],
   ['ROAD_NARROW', ROAD_NARROW],
   ['RIBBON', RIBBON],
+  ['RIBBON_NARROW', RIBBON_NARROW],
 ]
 
 describe('25 — ribbon and road derive from one layout pass', () => {
@@ -138,8 +139,7 @@ describe('25 — ribbon and road derive from one layout pass', () => {
 
     for (const order of orders) expect(order).toHaveLength(active)
     // The decisive assertion: not merely the same count, the same sequence.
-    expect(orders[1]).toEqual(orders[0])
-    expect(orders[2]).toEqual(orders[0])
+    for (const order of orders) expect(order).toEqual(orders[0])
   })
 
   it('25b — adding a step changes every density, with no separate work', () => {
@@ -400,7 +400,7 @@ describe('the hard shapes produce the structure they claim', () => {
     }
 
     for (const ranks of [1, 2, 3, 5, 12]) {
-      expect(Math.round(layout(make(ranks), RIBBON).width), `${ranks} ranks`).toBe(960)
+      expect(Math.round(layout(make(ranks), RIBBON).width), `${ranks} ranks`).toBe(RIBBON.fitWidth)
     }
 
     // Concurrent steps are one rank with two lanes, and must normalise the same way.
@@ -413,7 +413,7 @@ describe('the hard shapes produce the structure they claim', () => {
         ).width,
       ),
       'one rank, two lanes',
-    ).toBe(960)
+    ).toBe(RIBBON.fitWidth)
   })
 
   it('fits a 15-step route inside 360px at the narrow density', () => {

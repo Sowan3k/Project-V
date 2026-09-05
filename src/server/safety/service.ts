@@ -1,7 +1,7 @@
-import type { ReportOutcome, ReportReason } from '@/domain/enums'
-import { UserRole } from '@/domain/enums'
+import type { RecordableReportOutcome, ReportReason } from '@/domain/enums'
+import { isRecordableReportOutcome, ReportOutcome, UserRole } from '@/domain/enums'
 import { prisma } from '@/server/db/client'
-import { setFieldQuarantine } from '@/server/revisions/service'
+import { archiveField, setFieldQuarantine } from '@/server/revisions/service'
 
 /**
  * Safety — Phase 9. FR-35, FR-36, FR-37, FR-71, §23, §42.5.
@@ -34,6 +34,26 @@ import { setFieldQuarantine } from '@/server/revisions/service'
  * history are untouched. Lifting quarantine is one column going back to null. That is the
  * difference between containment and destruction, and invariants 1 and 4 depend on it.
  */
+
+/**
+ * An outcome this product cannot make true — audit F11.
+ *
+ * Refused rather than downgraded to something else. Quietly recording a different decision
+ * than the one an administrator chose would be its own kind of false record.
+ */
+export class UnperformableOutcomeError extends Error {
+  constructor(readonly outcome: string) {
+    super(
+      `"${outcome}" cannot be recorded from the reports queue, because recording it would not ` +
+        `make it true. A correction is a revision made by a person editing the value on the ` +
+        `route — there is no moderator edit path and there must not be one (FR-16, FR-69, ` +
+        `§43.1). Permanent removal does not exist: the write guard and the database refuse ` +
+        `deletion of a field outright, and §23.2 reserves removal for a separate audited ` +
+        `surface (invariants 1 and 4).`,
+    )
+    this.name = 'UnperformableOutcomeError'
+  }
+}
 
 export class NotAnAdministratorError extends Error {
   constructor() {
@@ -131,19 +151,21 @@ export async function releaseField(input: { adminId: string; fieldId: string }):
 export async function handleReport(input: {
   adminId: string
   reportId: string
-  outcome: ReportOutcome
+  outcome: RecordableReportOutcome
   note?: string | null
 }): Promise<void> {
   await requireAdministrator(input.adminId)
-
-  await prisma.report.update({
+  const report = await prisma.report.findUniqueOrThrow({
     where: { id: input.reportId },
-    data: {
-      handledAt: new Date(),
-      handledById: input.adminId,
-      outcome: input.outcome,
-      outcomeNote: input.note ?? null,
-    },
+    select: { fieldId: true },
+  })
+
+  await handleReportsWhere({
+    adminId: input.adminId,
+    fieldId: report.fieldId,
+    where: { id: input.reportId },
+    outcome: input.outcome,
+    note: input.note ?? null,
   })
 }
 
@@ -161,21 +183,94 @@ export async function handleReport(input: {
 export async function handleReportsForField(input: {
   adminId: string
   fieldId: string
-  outcome: ReportOutcome
+  outcome: RecordableReportOutcome
   note?: string | null
 }): Promise<{ handled: number }> {
   await requireAdministrator(input.adminId)
 
-  const result = await prisma.report.updateMany({
+  return handleReportsWhere({
+    adminId: input.adminId,
+    fieldId: input.fieldId,
     where: { fieldId: input.fieldId, handledAt: null },
-    data: {
-      handledAt: new Date(),
-      handledById: input.adminId,
-      outcome: input.outcome,
-      outcomeNote: input.note ?? null,
-    },
+    outcome: input.outcome,
+    note: input.note ?? null,
   })
+}
 
+/**
+ * Records an outcome **and performs it**, in one transaction — audit F11.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * The bug this closes: the queue offered five outcomes and this function updated a column.
+ * `content_archived` archived nothing; `content_removed` removed nothing. A moderation record
+ * could therefore state that reported content had been dealt with while it was still public,
+ * and the record is exactly what somebody relies on later when deciding not to look again.
+ *
+ * So there are now only outcomes that can be made true, and each is coupled to its effect:
+ *
+ *   `content_archived`   the field is archived, and the reports are marked in the *same*
+ *                        transaction as the archival. Archived is not deleted — the value,
+ *                        every revision and the whole history stay queryable in history views
+ *                        (FR-21, FR-45, BR-15, invariant 4).
+ *   `quarantine_upheld`  asserts a state rather than causing one, so it is *checked*: the
+ *                        field must actually be quarantined. Saying a containment stands when
+ *                        nothing is contained is the same false record in a quieter form.
+ *   `no_action_needed`   nothing to perform. Looked at, and it was fine.
+ *
+ * `content_corrected` and `content_removed` are refused — see `RECORDABLE_REPORT_OUTCOMES`.
+ *
+ * Reports are updated, never deleted: a handled report is the record of a safety decision, and
+ * the write guard refuses a delete on it for that reason. Nothing here counts reports or acts
+ * on a total — a person decided, and the number never entered into it (FR-71, invariant 14).
+ */
+async function handleReportsWhere(input: {
+  adminId: string
+  fieldId: string
+  where: { id?: string; fieldId?: string; handledAt?: null }
+  outcome: RecordableReportOutcome
+  note: string | null
+}): Promise<{ handled: number }> {
+  if (!isRecordableReportOutcome(input.outcome)) {
+    throw new UnperformableOutcomeError(input.outcome)
+  }
+
+  if (input.outcome === ReportOutcome.quarantine_upheld) {
+    const field = await prisma.field.findUniqueOrThrow({
+      where: { id: input.fieldId },
+      select: { quarantinedAt: true },
+    })
+    if (field.quarantinedAt === null) {
+      throw new UnperformableOutcomeError(
+        'quarantine_upheld on a field that is not quarantined',
+      )
+    }
+  }
+
+  const stamp = {
+    handledAt: new Date(),
+    handledById: input.adminId,
+    outcome: input.outcome,
+    outcomeNote: input.note,
+  }
+
+  if (input.outcome === ReportOutcome.content_archived) {
+    // Archival is a write to a revisioned model, so it goes through the revision service —
+    // the Phase 3 boundary, unchanged. The outcome rides inside that transaction rather than
+    // following it, so the record and the effect cannot disagree.
+    let handled = 0
+    await archiveField({
+      actor: { id: input.adminId },
+      reason: input.note ?? 'Archived following a safety report',
+      fieldId: input.fieldId,
+      alsoInTransaction: async (tx) => {
+        const result = await tx.report.updateMany({ where: input.where, data: stamp })
+        handled = result.count
+      },
+    })
+    return { handled }
+  }
+
+  const result = await prisma.report.updateMany({ where: input.where, data: stamp })
   return { handled: result.count }
 }
 

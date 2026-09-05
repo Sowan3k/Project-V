@@ -143,6 +143,12 @@ jobs:
       - name: Apply migrations to an empty database
         run: npx prisma migrate deploy
 
+      - name: Mark the throwaway database as a test database
+        # The end-to-end suite now refuses to write to a database that has not declared
+        # itself disposable (e2e/database-guard.setup.ts), exactly as the integration suite
+        # has since Phase 3. Production will never carry this row.
+        run: npx prisma db execute --url "$DATABASE_URL" --file ci/mark-test-database.sql
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 

@@ -6,6 +6,7 @@ import { Button, Panel } from '@/components/ui'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { currentViewer, signIn } from '@/server/auth'
+import { safeInternalRedirect } from '@/server/auth/safe-redirect'
 
 /**
  * Sign in — Phase 7, FR-12, §24.2, §24.3.
@@ -57,9 +58,17 @@ export default async function SignInPage({
 
   const query = await searchParams
   const requested = Array.isArray(query.next) ? query.next[0] : query.next
-  // Only same-site paths. An open redirect on a sign-in page is how a phishing link borrows
-  // somebody else's domain, and this platform warns readers about exactly that (FR-64).
-  const next = requested?.startsWith('/') && !requested.startsWith('//') ? requested : `/${locale}`
+  /**
+   * Only internal pages of this application — audit F14.
+   *
+   * This used to be `startsWith('/') && !startsWith('//')`, which a backslash walks straight
+   * through: browsers normalise `/\evil.example` into `//evil.example` and leave the site.
+   * An open redirect on a sign-in page is how a phishing link borrows somebody else's
+   * domain, and this platform warns readers about exactly that (FR-64, invariant 10), so
+   * validation is done by the URL parser rather than by string prefix. See
+   * `src/server/auth/safe-redirect.ts`.
+   */
+  const next = safeInternalRedirect(requested, locale)
 
   if (await currentViewer()) redirect(next)
 

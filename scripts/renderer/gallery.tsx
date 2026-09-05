@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -66,6 +66,17 @@ interface Fixture {
 }
 
 const fixtures: readonly Fixture[] = [
+  {
+    name: 'Route blocks — illustrative six-stage journey',
+    graph: {
+      steps: CATEGORIES.map((category, i) => step(`demo-${i}`, {
+        category,
+        label: ['Prepare documents', 'Language requirements', 'University application', 'Financial proof', 'Visa application', 'Prepare to travel'][i],
+        typicalDurationDays: i === 0 ? 21 : null,
+      })),
+      edges: CATEGORIES.slice(1).map((_, i) => edge(`demo-edge-${i}`, `demo-${i}`, `demo-${i + 1}`)),
+    },
+  },
   {
     name: 'Alternative branch (IELTS or PTE)',
     graph: {
@@ -197,27 +208,38 @@ const sections = fixtures
   })
   .join('\n')
 
+// Read the actual palette rather than judging unstyled SVGs whose var() fills disappear.
+const theme = readFileSync(resolve(process.cwd(), 'src/app/globals.css'), 'utf8')
+  .match(/@theme\s*\{([\s\S]*?)\n\}/)?.[1] ?? ''
+
 const page = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Phase 4 — route renderer</title>
+<title>Vindeshi Express — route block design review</title>
 <style>
+  :root{${theme}}
   *{box-sizing:border-box}
-  body{margin:0;padding:16px;background:#f8fafc;color:#0f172a;font:14px/1.5 system-ui,-apple-system,sans-serif}
-  h1{font-size:18px;margin:0 0 4px}
-  .lede{color:#475569;font-size:13px;margin:0 0 20px}
-  section{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:16px}
-  h2{font-size:14px;margin:0 0 2px}
+  body{margin:0;padding:40px max(20px,calc((100vw - 1200px)/2));background:var(--color-surface-muted);color:var(--color-ink-900);font:14px/1.5 system-ui,-apple-system,sans-serif}
+  h1{font-size:30px;letter-spacing:-.03em;margin:0 0 8px}
+  .lede{color:var(--color-ink-700);font-size:15px;margin:0 0 32px;max-width:65ch}
+  section{background:var(--color-surface);border:1px solid var(--color-hairline);border-radius:14px;padding:24px;margin-bottom:24px}
+  h2{font-size:18px;margin:0 0 4px}
   .meta{color:#64748b;font-size:12px;margin:0 0 10px}
   .ribbon,.road{overflow-x:auto;overflow-y:hidden}
-  .ribbon{border-bottom:1px dashed #e2e8f0;padding-bottom:10px;margin-bottom:10px}
-  .ribbon svg,.road svg{display:block;max-width:none}
-  .narrow{display:none}
+  .ribbon{border-bottom:1px solid var(--color-hairline);padding-bottom:16px;margin-bottom:16px}
+  .ribbon svg,.road svg{display:block;width:100%;height:auto}
+  .road svg{margin-inline:auto}
+  .narrow,.hidden{display:none}
+  .ribbon .sm\\:hidden{display:none}
+  .ribbon .sm\\:block{display:block}
   /* The whole mobile strategy: pick a density, not a second renderer. */
-  @media (max-width:700px){ .wide{display:none} .narrow{display:block} }
+  @media (max-width:639px){
+    body{padding:24px 16px} section{padding:12px} h1{font-size:24px}
+    .wide,.ribbon .sm\\:block{display:none} .narrow,.ribbon .sm\\:hidden{display:block}
+  }
 </style></head>
 <body>
-  <h1>Phase 4 — one layout pass, three densities</h1>
-  <p class="lede">Ribbon, road and narrow road are the same component with different constants.</p>
+  <h1>Every stage has a place.</h1>
+  <p class="lede">Vindeshi Express · Route block design review. Illustrative fixtures only — these are not real study-abroad requirements or timing guidance.</p>
   ${sections}
 </body></html>`
 

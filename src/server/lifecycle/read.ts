@@ -1,4 +1,5 @@
 import type { RouteLifecycleState } from '@/domain/enums'
+import type { MergeIdentity } from '@/domain/merge'
 import { prisma } from '@/server/db/client'
 
 /**
@@ -192,7 +193,7 @@ export async function openDuplicateFlags(limit = 50): Promise<readonly Duplicate
   }))
 }
 
-export interface MaintenanceRow {
+export interface MaintenanceRow extends MergeIdentity {
   readonly id: string
   readonly slug: string
   readonly title: string
@@ -216,6 +217,15 @@ export async function routesForMaintenance(limit = 200): Promise<readonly Mainte
       slug: true,
       lifecycleState: true,
       createdAt: true,
+      // The route's search identity, so the merge control can offer only routes that
+      // describe the same journey (audit F5, src/domain/merge.ts). Read here rather than
+      // per-row in the page: the compatibility decision is about pairs, and the page needs
+      // every row's identity to form them.
+      originCountry: true,
+      destinationCountry: true,
+      studyLevel: true,
+      mechanism: true,
+      intake: true,
       currentRevision: { select: { title: true } },
       mergedInto: { select: { slug: true } },
     },
@@ -229,6 +239,11 @@ export async function routesForMaintenance(limit = 200): Promise<readonly Mainte
     title: row.currentRevision?.title ?? row.slug,
     lifecycleState: row.lifecycleState,
     createdAt: row.createdAt,
+    originCountry: row.originCountry,
+    destinationCountry: row.destinationCountry,
+    studyLevel: row.studyLevel,
+    mechanism: row.mechanism,
+    intake: row.intake,
     mergedIntoSlug: row.mergedInto?.slug ?? null,
   }))
 }

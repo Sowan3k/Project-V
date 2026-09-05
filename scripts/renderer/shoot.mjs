@@ -7,7 +7,7 @@ const out = resolve(process.cwd(), 'scripts/renderer/out')
 const url = pathToFileURL(resolve(out, 'gallery.html')).href
 const browser = await chromium.launch()
 
-for (const width of [360, 768, 1280]) {
+for (const width of [360, 768, 1280, 1440]) {
   const page = await browser.newPage({ viewport: { width, height: 900 } })
   await page.goto(url)
   await page.waitForLoadState('networkidle')
@@ -15,7 +15,9 @@ for (const width of [360, 768, 1280]) {
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
   )
   console.log(`${width}px  page-wide horizontal overflow: ${overflow ? 'YES (FAIL)' : 'no'}`)
+  if (overflow) process.exitCode = 1
   await page.screenshot({ path: resolve(out, `gallery-${width}.png`), fullPage: true })
+  await page.locator('section').first().screenshot({ path: resolve(out, `route-blocks-${width}.png`) })
   await page.close()
 }
 

@@ -1,5 +1,6 @@
 import type { LifecycleEvidence, LifecycleProposal } from '@/domain/lifecycle'
 import { proposeLifecycle } from '@/domain/lifecycle'
+import { mergeCompatibility } from '@/domain/merge'
 import type { RouteLifecycleState } from '@/domain/enums'
 import { UserRole } from '@/domain/enums'
 import { RECENT_ACTIVITY_WINDOW_DAYS } from '@/domain/trust'
@@ -40,6 +41,21 @@ import { setRouteLifecycleState, setRouteMergePointer } from '@/server/revisions
 
 export class LifecycleError extends Error {}
 export class NotAnAdministratorError extends LifecycleError {}
+
+/**
+ * Refused because the two routes are not descriptions of one journey — audit F5.
+ *
+ * Carries which dimensions disagree, so the interface can say *why* rather than "no".
+ */
+export class IncompatibleMergeError extends LifecycleError {
+  constructor(
+    message: string,
+    readonly differsBy: readonly string[],
+  ) {
+    super(message)
+    this.name = 'IncompatibleMergeError'
+  }
+}
 
 /**
  * The only authorisation check in this module, and it is checked here rather than in a page.
@@ -160,29 +176,40 @@ export async function applyProposedLifecycle(
   })
   if (proposal === null) return { routeId, applied: null }
 
-  // The write to `Route` goes through the revision service, which is the only module
-  // permitted to write a revisioned model — the boundary Phase 9's quarantine work had to
-  // respect, and the architecture test that enforces it caught this too.
-  await setRouteLifecycleState({ routeId, state: proposal.to, actorId: null })
-  await prisma.$transaction([
-    prisma.routeLifecycleEvent.create({
-      data: {
-        routeId,
-        fromState: proposal.from,
-        toState: proposal.to,
-        reason: proposal.reason,
-        // What the decision actually saw, so it can be re-examined later against the facts of
-        // the day rather than against today's. No report count appears in it.
-        evidence: {
-          followerCount: evidence.followerCount,
-          confirmationCount: evidence.confirmationCount,
-          needsReviewCount: evidence.needsReviewCount,
-          informationCount: evidence.informationCount,
-          lastActivityAt: evidence.lastActivityAt?.toISOString() ?? null,
+  /**
+   * The state and the record of why it moved, in one transaction — audit F4.
+   *
+   * The write to `Route` goes through the revision service, which is the only module
+   * permitted to write a revisioned model (Phase 3). The event used to be a *second*
+   * transaction after it, so a failure in between left a route quietly reclassified with
+   * nothing saying what decided it — the exact question `RouteLifecycleEvent` exists to
+   * answer. `alsoInTransaction` runs inside the service's own transaction, so both commit or
+   * neither does, and the write boundary is untouched.
+   */
+  await setRouteLifecycleState({
+    routeId,
+    state: proposal.to,
+    actorId: null,
+    alsoInTransaction: async (tx) => {
+      await tx.routeLifecycleEvent.create({
+        data: {
+          routeId,
+          fromState: proposal.from,
+          toState: proposal.to,
+          reason: proposal.reason,
+          // What the decision actually saw, so it can be re-examined later against the facts
+          // of the day rather than against today's. No report count appears in it.
+          evidence: {
+            followerCount: evidence.followerCount,
+            confirmationCount: evidence.confirmationCount,
+            needsReviewCount: evidence.needsReviewCount,
+            informationCount: evidence.informationCount,
+            lastActivityAt: evidence.lastActivityAt?.toISOString() ?? null,
+          },
         },
-      },
-    }),
-  ])
+      })
+    },
+  })
 
   return { routeId, applied: proposal }
 }
@@ -238,19 +265,25 @@ export async function setLifecycleState({
   })
   if (route.lifecycleState === state) return
 
-  await setRouteLifecycleState({ routeId, state, actorId: adminId })
-  await prisma.$transaction([
-    prisma.routeLifecycleEvent.create({
-      data: {
-        routeId,
-        fromState: route.lifecycleState,
-        toState: state,
-        reason: ADMINISTRATIVE_REASON,
-        note: note?.trim() || null,
-        actorId: adminId,
-      },
-    }),
-  ])
+  // One transaction with its own audit event — audit F4. An administrator's decision that
+  // left no record of who made it would be worse than no decision at all.
+  await setRouteLifecycleState({
+    routeId,
+    state,
+    actorId: adminId,
+    alsoInTransaction: async (tx) => {
+      await tx.routeLifecycleEvent.create({
+        data: {
+          routeId,
+          fromState: route.lifecycleState,
+          toState: state,
+          reason: ADMINISTRATIVE_REASON,
+          note: note?.trim() || null,
+          actorId: adminId,
+        },
+      })
+    },
+  })
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════
@@ -378,19 +411,54 @@ export async function mergeRoutes({
     throw new LifecycleError('A route cannot be merged into itself')
   }
 
+  // Both identities, because compatibility is a question about the pair — audit F5.
+  const identity = {
+    originCountry: true,
+    destinationCountry: true,
+    studyLevel: true,
+    mechanism: true,
+    intake: true,
+  } as const
+
   const [duplicate, canonical] = await Promise.all([
     prisma.route.findUniqueOrThrow({
       where: { id: duplicateRouteId },
-      select: { lifecycleState: true, mergedIntoId: true },
+      select: { lifecycleState: true, mergedIntoId: true, ...identity },
     }),
     prisma.route.findUniqueOrThrow({
       where: { id: canonicalRouteId },
-      select: { id: true },
+      select: { id: true, ...identity },
     }),
   ])
 
   if (duplicate.mergedIntoId !== null) {
     throw new LifecycleError('That route has already been merged')
+  }
+
+  /**
+   * The two routes must describe the same journey — audit F5, FR-40, BR-25, §40.4.
+   *
+   * This check is here rather than only in the form, and that is the point: the dropdown now
+   * offers compatible routes only, but a server action is reachable by anyone who can
+   * construct a POST, and a hidden option is not a rule (CLAUDE.md §9). Without it a
+   * Bangladesh→Germany Master's route could be declared superseded by a Bangladesh→Malaysia
+   * one — every preservation guarantee downstream intact, and every reader of the German
+   * route sent to Malaysia.
+   *
+   * Origin, destination and study level are the route's search identity (FR-01, §9). Routes
+   * disagreeing on any of them are two journeys, not two descriptions of one. `mechanism` and
+   * `intake` are deliberately *not* enforced — see `src/domain/merge.ts` for the modelling
+   * question that is being surfaced rather than answered.
+   */
+  const compatibility = mergeCompatibility(duplicate, canonical)
+  if (!compatibility.compatible) {
+    throw new IncompatibleMergeError(
+      `These routes do not describe the same journey: they differ by ` +
+        `${compatibility.blocking.join(', ')}. A merge declares one route the surviving ` +
+        `version of another, and a route to a different destination, origin or study level ` +
+        `is not a duplicate of anything (FR-40, BR-25, §40.4).`,
+      compatibility.blocking,
+    )
   }
 
   // Walking from the intended target: if we reach the duplicate, this merge closes a loop.
@@ -409,24 +477,26 @@ export async function mergeRoutes({
     cursor = next?.mergedIntoId ?? null
   }
 
+  // Pointer and record together — audit F4. A route saying it was superseded, with nothing
+  // saying who decided that or when, is not a reversible judgement.
   await setRouteMergePointer({
     routeId: duplicateRouteId,
     mergedIntoId: canonicalRouteId,
     actorId: adminId,
     note: note?.trim() || null,
+    alsoInTransaction: async (tx) => {
+      await tx.routeLifecycleEvent.create({
+        data: {
+          routeId: duplicateRouteId,
+          fromState: duplicate.lifecycleState,
+          toState: duplicate.lifecycleState,
+          reason: ADMINISTRATIVE_REASON,
+          note: `Merged into ${canonicalRouteId}${note?.trim() ? `: ${note.trim()}` : ''}`,
+          actorId: adminId,
+        },
+      })
+    },
   })
-  await prisma.$transaction([
-    prisma.routeLifecycleEvent.create({
-      data: {
-        routeId: duplicateRouteId,
-        fromState: duplicate.lifecycleState,
-        toState: duplicate.lifecycleState,
-        reason: ADMINISTRATIVE_REASON,
-        note: `Merged into ${canonicalRouteId}${note?.trim() ? `: ${note.trim()}` : ''}`,
-        actorId: adminId,
-      },
-    }),
-  ])
 }
 
 /**
@@ -454,17 +524,21 @@ export async function unmergeRoute({
   })
   if (route.mergedIntoId === null) return
 
-  await setRouteMergePointer({ routeId, mergedIntoId: null, actorId: adminId })
-  await prisma.$transaction([
-    prisma.routeLifecycleEvent.create({
-      data: {
-        routeId,
-        fromState: route.lifecycleState,
-        toState: route.lifecycleState,
-        reason: ADMINISTRATIVE_REASON,
-        note: `Merge reversed${note?.trim() ? `: ${note.trim()}` : ''}`,
-        actorId: adminId,
-      },
-    }),
-  ])
+  await setRouteMergePointer({
+    routeId,
+    mergedIntoId: null,
+    actorId: adminId,
+    alsoInTransaction: async (tx) => {
+      await tx.routeLifecycleEvent.create({
+        data: {
+          routeId,
+          fromState: route.lifecycleState,
+          toState: route.lifecycleState,
+          reason: ADMINISTRATIVE_REASON,
+          note: `Merge reversed${note?.trim() ? `: ${note.trim()}` : ''}`,
+          actorId: adminId,
+        },
+      })
+    },
+  })
 }
