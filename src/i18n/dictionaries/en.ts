@@ -781,6 +781,40 @@ export const en = {
     challengeReason: 'Reason',
     saveUpdate: 'Save correction',
     raiseChallenge: 'Flag it',
+
+    // ── VR-08's comparison, in words — Phase 12E ─────────────────────────────────
+    //
+    // The mockup's rail runs "1. Check current information … 5. Update goes live when
+    // confirmed by the community". Stages 1-3 are honest and are the tips below; 4 and 5 are
+    // a mockup exception (CLAUDE.md §8.6) and are not written anywhere, because they are not
+    // true here — the correction is live when it is saved.
+    //
+    // "Avoid personal opinions" is VR-08's fourth tip and is *replaced* rather than dropped.
+    // A student's own experience is community experience, it is a first-class claim type
+    // (FR-54, invariant 11), and telling contributors to suppress it would remove the thing
+    // this platform is mostly made of. What we actually need from them is that they say which
+    // kind of claim it is, so that is what the tip asks for.
+    updateContext: 'What you are correcting',
+    currentTitle: 'What it says now',
+    currentAsOf: (date: string) => `As recorded on ${date}`,
+    currentNeverRevised: 'As first recorded',
+    proposedTitle: 'Your correction',
+    proposedValue: 'The corrected information',
+    appliesToNow: 'Applies to',
+    whoSaysSo: 'Who says so',
+    lastConfirmedLabel: 'Last confirmed',
+    neverConfirmedShort: 'Nobody yet',
+    versionsLabel: 'Versions kept',
+    versionCount: (n: number) => (n === 1 ? '1 version' : `${n} versions`),
+    updateTipsTitle: 'What makes a correction useful',
+    updateTips: [
+      'Be specific about what changed, and about whom it changed for.',
+      'Link the page you found it on, where there is one.',
+      'Say who says so honestly. Your own experience is community experience, and it is worth recording as exactly that — it is not a lesser kind of information, it is a different one.',
+      'Say why you are changing it. The next reader is deciding between your value and the one before it, and the reason is most of what they have to go on.',
+    ],
+    updateAttribution:
+      'Your correction is recorded against your handle, and the value before it stays in this route’s history where anyone can read it. Nothing is overwritten.',
     sourceClass: 'Who says so?',
     sourceClassHint:
       'Choose “official” only for something an authority actually publishes. Your own experience is community experience, and it is valuable as that.',
