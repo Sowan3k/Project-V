@@ -259,11 +259,65 @@ Test.md §18 named as the gap. I did not duplicate it.
 
 ---
 
+### Phase 13 — Gates 1 and 3 walked, same session
+
+Not signed off — a gate is signed off by a person walking the checklist — but walked, with the
+evidence recorded in Test.md §22.
+
+**Gate 1.** Every fixture F1–F9 renders, structural equivalence holds between F8 and its twin,
+generative coverage passes, the import boundary and identity checks hold, and the gallery shows
+no page-wide overflow at 360, 768, 1280 or 1440. 156 renderer tests. One item rests on CI:
+creating a route through the UI and watching the renderer draw it exhausts its 60-second budget
+against a remote Neon branch.
+
+**Gate 3.** Every stage of the loop exercised in a browser — read, follow, private progress, one
+follower never seeing another's notes, unfollow keeping them, confirm and challenge behaving as
+different things, a change announced and shadow-compared with progress intact, and the whole read
+path with JavaScript disabled.
+
+**Walking it found one real defect**, which is what the gate is for. "Last confirmed" now appears
+three times in a field row and two are inside collapsed `<details>` — the route passport's, and
+the VR-08 comparison panel's. The assertion was already scoped to the row *because* of the
+passport one, and that stopped being enough the moment the third moved into the row. No unit test
+could see it: the component is right, the dictionary is complete, and the collision only exists
+once both are on one page.
+
+**And one wrong fix, written and reverted — the finding worth keeping.** Three tests failed
+locally at assertions waiting for a server action's effect, and the first reading was that the
+journey page never refreshes after a save. A post-redirect-get was written for
+`saveStepProgressAction` on that reading. Then a direct probe of the test database showed every
+"lost" write present and correct, at the right second, on every run. The page had simply not
+re-rendered inside the 15-second assertion timeout — a journey server action is a write plus a
+full re-render, and every query is a round-trip to a remote branch where §14 measured connects at
+2.4–8.8s. The fix was reverted; it would have added a round-trip to the slowest path in the
+product to repair something that was not broken.
+
+**Probe the database before concluding a write did not happen.** The evidence is one query away,
+and it is the difference between a real defect and a slow render. The other tell: these failures
+*move* between runs — the same test failed at the follow, then at the save, then passed, then
+failed thirty seconds later at a step it had already passed. A deterministic defect does not
+wander.
+
+**Correction to this session's own earlier note:** the disposable Neon `test` branch is reachable
+from this workstation and was used all session. Session 16 recorded otherwise and it is why two
+passes of database-backed work were left unexecuted.
+
 ### Next step
 
-Phase 13's gates. Gates 1, 3 and 4 run against hypothetical routes on the disposable branch;
-Gate 2 waits for the owner's researched content. Gate 4 also needs the owner's eye on the 12G
-sheet, which is the acceptance criterion 12C, 12D, 12E and 12F all still share.
+**Push, and let CI be the gate.** Nothing in this session has been pushed. CI is the authoritative
+run (§24): a clean container, a fresh build, a local `postgres:18`, and now four viewport projects
+rather than two. Two E2E items rest on it — the create-a-route walk in `contribute.spec.ts`, and
+the full four-width presentation suite.
+
+Then the owner's two decisions, which are the only things left blocking a release gate:
+
+1. **Accept or reject the ribbon and road** against VR-03 and VR-04 — still the one unticked exit
+   criterion on 12C and 12D, and 12E and 12F now both sit on top of it.
+2. **Review the 12G visual-acceptance sheet** for Gate 4. Every departure it will raise is already
+   written down: VR-08 through VR-11 in Phases.md's 12E section, VR-12 and VR-13 in 12F's.
+
+Gate 2 then waits on the owner's researched content, and the fixtures come off the disposable
+branch by resetting it.
 
 ---
 
