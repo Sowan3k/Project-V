@@ -927,6 +927,77 @@ export const en = {
     reportDetail: 'What did you see?',
     reportDetailHint: 'Optional. Text only — please do not paste anything private.',
     submitReport: 'Send this report',
+
+    // ── VR-11's category grid, "what happens next" and quarantine explanation ────
+    //
+    // The eight reasons had been eight one-line options in a `<select>`, which is the shape
+    // most likely to produce the wrong report: "phishing or a scam" and "another serious
+    // concern" look equally plausible to somebody who has just found an out-of-date deadline.
+    // A sentence per category is what keeps a challenge from being filed as a report (§23.1).
+    reportWhatTitle: 'What are you reporting?',
+    reportReasonDetail: {
+      phishing_or_scam:
+        'A fake page, a fake offer, or a request for money or details that nobody legitimate would ask for.',
+      adult_content: 'Explicit or otherwise inappropriate material.',
+      malware_or_download:
+        'A link that installs something, or downloads a file you did not ask for.',
+      impersonation:
+        'Somebody claiming to be an embassy, a university, an official office or a person they are not.',
+      harassment_or_personal_information:
+        'Abuse, or a private person’s number, address or documents published without their consent.',
+      malicious_contact:
+        'A phone number, email address or account listed here that is being used against people.',
+      // "Selling something" rather than the obvious word for it: the invariant-13 guard
+      // forbids advertising vocabulary anywhere in src/ and cannot tell a description of
+      // what somebody is reporting from a feature we are building. The guard is right to be
+      // blunt about that word; this reads the same to a reporter.
+      spam: 'Selling something, or the same thing posted over and over.',
+      other_serious_concern:
+        'Something dangerous that none of the above describes. Say what it is below.',
+    } satisfies Record<ReportReason, string>,
+    /**
+     * VR-11 offers "Add screenshot (optional), PNG, JPG up to 5MB". Deferred from V1 on
+     * 2026-09-02 (CLAUDE.md §8.6): no upload endpoint, no blob storage, no attachment table.
+     * Said out loud rather than left as a missing control, because "there is nowhere on this
+     * platform to upload a file" is a fact about the product worth knowing (invariant 6).
+     */
+    reportTextOnly:
+      'Text only. There is nowhere to attach a file here, and nowhere on this platform to upload one — not for a report, and not for your own journey either.',
+    /**
+     * VR-11's "What happens next?", written as what happens rather than as a promise.
+     *
+     * The mockup's version ends "Issue Resolved — the community stays safe" and its rail
+     * opens with "We review all reports and take action". Both are commitments with a volume
+     * in them. What replaces them is the sequence itself, including the part that matters
+     * most and is easiest to leave out: a person decides, and no number of reports decides
+     * anything on its own (FR-71, invariant 14).
+     */
+    whatHappensTitle: 'What happens next',
+    whatHappens: [
+      {
+        title: 'You send it',
+        body: 'Nothing on the route changes yet, and nothing appears publicly. Your handle is not shown against the report anywhere a reader can see.',
+      },
+      {
+        title: 'An administrator reads it',
+        body: 'A person, not a rule. How many reports something has had never decides anything by itself, and neither does how quickly they arrived.',
+      },
+      {
+        title: 'They may withhold it while they look',
+        body: 'The value is hidden from the route and replaced by a notice saying it was withheld and why. Nothing is deleted, and restoring it is one action.',
+      },
+      {
+        title: 'They record what they decided',
+        body: 'What appears on the route is the state of the content — withheld, restored, or archived and kept in history. The report itself stays private.',
+      },
+    ],
+    quarantineHowTitle: 'How withholding works',
+    quarantineHow: [
+      'Withholding hides one value from the route. The field, every version of it and the whole history are untouched.',
+      'A reader sees that something was withheld and the reason given, rather than a blank. Hiding something without saying so reads as censorship.',
+      'Restoring it is a single action, as soon as the concern turns out to be unfounded.',
+      'Withholding one item says nothing about the rest of the route. Nothing on this platform has been checked by Vindeshi Express.',
+    ],
     reportSent: 'Reported. An administrator will look at this.',
     reportPrivate:
       'Reports are not shown publicly. What appears on the route is only the outcome — whether the content is withheld.',

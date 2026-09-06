@@ -813,12 +813,21 @@ export function ChoiceGrid({
   choices,
   defaultValue,
   columns = 3,
+  required = false,
   className = '',
 }: {
   name: string
   choices: readonly Choice[]
   defaultValue?: string
   columns?: 2 | 3
+  /**
+   * Marks the whole group required, which for radios means putting the attribute on every
+   * input in it. Worth doing rather than leaving to the server: the action refuses an
+   * unreadable enum outright (audit F9, "a malformed enum is refused rather than defaulted"),
+   * and refusal reaches the reader as the error boundary. Catching an empty group in the
+   * browser is the difference between a hint and a blank page.
+   */
+  required?: boolean
   className?: string
 }) {
   const cols = columns === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3'
@@ -833,6 +842,7 @@ export function ChoiceGrid({
             type="radio"
             name={name}
             value={choice.value}
+            required={required}
             defaultChecked={defaultValue === choice.value}
             className="mt-0.5 shrink-0"
           />
