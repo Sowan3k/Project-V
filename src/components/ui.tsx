@@ -469,3 +469,383 @@ export function ContributorLink({
     </Link>
   )
 }
+
+/* ── Forms ─────────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * One input style, one label style, one hint style — Phase 12E.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **Why this is a primitive and not a convention.**
+ *
+ * Before this existed, `const INPUT = 'mt-1 block w-full rounded-control …'` was written out
+ * seven times — in `contribute.tsx`, `safety.tsx`, `structure.tsx`, the changes page, the
+ * create-route page and both admin pages — and they had already drifted: some `px-2 py-1.5`,
+ * some `px-3 py-2`, some `text-xs` labels and some `text-sm`. That is the same failure the
+ * panel and button primitives were introduced to fix, one layer down, and it shows up where
+ * it matters most: the contribution forms are the surfaces a contributor looks at longest.
+ *
+ * `size` makes the same distinction `buttonClass` does. A form that *is* the page — create a
+ * route, report something — gets `default`; a form inside a disclosure on a field gets
+ * `compact`, so it does not shout down the value it is correcting.
+ */
+export type FieldSize = 'default' | 'compact'
+
+export function inputClass(size: FieldSize = 'default', className = ''): string {
+  const sizing = size === 'compact' ? 'px-2 py-1.5' : 'px-3 py-2'
+  return `mt-1 block w-full rounded-control border border-hairline bg-surface ${sizing} text-sm text-ink-900 ${className}`
+}
+
+export function labelClass(size: FieldSize = 'default'): string {
+  return `block ${size === 'compact' ? 'text-meta' : 'text-sm'} text-ink-700`
+}
+
+/**
+ * A labelled control with an optional hint beneath it.
+ *
+ * The hint sits *below* the control rather than above it, because in these forms the hint
+ * qualifies an answer the contributor is about to give — "leave everything unticked if you
+ * are not sure" is useless above the checkboxes and exactly right below them.
+ *
+ * Renders a real `<label>` wrapping its control, so the whole thing is a hit target and no
+ * `htmlFor`/`id` pair can fall out of sync.
+ */
+export function FormField({
+  label,
+  hint,
+  size = 'default',
+  className = '',
+  children,
+}: {
+  label: ReactNode
+  hint?: ReactNode
+  size?: FieldSize
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <label className={`${labelClass(size)} ${className}`}>
+      {label}
+      {children}
+      {hint === undefined ? null : (
+        <span className="mt-1 block text-meta leading-5 text-ink-500">{hint}</span>
+      )}
+    </label>
+  )
+}
+
+/** The same, for a group of controls that cannot live inside one `<label>`. */
+export function FormFieldset({
+  legend,
+  hint,
+  size = 'default',
+  className = '',
+  children,
+}: {
+  legend: ReactNode
+  hint?: ReactNode
+  size?: FieldSize
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <fieldset className={className}>
+      <legend className={labelClass(size)}>{legend}</legend>
+      {hint === undefined ? null : <p className="mt-1 text-meta leading-5 text-ink-500">{hint}</p>}
+      <div className="mt-2">{children}</div>
+    </fieldset>
+  )
+}
+
+/* ── Disclosure ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * A `<details>` with the product's own summary treatment.
+ *
+ * This is the most repeated shape in the application — every contribution control, every
+ * structural edit, the report form and the route index are all one of these — and until now
+ * every call site wrote its own summary classes. Three variants were in the tree.
+ *
+ * `tone="caution"` is for the disclosure that opens a report: it is the one action on a field
+ * whose consequence differs in kind, and §7.3 reserves the loud treatment for what changes
+ * what a reader should do.
+ */
+export function Disclosure({
+  summary,
+  tone = 'neutral',
+  open = false,
+  className = '',
+  children,
+}: {
+  summary: ReactNode
+  tone?: 'neutral' | 'caution'
+  open?: boolean
+  className?: string
+  children: ReactNode
+}) {
+  const colour = tone === 'caution' ? 'text-caution-900' : 'text-brand-700'
+  return (
+    <details open={open} className={className}>
+      <summary
+        className={`group flex cursor-pointer list-none items-center gap-1.5 text-meta font-medium ${colour}`}
+      >
+        {/* The one affordance `list-none` takes away. A summary styled as a link reads as a
+            link, and a reader who does not know it expands never opens it — so the marker is
+            drawn back, and rotated by CSS on `[open]` rather than by any script. */}
+        <svg
+          viewBox="0 0 12 12"
+          width="10"
+          height="10"
+          aria-hidden="true"
+          className="shrink-0 transition-transform group-open:rotate-90"
+        >
+          <path d="M4 2.5 L8 6 L4 9.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span className="underline decoration-hairline underline-offset-2">{summary}</span>
+      </summary>
+      {children}
+    </details>
+  )
+}
+
+/* ── Numbered flow ─────────────────────────────────────────────────────────────────────── */
+
+export interface FlowStage {
+  readonly title: string
+  readonly body?: string
+}
+
+/**
+ * An ordered sequence of stages, numbered — VR-08's "How it works", VR-09's stage bar and
+ * VR-11's "What happens next" are the same shape at two orientations.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **It describes; it does not navigate.** All three mockups draw the flow as a wizard whose
+ * stages are pages you click through. None of ours are: creating a route is one form and then
+ * the route itself, correcting a field is one form, and reporting is one form. So this is an
+ * `<ol>` saying what is about to happen or what happens next — which is the half of the
+ * mockup carrying the meaning. A contributor who does not know what a report leads to is the
+ * reason VR-11 draws that panel at all.
+ *
+ * A list rather than a row of links is also the honest rendering for a screen reader: five
+ * numbered items read as five numbered items, not as five links that go nowhere. The
+ * connectors are `aria-hidden`, like every other decorative mark here.
+ */
+export function NumberedFlow({
+  stages,
+  orientation = 'vertical',
+  current,
+  className = '',
+}: {
+  stages: readonly FlowStage[]
+  orientation?: 'vertical' | 'horizontal'
+  /** 1-based. Marks where the reader is now; omit where the flow is purely explanatory. */
+  current?: number
+  className?: string
+}) {
+  if (orientation === 'horizontal') {
+    return (
+      <ol className={`flex flex-wrap items-start gap-x-6 gap-y-4 ${className}`}>
+        {stages.map((stage, index) => {
+          const here = current === index + 1
+          return (
+            <li key={stage.title} className="flex min-w-48 flex-1 items-start gap-3">
+              <FlowNumber n={index + 1} here={here} />
+              <div className="min-w-0">
+                <p className={`text-sm ${here ? 'font-semibold text-ink-900' : 'text-ink-700'}`}>
+                  {stage.title}
+                </p>
+                {stage.body === undefined ? null : (
+                  <p className="mt-0.5 text-meta leading-5 text-ink-500">{stage.body}</p>
+                )}
+              </div>
+            </li>
+          )
+        })}
+      </ol>
+    )
+  }
+
+  return (
+    <ol className={`space-y-4 ${className}`}>
+      {stages.map((stage, index) => (
+        <li key={stage.title} className="flex items-start gap-3">
+          <FlowNumber n={index + 1} here={current === index + 1} />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-ink-900">{stage.title}</p>
+            {stage.body === undefined ? null : (
+              <p className="mt-0.5 text-meta leading-5 text-ink-700">{stage.body}</p>
+            )}
+          </div>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function FlowNumber({ n, here }: { n: number; here: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-micro font-semibold ${
+        here ? 'bg-brand-700 text-white' : 'border border-hairline bg-surface-muted text-ink-500'
+      }`}
+    >
+      {n}
+    </span>
+  )
+}
+
+/* ── Guidance list ─────────────────────────────────────────────────────────────────────── */
+
+/**
+ * A short list of guidance points — VR-08's "Tips for a good update", VR-09's "Tips for
+ * creating a great route", VR-11's "How quarantine works".
+ *
+ * The marker is a small dot, not a green tick. VR-08 and VR-09 both draw green ticks beside
+ * every line, and a green tick means *this is done* or *this is correct* — neither of which
+ * is true of advice a contributor has not taken yet. Green also reads as a safety signal on a
+ * platform careful never to make one (invariant 12).
+ */
+export function GuidanceList({
+  lines,
+  className = '',
+}: {
+  /**
+   * Named `lines` rather than the obvious `points`, because `points` is one of the words the
+   * gamification guard forbids anywhere in `src/` — §25 and CLAUDE.md §11 keep contribution
+   * from becoming a score, and the guard cannot tell a prop name from a currency. Renaming is
+   * cheaper than widening a guard that is doing its job.
+   */
+  lines: readonly string[]
+  className?: string
+}) {
+  return (
+    <ul className={`space-y-2 ${className}`}>
+      {lines.map((line) => (
+        <li key={line} className="flex items-start gap-2.5 text-meta leading-5 text-ink-700">
+          <span aria-hidden="true" className="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand-500" />
+          <span>{line}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/* ── Facts ─────────────────────────────────────────────────────────────────────────────── */
+
+export interface Fact {
+  readonly label: ReactNode
+  readonly value: ReactNode
+}
+
+/**
+ * Label-and-value rows — VR-08's current-information panel, VR-09's route summary.
+ *
+ * A real `<dl>`, because that is what it is: a screen reader announces "Source: university
+ * websites" as a pair, where two `<p>`s announce two unrelated sentences. `rows` puts the
+ * label beside the value for a narrow rail; `stacked` puts it above, for a wider column where
+ * the values are long enough to wrap.
+ */
+export function FactList({
+  facts,
+  layout = 'rows',
+  className = '',
+}: {
+  facts: readonly Fact[]
+  layout?: 'rows' | 'stacked'
+  className?: string
+}) {
+  if (layout === 'stacked') {
+    return (
+      <dl className={`space-y-3 ${className}`}>
+        {facts.map((fact, index) => (
+          <div key={index}>
+            <dt className="text-micro font-medium tracking-wide text-ink-500 uppercase">
+              {fact.label}
+            </dt>
+            <dd className="mt-0.5 text-sm leading-6 text-ink-900">{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
+    )
+  }
+
+  return (
+    <dl className={`divide-y divide-hairline ${className}`}>
+      {facts.map((fact, index) => (
+        <div key={index} className="flex flex-wrap items-baseline justify-between gap-x-4 py-2">
+          <dt className="text-meta text-ink-500">{fact.label}</dt>
+          <dd className="text-meta text-ink-900">{fact.value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+/* ── Choice grid ───────────────────────────────────────────────────────────────────────── */
+
+export interface Choice {
+  readonly value: string
+  readonly title: ReactNode
+  readonly description?: ReactNode
+}
+
+/**
+ * A grid of radio cards — VR-11's "What would you like to report?".
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **A native radio inside each card, visible, rather than a hidden input and a drawn box.**
+ *
+ * The usual trick is `sr-only` on the input and `peer-checked` on a hand-drawn circle. It
+ * looks the same and behaves worse: the focus ring goes with the hidden input, so a keyboard
+ * user loses the one indicator telling them where they are, and Windows high-contrast mode
+ * paints the real control rather than the drawn one. The card styling here is additive —
+ * `has-checked:` tints the card containing a checked radio — so the native control keeps its
+ * focus, its hit area and its high-contrast rendering.
+ *
+ * What this replaces is eight report reasons as eight one-line `<option>`s, and the
+ * difference is not decoration: the descriptions are what stop "this deadline is out of date"
+ * being filed as a phishing report (§23.1).
+ */
+export function ChoiceGrid({
+  name,
+  choices,
+  defaultValue,
+  columns = 3,
+  className = '',
+}: {
+  name: string
+  choices: readonly Choice[]
+  defaultValue?: string
+  columns?: 2 | 3
+  className?: string
+}) {
+  const cols = columns === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3'
+  return (
+    <div className={`grid gap-3 ${cols} ${className}`}>
+      {choices.map((choice) => (
+        <label
+          key={choice.value}
+          className="flex cursor-pointer items-start gap-2.5 rounded-control border border-hairline bg-surface p-3 hover:border-brand-500 has-checked:border-brand-700 has-checked:bg-brand-50"
+        >
+          <input
+            type="radio"
+            name={name}
+            value={choice.value}
+            defaultChecked={defaultValue === choice.value}
+            className="mt-0.5 shrink-0"
+          />
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-ink-900">{choice.title}</span>
+            {choice.description === undefined ? null : (
+              <span className="mt-0.5 block text-meta leading-5 text-ink-500">
+                {choice.description}
+              </span>
+            )}
+          </span>
+        </label>
+      ))}
+    </div>
+  )
+}
