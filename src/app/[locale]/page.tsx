@@ -69,13 +69,63 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
               </a>
             </div>
 
-            <ul className="mt-8 flex flex-wrap gap-2">
+            <ul className="mt-7 flex flex-wrap gap-2">
               {principles.map((principle) => (
                 <li key={principle}>
                   <Chip>{principle}</Chip>
                 </li>
               ))}
             </ul>
+
+            {/*
+              VR-01's popular destinations, where VR-01 puts them — Phase 12H.
+
+              ───────────────────────────────────────────────────────────────────────────
+              They had a band of their own below "How it works", four cards wide, while the
+              hero's left column ran out of content about 250px above the bottom of the
+              illustration beside it. So the page had a hole in its first screen and an extra
+              band underneath, which is the same content costing more scrolling.
+
+              VR-01 draws them as a row of quiet links directly under the call to action, and
+              that is also where they are most useful: the first question a visitor has is
+              "is my destination even here?", and this answers it before they search.
+
+              A count of routes written, never of followers or visits. Nothing here says a
+              destination is popular, safe or good — only that routes exist for it
+              (invariants 12, 13, 14).
+            */}
+            {destinations.length === 0 ? null : (
+              <div className="mt-9 border-t border-hairline pt-6">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+                  <h2 className="text-panel font-semibold text-ink-900">
+                    {t.landing.destinationsTitle}
+                  </h2>
+                  <Link
+                    href={`/${locale}/routes`}
+                    className="text-meta font-medium text-brand-700 hover:underline"
+                  >
+                    {t.landing.browseAll}
+                  </Link>
+                </div>
+                <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {destinations.map((destination) => (
+                    <li key={destination.country}>
+                      <Link
+                        href={`/${locale}/routes?to=${encodeURIComponent(destination.country)}`}
+                        className="flex items-baseline justify-between gap-3 rounded-control border border-hairline bg-surface px-3 py-2 hover:border-brand-500"
+                      >
+                        <span className="text-meta font-semibold text-ink-900">
+                          {destination.country}
+                        </span>
+                        <span className="text-micro text-ink-500">
+                          {t.landing.destinationRouteCount(destination.routeCount)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </GridRegion>
 
           <GridRegion span={7}>
@@ -114,45 +164,23 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </PageCanvas>
       </section>
 
-      {/* ── Destinations ─────────────────────────────────────────────────────────────── */}
-      <PageCanvas className="py-12">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+      {/*
+        Only the empty case keeps a band of its own — Phase 12H.
+
+        When destinations exist they are in the hero, where VR-01 puts them. When none do,
+        that is a fact about a young platform which deserves a sentence rather than a silently
+        missing block: §45's cold start is answered by saying so, never by decoration.
+      */}
+      {destinations.length > 0 ? null : (
+        <PageCanvas className="py-12">
           <h2 className="text-section font-semibold text-ink-900">
             {t.landing.destinationsTitle}
           </h2>
-          <Link
-            href={`/${locale}/routes`}
-            className="text-sm font-medium text-brand-700 hover:underline"
-          >
-            {t.landing.browseAll}
-          </Link>
-        </div>
-
-        {destinations.length === 0 ? (
-          <p className="mt-4 max-w-prose text-sm leading-6 text-ink-700">
-            {t.landing.destinationsEmpty}
-          </p>
-        ) : (
-          <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {destinations.map((destination) => (
-              <li key={destination.country}>
-                <Link
-                  href={`/${locale}/routes?to=${encodeURIComponent(destination.country)}`}
-                  className="block rounded-panel border border-hairline bg-surface p-4 transition-shadow hover:shadow-panel"
-                >
-                  <p className="text-panel font-semibold text-ink-900">{destination.country}</p>
-                  {/* A count of routes written, never of followers or visits. Nothing here
-                      says a destination is popular, safe or good — only that routes exist
-                      for it (invariants 12, 13, 14). */}
-                  <p className="mt-1 text-meta text-ink-500">
-                    {t.landing.destinationRouteCount(destination.routeCount)}
-                  </p>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </PageCanvas>
+          <ContentColumn width="reading">
+            <p className="mt-3 text-sm leading-6 text-ink-700">{t.landing.destinationsEmpty}</p>
+          </ContentColumn>
+        </PageCanvas>
+      )}
     </>
   )
 }
