@@ -114,7 +114,32 @@ test.describe('a private journey', () => {
     await firstStep.locator('textarea[name="privateNote"]').fill('Collected at the DU office.')
     await firstStep.locator('button[type="submit"]').click()
 
-    await expect(page.getByText('Collected at the DU office.')).toBeVisible()
+    /**
+     * **Asserted on what the server sends back, not on what the follower typed.**
+     *
+     * This used to be `getByText('Collected at the DU office.')` immediately after the click,
+     * and it was satisfiable without anything having been saved: React leaves an uncontrolled
+     * textarea holding the text the user typed, so the assertion passed on the follower's own
+     * keystrokes. It also raced the save — against a remote database a server action plus a
+     * full journey re-render can exceed the assertion timeout, and the failure then reads
+     * exactly like a lost write when the row is in fact already in the database (Test.md §21).
+     *
+     * Reloading removes both problems at once. What is asserted afterwards is entirely
+     * server-rendered: the status the row displays, the note read back out of the control, and
+     * the FR-42 prompt that exists *only* for a completed step. None of the three can be
+     * produced by typing, and none of them depends on how quickly the page refreshed in place.
+     */
+    await page.reload()
+    const savedStep = page
+      .locator('form')
+      .filter({ has: page.locator('select[name="status"]') })
+      .first()
+    await expect(savedStep.locator('select[name="status"]')).toHaveValue('completed')
+    await expect(savedStep.locator('textarea[name="privateNote"]')).toHaveValue(
+      'Collected at the DU office.',
+    )
+    // FR-42, §16.5: the prompt appears once the step is done, and only then.
+    await expect(page.getByText(/was this step still accurate/i)).toBeVisible()
 
     await context.close()
   })
