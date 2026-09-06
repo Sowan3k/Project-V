@@ -895,11 +895,27 @@ export const en = {
     yesAccurate: 'Yes — everything here was still accurate',
     somethingChanged: 'Something changed',
     somethingChangedHint: 'Opens the step so you can correct or flag the part that is wrong.',
-    confirmedCount: (n: number) =>
-      n === 0 ? 'Nobody has confirmed this yet' : n === 1 ? '1 person confirms this' : `${n} people confirm this`,
     contributorSince: 'First contributed',
-    contributions: (n: number) => (n === 1 ? '1 contribution' : `${n} contributions`),
-    contributionsConfirmed: (n: number) => `${n} of them have since been confirmed by others`,
+
+    // ── The contributor page — Phase 12E ─────────────────────────────────────────
+    //
+    // Short labels rather than sentences, because the counts lead now and a `Stat` puts the
+    // figure first. The three sentence-forms these replaced were the whole page: four lines
+    // of unstyled list, which reads as a debug view to a reader who arrived by clicking a
+    // handle beside a claim they are deciding whether to believe.
+    //
+    // §25 and CLAUDE.md §11: nothing here is a score, a level or a badge, and the second
+    // count is deliberately not divided by the first — a ratio is a rating with its
+    // arithmetic hidden, and what a rating would mean is an open decision.
+    contributorRecord: 'What this account has done here',
+    contributionsLabel: 'contributions',
+    confirmedByOthersLabel: 'of them since confirmed by somebody else',
+    confirmationsGivenLabel: 'times they confirmed somebody else’s information',
+    countsAreNotAScore:
+      'These are counts, not a rating. A high number means somebody has been active, not that they are right; a low one often just means they are new. Read what they actually contributed on the routes themselves.',
+    whatThisPageIsTitle: 'Why this page exists',
+    whatThisPageIs:
+      'Every claim on a route says who made it, and a reader deciding how much weight to give one should be able to see what else that person has done. This platform deliberately has no reputation score to show instead — so what it shows is the record, and you judge it.',
     newContributor: 'New contributor',
     newContributorNote:
       'This account is new here. That is not a mark against it — everyone starts here — but it means the community has not had a chance to check its work yet.',
@@ -1036,6 +1052,13 @@ export const en = {
     noRecommendation:
       'This list is not ranked and suggests nothing. It shows what was reported, by how many different people, and when — the judgement is yours.',
     empty: 'Nothing has been reported.',
+    /**
+     * An empty queue is the ordinary state, and it must not read as an all-clear. Invariant
+     * 12 and BR-04: an absence of reports is an absence of reports, and nothing more.
+     */
+    emptyNote:
+      'That is the usual state of this page. It means nobody has reported anything — not that anything here has been checked and found sound.',
+    roleScopeTitle: 'What this role is for',
     evidence: 'What is known',
     actions: 'What you can do',
     openReports: (n: number) => (n === 1 ? '1 open report' : `${n} open reports`),
@@ -1062,6 +1085,13 @@ export const en = {
       'The periodic review: archive obsolete routes, merge duplicates, and set standing where the record cannot decide it.',
     routesDirection:
       'Automatic transitions can only lower a route’s prominence or ask for a review. Raising a route’s standing is a judgement, so it happens here and is recorded with your name against it.',
+    routesEmpty: 'There are no routes yet.',
+    /**
+     * The state production is actually in, and has always been in (CLAUDE.md §10.2). Saying
+     * so beats an empty list that reads as a page that failed to load.
+     */
+    routesEmptyNote:
+      'Nothing has been published on this platform yet. Once routes exist, every one of them appears here, oldest first — never ordered by how many people follow them.',
     duplicatesTitle: 'Duplicate flags',
     duplicatesEmpty: 'No open duplicate flags.',
     duplicatesOldestFirst:

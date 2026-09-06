@@ -2,6 +2,16 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 import { ContentColumn, GridRegion, PageCanvas, PageGrid } from '@/components/layout'
+import {
+  buttonClass,
+  Chip,
+  EmptyState,
+  FormField,
+  GuidanceList,
+  inputClass,
+  Panel,
+  Rail,
+} from '@/components/ui'
 import { RECORDABLE_REPORT_OUTCOMES } from '@/domain/enums'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
@@ -53,8 +63,7 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic'
 
-const INPUT =
-  'mt-1 block w-full rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
+const INPUT = inputClass('compact')
 
 export default async function AdminReportsPage({
   params,
@@ -80,21 +89,22 @@ export default async function AdminReportsPage({
 
   return (
     <PageCanvas className="py-8">
-      <ContentColumn width="wide">
-        <h1 className="text-title font-semibold tracking-tight text-ink-900">{t.admin.title}</h1>
-        <ContentColumn width="reading">
-          <p className="mt-2 text-sm leading-6 text-ink-700">{t.admin.lede}</p>
-          <p className="mt-2 text-sm leading-6 text-ink-500">{t.admin.noRecommendation}</p>
-        </ContentColumn>
+      <h1 className="text-title font-semibold tracking-tight text-ink-900">{t.admin.title}</h1>
+      <ContentColumn width="reading">
+        <p className="mt-2 text-sm leading-6 text-ink-700">{t.admin.lede}</p>
+        <p className="mt-2 text-sm leading-6 text-ink-500">{t.admin.noRecommendation}</p>
+      </ContentColumn>
 
-        {queue.length === 0 ? (
-          <p className="mt-6 text-sm text-ink-700">{t.admin.empty}</p>
-        ) : (
-          <ul className="mt-6 space-y-4">
-            {queue.map((summary) => (
-              <li key={summary.fieldId} className="rounded-panel border border-hairline bg-surface p-4 shadow-panel">
-                <PageGrid>
-                  <GridRegion span={5}>
+      <PageGrid className="mt-8">
+        <GridRegion span={8}>
+          {queue.length === 0 ? (
+            <EmptyState title={t.admin.empty} body={t.admin.emptyNote} />
+          ) : (
+            <ul className="space-y-4">
+              {queue.map((summary) => (
+                <Panel as="li" key={summary.fieldId}>
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    <div>
                     <h2 className="text-panel font-semibold text-ink-900">{t.admin.evidence}</h2>
                     <ul className="mt-2 space-y-0.5 text-sm text-ink-700">
                       <li>{t.admin.openReports(summary.openReports)}</li>
@@ -109,32 +119,34 @@ export default async function AdminReportsPage({
                         {summary.lastReportedAt?.toISOString().slice(0, 16).replace('T', ' ') ?? '—'}
                       </li>
                     </ul>
-                    <ul className="mt-2 flex flex-wrap gap-1.5">
+                    <ul className="mt-3 flex flex-wrap gap-1.5">
                       {summary.reasons.map((reason) => (
-                        <li
-                          key={reason}
-                          className="rounded-full border border-caution-500/40 bg-caution-50 px-2 py-0.5 text-xs text-caution-900"
-                        >
-                          {t.reportReason[reason]}
+                        <li key={reason}>
+                          <Chip tone="caution">{t.reportReason[reason]}</Chip>
                         </li>
                       ))}
                     </ul>
-                  </GridRegion>
+                  </div>
 
-                  <GridRegion span={7}>
+                  <div>
                     <h2 className="text-panel font-semibold text-ink-900">{t.admin.actions}</h2>
 
-                    <form action={quarantineFieldAction} className="mt-2 grid gap-2">
+                    <form action={quarantineFieldAction} className="mt-3 grid gap-2">
                       <input type="hidden" name="locale" value={locale} />
                       <input type="hidden" name="fieldId" value={summary.fieldId} />
-                      <label className="text-xs text-ink-700">
-                        {t.admin.quarantineReason}
+                      <FormField
+                        label={t.admin.quarantineReason}
+                        hint={t.admin.quarantineReasonHint}
+                        size="compact"
+                      >
                         <input type="text" name="quarantineNote" className={INPUT} />
-                        <span className="mt-0.5 block text-ink-500">{t.admin.quarantineReasonHint}</span>
-                      </label>
+                      </FormField>
                       <button
                         type="submit"
-                        className="justify-self-start rounded-control bg-caution-900 px-3 py-1.5 text-xs font-medium text-white"
+                        className={buttonClass('caution', {
+                          size: 'compact',
+                          className: 'justify-self-start',
+                        })}
                       >
                         {t.admin.quarantine}
                       </button>
@@ -143,7 +155,7 @@ export default async function AdminReportsPage({
                     <form action={releaseFieldAction} className="mt-3">
                       <input type="hidden" name="locale" value={locale} />
                       <input type="hidden" name="fieldId" value={summary.fieldId} />
-                      <button type="submit" className="text-xs text-brand-700 underline">
+                      <button type="submit" className="text-meta text-brand-700 underline">
                         {t.admin.release}
                       </button>
                     </form>
@@ -151,8 +163,7 @@ export default async function AdminReportsPage({
                     <form action={handleReportAction} className="mt-4 grid gap-2 border-t border-hairline pt-3">
                       <input type="hidden" name="locale" value={locale} />
                       <input type="hidden" name="fieldId" value={summary.fieldId} />
-                      <label className="text-xs text-ink-700">
-                        {t.admin.outcome}
+                      <FormField label={t.admin.outcome} size="compact">
                         {/*
                           Only outcomes this product can actually perform — audit F11.
 
@@ -171,31 +182,51 @@ export default async function AdminReportsPage({
                             </option>
                           ))}
                         </select>
-                      </label>
-                      <label className="text-xs text-ink-700">
-                        {t.admin.outcomeNote}
+                      </FormField>
+                      <FormField label={t.admin.outcomeNote} size="compact">
                         <input type="text" name="outcomeNote" className={INPUT} />
-                      </label>
+                      </FormField>
                       <button
                         type="submit"
-                        className="justify-self-start rounded-control border border-brand-700 px-3 py-1.5 text-xs font-medium text-brand-700"
+                        className={buttonClass('secondary', {
+                          size: 'compact',
+                          className: 'justify-self-start',
+                        })}
                       >
                         {t.admin.recordDecision}
                       </button>
                     </form>
 
-                    <p className="mt-3 text-xs leading-5 text-ink-500">{t.admin.quarantineIsNotDeletion}</p>
-                  </GridRegion>
-                </PageGrid>
-              </li>
-            ))}
-          </ul>
-        )}
+                    <p className="mt-3 text-meta leading-5 text-ink-500">
+                      {t.admin.quarantineIsNotDeletion}
+                    </p>
+                    </div>
+                  </div>
+                </Panel>
+              ))}
+            </ul>
+          )}
+        </GridRegion>
 
-        <ContentColumn width="reading" className="mt-8 border-t border-hairline pt-4">
-          <p className="text-xs leading-5 text-ink-500">{t.admin.roleScope}</p>
-        </ContentColumn>
-      </ContentColumn>
+        {/*
+          What the two actions actually do, beside the queue that offers them — Phase 12E.
+
+          The same four sentences a reader meets on a withheld field (VR-11's "How quarantine
+          works"), shown to the person deciding rather than only to the person affected. An
+          administrator who does not know that withholding is visible, explained and reversible
+          will reach for it either too rarely or too readily, and both are worse than knowing.
+        */}
+        <GridRegion span={4}>
+          <div className="space-y-3 lg:sticky lg:top-6">
+            <Rail title={t.safety.quarantineHowTitle} level={2}>
+              <GuidanceList lines={t.safety.quarantineHow} />
+            </Rail>
+            <Rail title={t.admin.roleScopeTitle} level={2}>
+              <p className="text-meta leading-5 text-ink-700">{t.admin.roleScope}</p>
+            </Rail>
+          </div>
+        </GridRegion>
+      </PageGrid>
     </PageCanvas>
   )
 }

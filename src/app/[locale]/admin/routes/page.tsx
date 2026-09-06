@@ -2,11 +2,21 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 
-import { ContentColumn, GridRegion, PageCanvas, PageGrid } from '@/components/layout'
+import { ContentColumn, PageCanvas } from '@/components/layout'
 import { ROUTE_LIFECYCLE_STATES } from '@/domain/enums'
 import { mergeCompatibility } from '@/domain/merge'
 import { isLocale } from '@/i18n/config'
-import { ContributorLink } from '@/components/ui'
+import {
+  buttonClass,
+  Chip,
+  ContributorLink,
+  EmptyState,
+  FormField,
+  inputClass,
+
+  Panel,
+  PanelHeader,
+} from '@/components/ui'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { currentViewer } from '@/server/auth'
@@ -62,9 +72,7 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic'
 
-const INPUT =
-  'mt-1 block w-full rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
-const LABEL = 'block text-xs text-ink-700'
+const INPUT = inputClass('compact')
 
 export default async function AdminRoutesPage({
   params,
@@ -96,16 +104,26 @@ export default async function AdminRoutesPage({
           <p className="mt-2 text-xs leading-5 text-ink-500">{t.admin.routesDirection}</p>
         </ContentColumn>
 
-        <form action={runPeriodicReviewAction} className="mt-4">
-          <input type="hidden" name="locale" value={locale} />
-          <button
-            type="submit"
-            className="rounded-control border border-brand-700 px-3 py-1.5 text-xs font-medium text-brand-700"
-          >
-            {t.admin.runReview}
-          </button>
-          <span className="ml-3 text-xs text-ink-500">{t.admin.runReviewHint}</span>
-        </form>
+        {/*
+          The periodic review, as its own object — Phase 12E.
+
+          It had been a small outlined button with a sentence trailing after it on the same
+          line, which is how the one control on this page that touches every route at once
+          read as an afterthought. What it will and will not do is the important half, so it
+          gets the width to say it (FR-46, §19.2).
+        */}
+        <Panel as="section" tone="sunken" className="mt-6">
+          <PanelHeader title={t.admin.runReview} />
+          <ContentColumn width="reading">
+            <p className="mt-1 text-meta leading-5 text-ink-700">{t.admin.runReviewHint}</p>
+          </ContentColumn>
+          <form action={runPeriodicReviewAction} className="mt-3">
+            <input type="hidden" name="locale" value={locale} />
+            <button type="submit" className={buttonClass('secondary', { size: 'compact' })}>
+              {t.admin.runReview}
+            </button>
+          </form>
+        </Panel>
 
         <section className="mt-10">
           <h2 className="text-section font-semibold tracking-tight text-ink-900">
@@ -118,9 +136,9 @@ export default async function AdminRoutesPage({
           {flags.length === 0 ? (
             <p className="mt-3 text-sm text-ink-700">{t.admin.duplicatesEmpty}</p>
           ) : (
-            <ul className="mt-3 space-y-3">
+            <ul className="mt-4 space-y-3">
               {flags.map((flag) => (
-                <li key={flag.id} className="rounded-panel border border-hairline bg-surface p-4 shadow-panel">
+                <Panel as="li" key={flag.id}>
                   <p className="text-sm text-ink-900">
                     <Link
                       href={`/${locale}/routes/${flag.routeSlug}`}
@@ -137,9 +155,9 @@ export default async function AdminRoutesPage({
                     </Link>
                   </p>
                   {flag.note === null ? null : (
-                    <p className="mt-1 text-xs leading-5 text-ink-700">{flag.note}</p>
+                    <p className="mt-1 text-meta leading-5 text-ink-700">{flag.note}</p>
                   )}
-                  <p className="mt-1 text-xs text-ink-500">
+                  <p className="mt-1 text-meta text-ink-500">
                     <ContributorLink handle={flag.flaggedByHandle} locale={locale} /> ·{' '}
                     {flag.createdAt.toISOString().slice(0, 10)}
                   </p>
@@ -147,18 +165,14 @@ export default async function AdminRoutesPage({
                   <form action={resolveDuplicateFlagAction} className="mt-3 flex flex-wrap items-end gap-2">
                     <input type="hidden" name="locale" value={locale} />
                     <input type="hidden" name="flagId" value={flag.id} />
-                    <label className={`${LABEL} flex-1`}>
-                      {t.admin.mergeNote}
+                    <FormField className="flex-1" label={t.admin.mergeNote} size="compact">
                       <input type="text" name="resolutionNote" className={INPUT} />
-                    </label>
-                    <button
-                      type="submit"
-                      className="rounded-control border border-hairline px-2.5 py-1.5 text-xs text-ink-900"
-                    >
+                    </FormField>
+                    <button type="submit" className={buttonClass('secondary', { size: 'compact' })}>
                       {t.admin.notDuplicate}
                     </button>
                   </form>
-                </li>
+                </Panel>
               ))}
             </ul>
           )}
@@ -170,6 +184,9 @@ export default async function AdminRoutesPage({
             <p className="mt-1 text-xs leading-5 text-ink-500">{t.admin.mergeExplainer}</p>
           </ContentColumn>
 
+          {routes.length === 0 ? (
+            <EmptyState title={t.admin.routesEmpty} body={t.admin.routesEmptyNote} />
+          ) : (
           <ul className="mt-4 space-y-4">
             {routes.map((route) => (
               <RouteMaintenanceRow
@@ -181,6 +198,7 @@ export default async function AdminRoutesPage({
               />
             ))}
           </ul>
+          )}
         </section>
       </ContentColumn>
     </PageCanvas>
@@ -211,32 +229,35 @@ function RouteMaintenanceRow({
     .filter((candidate) => candidate.compatible)
 
   return (
-    <li className="rounded-panel border border-hairline bg-surface p-4 shadow-panel">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+    <Panel as="li">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
         <Link
           href={`/${locale}/routes/${route.slug}`}
-          className="text-sm font-medium text-brand-700 underline"
+          className="text-panel font-medium text-brand-700 underline"
         >
           {route.title}
         </Link>
-        <span className="text-xs text-ink-500">
-          {t.routeLifecycle[route.lifecycleState]} · {route.createdAt.toISOString().slice(0, 10)}
+        <span className="flex flex-wrap items-center gap-2 text-meta text-ink-500">
+          {/*
+            Standing as a chip, and deliberately the *neutral* chip whatever the state —
+            CLAUDE.md §11 closed the maturity palette decision by deciding there is none, and
+            an administration screen is not an exception to it. The word carries the state.
+          */}
+          <Chip>{t.routeLifecycle[route.lifecycleState]}</Chip>
+          {route.createdAt.toISOString().slice(0, 10)}
         </span>
       </div>
 
       {route.mergedIntoSlug === null ? null : (
-        <p className="mt-1 text-xs text-ink-700">
-          → {route.mergedIntoSlug}
-        </p>
+        <p className="mt-1 text-meta text-ink-700">→ {route.mergedIntoSlug}</p>
       )}
 
-      <PageGrid className="mt-3">
-        <GridRegion span={6}>
+      <div className="mt-4 grid gap-6 lg:grid-cols-2">
+        <div>
           <form action={setLifecycleStateAction} className="grid gap-2">
             <input type="hidden" name="locale" value={locale} />
             <input type="hidden" name="routeId" value={route.id} />
-            <label className={LABEL}>
-              {t.admin.setState}
+            <FormField label={t.admin.setState} size="compact">
               <select name="lifecycleState" defaultValue={route.lifecycleState} className={INPUT}>
                 {ROUTE_LIFECYCLE_STATES.map((state) => (
                   <option key={state} value={state}>
@@ -244,27 +265,34 @@ function RouteMaintenanceRow({
                   </option>
                 ))}
               </select>
-            </label>
-            <label className={LABEL}>
-              {t.admin.stateNote}
+            </FormField>
+            <FormField label={t.admin.stateNote} size="compact">
               <input type="text" name="stateNote" className={INPUT} />
-            </label>
+            </FormField>
             <button
               type="submit"
-              className="justify-self-start rounded-control border border-brand-700 px-3 py-1.5 text-xs font-medium text-brand-700"
+              className={buttonClass('secondary', {
+                size: 'compact',
+                className: 'justify-self-start',
+              })}
             >
               {t.admin.setState}
             </button>
           </form>
-        </GridRegion>
+        </div>
 
-        <GridRegion span={6}>
+        <div>
           {route.mergedIntoSlug === null ? (
             <form action={mergeRoutesAction} className="grid gap-2">
               <input type="hidden" name="locale" value={locale} />
               <input type="hidden" name="duplicateRouteId" value={route.id} />
-              <label className={LABEL}>
-                {t.admin.mergeInto}
+              <FormField
+                label={t.admin.mergeInto}
+                hint={
+                  candidates.length === 0 ? t.admin.mergeNoCandidates : t.admin.mergeCandidatesHint
+                }
+                size="compact"
+              >
                 {/*
                   Only routes describing the same journey — audit F5.
 
@@ -287,17 +315,16 @@ function RouteMaintenanceRow({
                     </option>
                   ))}
                 </select>
-                <span className="mt-0.5 block text-ink-500">
-                  {candidates.length === 0 ? t.admin.mergeNoCandidates : t.admin.mergeCandidatesHint}
-                </span>
-              </label>
-              <label className={LABEL}>
-                {t.admin.mergeNote}
+              </FormField>
+              <FormField label={t.admin.mergeNote} size="compact">
                 <input type="text" name="mergeNote" className={INPUT} />
-              </label>
+              </FormField>
               <button
                 type="submit"
-                className="justify-self-start rounded-control border border-hairline px-3 py-1.5 text-xs text-ink-900"
+                className={buttonClass('secondary', {
+                  size: 'compact',
+                  className: 'justify-self-start',
+                })}
               >
                 {t.admin.mergeSubmit}
               </button>
@@ -306,13 +333,13 @@ function RouteMaintenanceRow({
             <form action={unmergeRouteAction} className="grid gap-2">
               <input type="hidden" name="locale" value={locale} />
               <input type="hidden" name="routeId" value={route.id} />
-              <button type="submit" className="justify-self-start text-xs text-brand-700 underline">
+              <button type="submit" className="justify-self-start text-meta text-brand-700 underline">
                 {t.admin.unmergeSubmit}
               </button>
             </form>
           )}
-        </GridRegion>
-      </PageGrid>
-    </li>
+        </div>
+      </div>
+    </Panel>
   )
 }

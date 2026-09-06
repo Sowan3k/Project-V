@@ -156,7 +156,7 @@ export function PanelHeader({
 
 /* ── Buttons ───────────────────────────────────────────────────────────────────────────── */
 
-export type ButtonTone = 'primary' | 'secondary' | 'bare'
+export type ButtonTone = 'primary' | 'secondary' | 'caution' | 'bare'
 
 /**
  * Shared between `<button>` and `<Link>`, because the mockups use both for things that look
@@ -186,6 +186,16 @@ export function buttonClass(
   const tones: Record<ButtonTone, string> = {
     primary: 'bg-brand-700 text-white hover:bg-brand-900',
     secondary: 'border border-hairline bg-surface text-ink-900 hover:bg-surface-muted',
+    /**
+     * The one tone whose action has a consequence different in kind — Phase 12E.
+     *
+     * Sending a report, and withholding a field from public view. Both had been hand-written
+     * filled buttons in `bg-caution-900`, in two files, because there was no tone for them;
+     * a third would have been written the moment a third such action appeared. It is
+     * deliberately the *same* attention colour as every other caution in the product (§7.3):
+     * one colour meaning "read this", never a palette of severities.
+     */
+    caution: 'bg-caution-900 text-white hover:bg-ink-900',
     // Sizeless by nature: it is a link wearing a button's affordances, not a filled control.
     bare: 'px-1 py-0.5 text-sm text-brand-700 hover:underline',
   }

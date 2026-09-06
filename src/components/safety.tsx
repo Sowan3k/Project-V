@@ -130,10 +130,7 @@ export function ReportAction({
 
             <button
               type="submit"
-              className={buttonClass('primary', {
-                size: 'compact',
-                className: 'mt-3 bg-caution-900 hover:bg-caution-900',
-              })}
+              className={buttonClass('caution', { size: 'compact', className: 'mt-3' })}
             >
               {t.safety.submitReport}
             </button>
