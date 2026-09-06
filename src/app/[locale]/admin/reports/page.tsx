@@ -96,7 +96,7 @@ export default async function AdminReportsPage({
       </ContentColumn>
 
       <PageGrid className="mt-8">
-        <GridRegion span={8}>
+        <GridRegion span={8} tablet={4}>
           {queue.length === 0 ? (
             <EmptyState title={t.admin.empty} body={t.admin.emptyNote} />
           ) : (
@@ -216,7 +216,7 @@ export default async function AdminReportsPage({
           administrator who does not know that withholding is visible, explained and reversible
           will reach for it either too rarely or too readily, and both are worse than knowing.
         */}
-        <GridRegion span={4}>
+        <GridRegion span={4} tablet={2}>
           <div className="space-y-3 lg:sticky lg:top-6">
             <Rail title={t.safety.quarantineHowTitle} level={2}>
               <GuidanceList lines={t.safety.quarantineHow} />

@@ -76,6 +76,20 @@ export const en = {
      * contribution is outside its reach entirely.
      */
     moderation: 'Moderation',
+
+    // ── The phone's bottom bar — Phase 12F, VR-12 and VR-13 ──────────────────────
+    //
+    // "Explore" rather than "Routes", which is the mockups' own word for this tab and the
+    // better one on a phone: the header link names the noun you are going to, the bottom tab
+    // names what you are about to do.
+    //
+    // There is no "Updates" tab. VR-12 draws four, and the fourth would need a cross-route
+    // updates feed, which is out of scope (§35) and would be a change request — a tab leading
+    // nowhere is worse than an absent one, which is the argument this header already made
+    // about VR-01's five desktop items.
+    explore: 'Explore',
+    account: 'Account',
+    phoneNavigation: 'Main sections',
   },
 
   /**

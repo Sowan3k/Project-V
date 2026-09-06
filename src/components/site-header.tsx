@@ -56,6 +56,15 @@ export async function SiteHeader({
   const viewer = await currentViewer()
 
   const navLink = 'text-sm font-medium text-ink-700 hover:text-brand-900 hover:underline'
+  /**
+   * Hidden on a phone — Phase 12F.
+   *
+   * Explore and My Journey are the first two tabs of the bottom bar below `md`, and the same
+   * destination offered twice on one screen is not twice as reachable: it is one more thing
+   * to read past. The header keeps what the bar does not carry — the auth control and, for an
+   * administrator, moderation — so nothing becomes unreachable at any width.
+   */
+  const phoneHiddenNavLink = `hidden md:inline ${navLink}`
 
   return (
     <header className="border-b border-hairline bg-surface">
@@ -65,7 +74,7 @@ export async function SiteHeader({
         </Link>
 
         <nav aria-label={t.common.primaryNavigation} className="ml-auto flex items-center gap-x-5">
-          <Link href={`/${locale}/routes`} className={navLink}>
+          <Link href={`/${locale}/routes`} className={phoneHiddenNavLink}>
             {t.nav.routes}
           </Link>
 
@@ -75,7 +84,7 @@ export async function SiteHeader({
             </Link>
           ) : (
             <>
-              <Link href={`/${locale}/journeys`} className={navLink}>
+              <Link href={`/${locale}/journeys`} className={phoneHiddenNavLink}>
                 {t.nav.myJourney}
               </Link>
 

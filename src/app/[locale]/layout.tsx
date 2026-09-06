@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Anek_Bangla, Lexend } from 'next/font/google'
 import { notFound } from 'next/navigation'
 
+import { BottomTabs } from '@/components/bottom-tabs'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
 import { LOCALES, LOCALE_HTML_LANG, isLocale } from '@/i18n/config'
@@ -142,8 +143,14 @@ export default async function LocaleLayout({
           <main id="main" className="flex-1">
             {children}
           </main>
-          <SiteFooter dictionary={t} />
+          {/* `pb-16` on the shell, not on the footer: the bar is `position: fixed`, so it is
+              out of flow and would otherwise sit on top of the last thing on the page. The
+              padding is removed at `md`, where the bar is hidden. */}
+          <div className="pb-16 md:pb-0">
+            <SiteFooter dictionary={t} />
+          </div>
         </div>
+        <BottomTabs dictionary={t} locale={locale} />
       </body>
     </html>
   )

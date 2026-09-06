@@ -65,7 +65,7 @@ export default async function ContributorPage({
       </ContentColumn>
 
       <PageGrid className="mt-8">
-        <GridRegion span={8}>
+        <GridRegion span={8} tablet={4}>
           {isNew ? (
             <EmptyState
               title={t.contribute.newContributor}
@@ -104,7 +104,7 @@ export default async function ContributorPage({
           )}
         </GridRegion>
 
-        <GridRegion span={4}>
+        <GridRegion span={4} tablet={2}>
           <Rail title={t.contribute.whatThisPageIsTitle} level={2}>
             <p className="text-meta leading-5 text-ink-700">{t.contribute.whatThisPageIs}</p>
           </Rail>

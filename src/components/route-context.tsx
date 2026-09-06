@@ -194,8 +194,8 @@ export function RouteContext({
        */}
       <PageCanvas className="py-8">
         <PageGrid>
-          <GridRegion span={8}>{children}</GridRegion>
-          <GridRegion span={4}>
+          <GridRegion span={8} tablet={4}>{children}</GridRegion>
+          <GridRegion span={4} tablet={2}>
             {/* Not sticky when a tab contributes panels: a rail that scrolls with the reader
                 is right when it holds one summary, and wrong when it holds a column of
                 content taller than the viewport. */}

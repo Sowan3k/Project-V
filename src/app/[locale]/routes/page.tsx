@@ -105,7 +105,7 @@ export default async function RouteSearchPage({
       </div>
 
       <PageGrid className="mt-8">
-        <GridRegion span={4}>
+        <GridRegion span={4} tablet={2}>
       <form method="get" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 lg:sticky lg:top-6">
         <label className="text-sm">
           <span className="block text-ink-700">{t.search.origin}</span>
@@ -188,7 +188,7 @@ export default async function RouteSearchPage({
 
         </GridRegion>
 
-        <GridRegion span={8}>
+        <GridRegion span={8} tablet={4}>
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <p className="text-sm text-ink-500" role="status">
               {t.search.resultCount(results.total)}

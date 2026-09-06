@@ -144,7 +144,7 @@ export default async function NewRoutePage({
       </ContentColumn>
 
       <PageGrid className="mt-8">
-        <GridRegion span={8}>
+        <GridRegion span={8} tablet={4}>
           {/* VR-09's stage bar, at the two stages this product actually has. */}
           <Panel tone="sunken" as="section">
             <h2 className="sr-only">{t.contribute.stagesLabel}</h2>
@@ -244,7 +244,7 @@ export default async function NewRoutePage({
           </Panel>
         </GridRegion>
 
-        <GridRegion span={4}>
+        <GridRegion span={4} tablet={2}>
           <div className="space-y-3">
             <Rail title={t.contribute.routeTipsTitle} level={2}>
               <GuidanceList lines={t.contribute.routeTips} />

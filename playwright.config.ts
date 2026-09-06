@@ -63,6 +63,17 @@ const reuseExistingServer = process.env.E2E_REUSE_SERVER === '1'
 const viewports = {
   // 360px is a first-class target, not an afterthought (CLAUDE.md §7).
   'mobile-360': { width: 360, height: 780 },
+  /**
+   * Phase 12F's own widths.
+   *
+   * 390 is the commonest modern phone and is not merely "360 plus a bit": it is the width at
+   * which a two-up row of anything starts fitting, so a layout tuned only at 360 can break
+   * here and nowhere else. 768 is the `md` breakpoint exactly — the first width at which the
+   * tablet composition replaces the phone one, and therefore the width where a two-panel
+   * layout either happens or leaves half a row empty.
+   */
+  'mobile-390': { width: 390, height: 844 },
+  'tablet-768': { width: 768, height: 1024 },
   'desktop-1280': { width: 1280, height: 800 },
 } as const
 

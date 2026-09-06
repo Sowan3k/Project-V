@@ -346,3 +346,155 @@ test.describe('the voluntary support link', () => {
     expect(await page.locator('input[type="password"], input[name*="card" i]').count()).toBe(0)
   })
 })
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   Phase 12F — the phone and the tablet as their own compositions
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+/** The `md` breakpoint, which is where the phone composition ends and the tablet one begins. */
+const TABLET_MIN = 768
+
+test.describe('the phone gets a bottom tab bar, and larger screens do not', () => {
+  /**
+   * **VR-12, VR-13 and VR-14 all draw one, and it is not decoration.**
+   *
+   * A phone's reachable area is the bottom third of the screen, and this product's two primary
+   * destinations — find a route, look at my journey — are places a reader moves between
+   * constantly. A header nav on a phone puts both of them where a thumb cannot get to them.
+   *
+   * Asserted as *visible*, not as present in the markup: the bar is `md:hidden`, so a test that
+   * only counted elements would pass at every width and prove nothing about either.
+   */
+  test('is visible on a phone and hidden from the tablet breakpoint up', async ({ page }) => {
+    await page.goto('/en/routes')
+    const bar = page.getByRole('navigation', { name: 'Main sections' })
+    const phone = (page.viewportSize()?.width ?? 0) < TABLET_MIN
+
+    if (phone) {
+      await expect(bar).toBeVisible()
+    } else {
+      await expect(bar).toBeHidden()
+    }
+  })
+
+  test('offers three real links, each a comfortable touch target', async ({ page }) => {
+    test.skip((page.viewportSize()?.width ?? 0) >= TABLET_MIN, 'phone only')
+    await page.goto('/en/routes')
+
+    const links = page.getByRole('navigation', { name: 'Main sections' }).getByRole('link')
+    // Three, not VR-12's four: there is no cross-route updates feed to point a fourth at,
+    // and a tab that leads nowhere is worse than an absent one.
+    await expect(links).toHaveCount(3)
+
+    for (let index = 0; index < 3; index += 1) {
+      const link = links.nth(index)
+      // A real destination, so the bar works with JavaScript disabled and can be opened in a
+      // new tab like any other link.
+      expect(await link.getAttribute('href')).toBeTruthy()
+      const box = await link.boundingBox()
+      // §32 and the Phase 12F exit criterion: 44px is the minimum comfortable target.
+      expect(box?.height ?? 0, `tab ${index} height`).toBeGreaterThanOrEqual(44)
+    }
+  })
+
+  /**
+   * The current tab is announced, not merely coloured (§10.4). `aria-current="page"` is what a
+   * screen-reader user gets; the bold label is what everybody else gets. Neither is the colour.
+   */
+  test('marks the tab you are on with aria-current', async ({ page }) => {
+    test.skip((page.viewportSize()?.width ?? 0) >= TABLET_MIN, 'phone only')
+    await page.goto('/en/routes')
+
+    const bar = page.getByRole('navigation', { name: 'Main sections' })
+    await expect(bar.locator('[aria-current="page"]')).toHaveCount(1)
+    await expect(bar.locator('[aria-current="page"]')).toHaveText(/Explore/)
+  })
+
+  /**
+   * The bar is `position: fixed`, so it is out of flow and would sit on top of whatever ends
+   * the page. The shell pads for it below `md`; this proves the padding is real rather than
+   * intended, by checking the footer's last text is not underneath the bar.
+   */
+  test('does not cover the end of the page', async ({ page }) => {
+    test.skip((page.viewportSize()?.width ?? 0) >= TABLET_MIN, 'phone only')
+    await page.goto('/en/routes')
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+
+    const footer = await page.locator('footer').boundingBox()
+    const bar = await page
+      .getByRole('navigation', { name: 'Main sections' })
+      .boundingBox()
+
+    expect(footer, 'footer box').not.toBeNull()
+    expect(bar, 'tab bar box').not.toBeNull()
+    // The footer's bottom edge must clear the bar's top edge once scrolled to the end.
+    expect(footer!.y + footer!.height).toBeLessThanOrEqual((bar?.y ?? 0) + 1)
+  })
+
+  /**
+   * The header must not offer the same two destinations the bar already carries — one
+   * destination twice on one small screen is not twice as reachable, it is one more thing to
+   * read past. And nothing may become *unreachable*: the auth control stays in the header.
+   */
+  test('the header stops duplicating the bar on a phone', async ({ page }) => {
+    await page.goto('/en/routes')
+    const header = page.locator('header')
+    const phone = (page.viewportSize()?.width ?? 0) < TABLET_MIN
+
+    const routesLink = header.getByRole('link', { name: 'Routes', exact: true })
+    if (phone) {
+      await expect(routesLink).toBeHidden()
+    } else {
+      await expect(routesLink).toBeVisible()
+    }
+
+    // At every width, the way in or out of an account is in the header.
+    await expect(header.getByRole('link', { name: /Sign in/i })).toBeVisible()
+  })
+})
+
+test.describe('the tablet is two panels, not a desktop with a hole in it', () => {
+  test.skip(!seeded, 'needs the seeded route; the deployed target is deliberately not seeded')
+
+  /**
+   * **The Phase 12F composition finding.**
+   *
+   * `GridRegion`'s default mapping sent both a span-8 body and a span-4 rail to a full tablet
+   * row. At 768px that put the body across the row, the rail on the *next* row at half width,
+   * and nothing in the other half — which is neither the stacked phone layout nor the
+   * two-panel one, but a desktop layout with a hole in it.
+   *
+   * Asserted geometrically rather than by class name: what matters is that the two regions
+   * share a horizontal band at tablet width and stack at phone width, and a class assertion
+   * would pass while a later Tailwind change quietly stopped generating the utility.
+   */
+  test('the route body and its rail sit side by side at 768 and stack below it', async ({
+    page,
+  }) => {
+    await page.goto('/en/routes/e2e-test-route')
+
+    const road = await page.locator('#route-map').boundingBox()
+    // The passport panel, by its accessible name — the rail's own first child, and the one
+    // element that is unambiguously in the rail rather than the body.
+    const passport = await page
+      .getByRole('region', { name: 'What is known about this route' })
+      .boundingBox()
+
+    expect(road, 'road box').not.toBeNull()
+    expect(passport, 'rail box').not.toBeNull()
+
+    const width = page.viewportSize()?.width ?? 0
+    // Vertical overlap is the definition of "side by side" that survives either region being
+    // the taller one.
+    const overlap =
+      Math.min(road!.y + road!.height, passport!.y + passport!.height) -
+      Math.max(road!.y, passport!.y)
+
+    if (width >= TABLET_MIN) {
+      expect(overlap, 'body and rail should share a band at tablet width and up').toBeGreaterThan(0)
+      expect(passport!.x, 'the rail sits to the right of the body').toBeGreaterThan(road!.x)
+    } else {
+      expect(overlap, 'body and rail should stack on a phone').toBeLessThanOrEqual(0)
+    }
+  })
+})

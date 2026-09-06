@@ -130,25 +130,52 @@ export function PageGrid({
   )
 }
 
-/** A region within `PageGrid`. `span` is the desktop column count out of 12. */
+/**
+ * A region within `PageGrid`. `span` is the desktop column count out of 12.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **`tablet` overrides the default mapping, out of six — Phase 12F.**
+ *
+ * The default rule below is a good general one and stays: a panel pairs, a road takes the
+ * width. But it produces a specific failure for the commonest composition in this product,
+ * which is a body of 8 beside a rail of 4. Both map to a full tablet row, so at 768px the
+ * body fills the row, the rail drops beneath it and fills *half* of the next one, and the
+ * other half is empty. That is not a stacked layout and it is not a two-panel one; it is a
+ * desktop layout with a hole in it, and it is precisely what Phase 12F's "a genuinely
+ * two-panel tablet composition" is about.
+ *
+ * The fix is not a different global rule, because there is no global rule that is right for
+ * both a road-beside-a-rail and a hero-beside-an-illustration: 8+4 wants 4+2 at tablet, and
+ * the landing page's 5+7 wants 3+3, since a 28px headline in a third of 768px is cramped.
+ * So the composition that wants two panels **says so**, and the default handles the rest.
+ */
 export function GridRegion({
   children,
   span,
+  tablet,
   className = '',
 }: {
   children: ReactNode
   span: 4 | 5 | 6 | 7 | 8 | 12
+  /** Tablet column count out of **6**. Omit to use the default mapping below. */
+  tablet?: 2 | 3 | 4 | 6
   className?: string
 }) {
   // Written out rather than computed, so both breakpoints are literal class names Tailwind
   // can see. A template-built class name is a class name Tailwind does not generate.
+  const tabletSpans: Record<number, string> = {
+    2: 'md:col-span-2',
+    3: 'md:col-span-3',
+    4: 'md:col-span-4',
+    6: 'md:col-span-6',
+  }
   const spans: Record<number, string> = {
-    4: 'md:col-span-3 lg:col-span-4',
-    5: 'md:col-span-3 lg:col-span-5',
-    6: 'md:col-span-3 lg:col-span-6',
-    7: 'md:col-span-6 lg:col-span-7',
-    8: 'md:col-span-6 lg:col-span-8',
-    12: 'md:col-span-6 lg:col-span-12',
+    4: `${tablet === undefined ? 'md:col-span-3' : tabletSpans[tablet]} lg:col-span-4`,
+    5: `${tablet === undefined ? 'md:col-span-3' : tabletSpans[tablet]} lg:col-span-5`,
+    6: `${tablet === undefined ? 'md:col-span-3' : tabletSpans[tablet]} lg:col-span-6`,
+    7: `${tablet === undefined ? 'md:col-span-6' : tabletSpans[tablet]} lg:col-span-7`,
+    8: `${tablet === undefined ? 'md:col-span-6' : tabletSpans[tablet]} lg:col-span-8`,
+    12: `${tablet === undefined ? 'md:col-span-6' : tabletSpans[tablet]} lg:col-span-12`,
   }
   /**
    * `min-w-0` is load-bearing, not tidiness.
