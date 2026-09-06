@@ -12,6 +12,7 @@ import {
   StepArchiveControl,
 } from '@/components/structure'
 import { ContentColumn } from '@/components/layout'
+import { Panel } from '@/components/ui'
 import { FlagDuplicateForm } from '@/components/lifecycle'
 import { RouteContext } from '@/components/route-context'
 import { RouteMap } from '@/components/route-map'
@@ -213,8 +214,30 @@ export default async function RoutePage({
           )}
         </details>
 
-        {/* FR-14, in place. VR-09's "Build Road" stage happens on the route itself rather
-            than in a wizard, so a contributor sees the road change as they add to it. */}
+      </section>
+
+      {/*
+        VR-09's "Build Your Road", where the road is — Phase 12E, FR-14.
+
+        The mockup makes this a panel of its own with a title, an instruction and the step
+        strip beneath it. It had been three small disclosures hanging off the bottom of the
+        route index with no heading between them and the index above, which is why the one
+        capability that turns an empty experimental route into a usable one read as
+        housekeeping. It is the opposite: for a route somebody created five minutes ago it is
+        the whole point of the page.
+
+        The strip itself is not repeated here. It is already at the top of this page, drawn by
+        the renderer from the same graph — which is exactly what VR-09's preview pane is
+        approximating, and repeating it would be a second copy that could disagree.
+      */}
+      <Panel as="section" tone="sunken" className="mt-8">
+        <h2 className="text-section font-semibold tracking-tight text-ink-900">
+          {t.contribute.buildRoadTitle}
+        </h2>
+        <ContentColumn width="reading">
+          <p className="mt-1 text-sm leading-6 text-ink-700">{t.contribute.buildRoadLede}</p>
+        </ContentColumn>
+
         {viewer === null ? (
           <ContributionInvitation
             dictionary={t}
@@ -230,7 +253,7 @@ export default async function RoutePage({
             <MaintainRoad route={route} locale={locale} dictionary={t} />
           </>
         )}
-      </section>
+      </Panel>
 
       {/* §40.4 — flagging a likely duplicate. Sits at the foot of the route, below the
           content it is about, because it is housekeeping rather than something a reader

@@ -826,6 +826,16 @@ export const en = {
     addFieldSubmit: 'Add this information',
     addStep: 'Add a step',
     addStepSubmit: 'Add this step',
+    /**
+     * VR-09's "Build Your Road", on the route — Phase 12E.
+     *
+     * These controls had been three disclosures hanging off the bottom of the route index
+     * with no heading between them and it. For a route somebody created five minutes ago,
+     * building the road is not housekeeping — it is the whole point of the page.
+     */
+    buildRoadTitle: 'Build the road',
+    buildRoadLede:
+      'Add the stages a student goes through, connect them, and give each one a realistic length. Two stages whose windows overlap is how this route says they happen at the same time. You can change any of it later, and so can anyone else.',
     fieldCategory: 'What kind of information?',
     stepLabel: 'What is this step called?',
     stepCategory: 'What kind of step?',
@@ -840,9 +850,45 @@ export const en = {
     routeTitle: 'What is this route called?',
     routeTitleHint: 'Plain language, as a student would say it',
     routeSummary: 'One or two sentences about it',
-    from: 'From (2-letter country code)',
-    to: 'To (2-letter country code)',
+    routeSummaryHint: 'What kind of student is this route for, and what makes it different from the other ways of getting there?',
+    from: 'From',
+    to: 'To',
+    countryHint: 'Two-letter country code — BD for Bangladesh, DE for Germany.',
+    mechanismHint: 'Leave it unset if the route does not depend on one.',
+    intakeHint: 'The intake this route describes, if it is specific to one.',
     publish: 'Create this route',
+
+    // ── VR-09's stage bar, at the two stages this product has — Phase 12E ────────
+    //
+    // The mockup draws five (Route Basics, Build Road, Add Fields, Review, Publish). Ours are
+    // two, because only the basics need a form of their own: until the route exists there is
+    // nothing to add steps or fields to, and everything after happens on the route itself
+    // where the contributor can see the road change as they build it (CLAUDE.md §7.1).
+    //
+    // Naming stage two matters more than the count. A contributor who does not know the road
+    // comes next publishes a route with no steps and assumes they have finished.
+    stagesLabel: 'How adding a route works',
+    stageBasicsTitle: 'The basics',
+    stageBasicsBody: 'Where it goes, for whom, and what to call it.',
+    stageRoadTitle: 'Build the road, on the route itself',
+    stageRoadBody:
+      'Add the stages and the information inside them on the route once it exists, so you can see the road change as you build it.',
+    communityContribution: 'Community contribution',
+    basicsTitle: 'Route basics',
+    routeTipsTitle: 'What makes a route useful',
+    routeTips: [
+      'Group the stages the way a student lives them. “Documents” is one stage, not seven.',
+      'Give each stage a realistic length. Two stages whose windows overlap are how this product says they happen at the same time — there is no separate control for it.',
+      'Link an official page for anything an authority publishes, and say plainly when something is your own experience instead.',
+      'Describe one way of getting there. If your route and an existing one are genuinely different journeys, they should stay two routes.',
+    ],
+    publishMeansTitle: 'What publishing does',
+    publishMeans: [
+      'The route appears immediately, marked experimental, so readers can see it is new and has not been worked on yet.',
+      'It is not yours. Anyone signed in can add to it, correct it or reorganise it — including changing what you wrote.',
+      'Nothing you write here is checked by Vindeshi Express before or after it appears. What the route says is what the community has put into it, and readers are told that.',
+      'Nothing is ever deleted. Every correction keeps the value before it, with your name against what you wrote.',
+    ],
     stillAccurate: 'Was this step still accurate?',
     stillAccurateLede:
       'You have just been through it, so you know better than anyone. This is the most useful moment to say.',
