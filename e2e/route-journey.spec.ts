@@ -121,6 +121,21 @@ test.describe('anonymous reading journey', () => {
     // see that a route has not been checked by anyone — every disclosure is a <details>.
     await expect(page.getByText(/does not verify routes/i)).toBeVisible()
 
+    /**
+     * And the phone's primary navigation — Phase 12F.
+     *
+     * The bottom tab bar is the thing a reader on a phone moves around with, so "the whole
+     * journey works with JavaScript disabled" is not true unless it does. It is three plain
+     * `<Link>`s and the active tab comes from a request header rather than `usePathname`,
+     * precisely so that this passes; asserting it is what stops that becoming accidental.
+     */
+    if ((page.viewportSize()?.width ?? 0) < 768) {
+      const bar = page.getByRole('navigation', { name: 'Main sections' })
+      await expect(bar).toBeVisible()
+      await bar.getByRole('link', { name: /my journey/i }).click()
+      await expect(page).toHaveURL(/\/en\/journeys$/)
+    }
+
     await context.close()
   })
 
