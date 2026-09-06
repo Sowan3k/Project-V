@@ -180,14 +180,25 @@ test.describe('the contribution loop', () => {
     const valueBefore = await firstField.locator('p.text-sm').first().innerText()
     await firstField.getByText(/^still accurate$/i).click()
 
-    // Scoped to the field row: the route passport also has a "Last confirmed" line, inside a
-    // collapsed <details>, and an unscoped match finds that hidden one first.
+    /*
+     * Scoped to the field row **and** to the provenance paragraph — Phase 12E.
+     *
+     * "Last confirmed" now appears three times on this page, and two of them are hidden inside
+     * collapsed `<details>`: the route passport's line, and the VR-08 comparison panel's fact
+     * list, which states when the value a contributor is about to correct was last confirmed.
+     * Scoping to the row stopped being enough the moment the third one moved *into* the row.
+     *
+     * The provenance line is a `<p>`; the comparison panel's is a `<dt>`. Naming the element
+     * is what makes this assertion say which of the three it means.
+     */
     await expect(
       page
         .locator('main li')
         .filter({ has: page.locator('select[name="reason"]') })
         .first()
-        .getByText(/last confirmed/i),
+        .locator('p')
+        .filter({ hasText: /last confirmed/i })
+        .first(),
     ).toBeVisible()
 
     // CHALLENGE — leaves the value alone and says so publicly, with its reason.
