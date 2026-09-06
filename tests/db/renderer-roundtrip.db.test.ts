@@ -33,7 +33,15 @@ const strings: RouteVisualStrings = {
   added: en.route.stepAdded,
   archived: en.route.stepArchived,
   disrupted: en.route.stepDisrupted,
+  changed: en.route.stepChanged,
+  previous: en.route.previousRoute,
+  selected: en.route.selectedStep,
+  openStep: en.route.openStep,
+  timingUnknown: en.route.timingUnknown,
+  relationships: en.route.routeRelationships,
+  progress: en.journeyStepStatus,
   duration: en.route.durationShort,
+  startsAfter: en.route.startsAfterShort,
   summary: (n) => `Route with ${n} steps`,
 }
 
@@ -130,7 +138,22 @@ describe.skipIf(!url)('24e — a route created through the service renders unaid
     const markup = renderToStaticMarkup(createElement(Ribbon, { graph, strings }))
 
     expect(markup).toContain('role="img"')
-    expect(markup).toContain('aria-label="Route with 6 steps"')
+
+    /**
+     * The accessible name now names the steps, not just how many there are.
+     *
+     * This asserted the whole label equalled "Route with 6 steps", which passed while the
+     * label said nothing a sighted reader could not already see. A non-interactive ribbon is
+     * a single image to assistive technology — the `<title>` elements inside it are not
+     * reachable — so a name that stops at the count leaves a screen-reader user knowing a
+     * route has six steps and nothing whatever about what they are.
+     *
+     * Asserted as a prefix plus content, so the name is free to grow richer without this
+     * failing again, but cannot quietly shrink back to a bare count.
+     */
+    expect(markup).toContain('aria-label="Route with 6 steps')
+    expect(markup).toMatch(/aria-label="Route with 6 steps[^"]*Language and testing/)
+
     // At ribbon density there is no visible text, so the title is what makes it readable.
     expect(markup).toContain('<title>')
     expect(markup).toContain('Language and testing')

@@ -283,6 +283,18 @@ describe.skipIf(!url)('what an administrator is shown — evidence, never a verd
     await reportField({ reporterId: who.member, fieldId, reason: ReportReason.phishing_or_scam })
     await reportField({ reporterId: who.other, fieldId, reason: ReportReason.phishing_or_scam })
 
+    /**
+     * The quarantine has to exist before it can be upheld.
+     *
+     * This test used to record `quarantine_upheld` against a field nobody had quarantined,
+     * and passed, because the service accepted any outcome the enum allowed. It now refuses:
+     * recording that outcome would not make it true, and a moderation log that says something
+     * untrue about what was done is worse than no log. The scenario is the same one it always
+     * meant to describe — reports arrive, an administrator acts, and the reports survive the
+     * decision — so the missing step is added rather than the refusal weakened.
+     */
+    await quarantineField({ adminId: who.admin, fieldId, note: 'Domain is not the embassy.' })
+
     const { handled } = await handleReportsForField({
       adminId: who.admin,
       fieldId,

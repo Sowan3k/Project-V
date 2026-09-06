@@ -1157,6 +1157,16 @@ graph-order, structural-equivalence and generative tests now include that densit
 Static-gallery screenshots were reviewed at 360/768/1280/1440. This supersedes the earlier
 176×74/five-column design description, but does not close owner acceptance or Gate 4.
 
+### Living-route follow-up — 2026-09-06
+
+Owner-approved refinement of 12C/12D/12F: readable phone Ribbon labels with local scrolling
+supersede the icon-only phone treatment; larger linked Road stations, explicit branch labels,
+row-local branch spacing, stored timing, private progress annotations and selected-step
+disclosure now share the existing renderer. Shadow comparisons also mark changed stages.
+No domain, schema or client-runtime expansion. All 846 unit/architecture tests and final
+lint/typecheck pass; isolated production-build and four-width no-JavaScript read checks pass.
+Full authenticated E2E, owner acceptance and the wider visual-phase gates remain open.
+
 ## Phase 12D — Public read path composition
 
 **Goal:** the screens an anonymous visitor sees are composed the way the mockups compose them.
@@ -1474,6 +1484,32 @@ fly window. Not every route needs every item.
 ## Pre-launch gates
 
 All four must pass before public launch. Each has an owner artifact in `Test.md`.
+
+### Gate ordering — revised 2026-09-06 (owner)
+
+**Gates 1, 3 and 4 run against hypothetical routes; only Gate 2 needs the real thing.** The
+owner researches and supplies the real content himself, after the engineering is finished
+(CLAUDE.md §10.2). That reorders the endgame, and for the better:
+
+```
+12E → 12F → 12G → Gate 1 → Gate 3 → Gate 4   ← all provable with test fixtures
+                                    → Gate 2 ← owner's research, then seed, then launch
+```
+
+Gates 1, 3 and 4 test **mechanism and appearance**: that the renderer handles every graph
+shape, that the community loop closes end to end, that the screens match the visual
+references. None of that needs a real route — a fixture exercises the same code paths.
+
+Gate 2 tests **whether the content is true and useful to a Bangladeshi applicant**, which no
+fixture can stand in for.
+
+Previously Gate 2 blocked everything, which would have left the platform idle for weeks of
+research. Now the platform is finished and reviewable *before* that research starts, and the
+research lands into something already proven to work.
+
+**The fixtures are removed before the real content arrives** — by resetting the disposable
+branch, never by a delete path in the product. See CLAUDE.md §10.2 for why an admin "delete
+route" was considered and rejected.
 
 Note the division of labour between Gate 1 and Gate 4, because conflating them is what let the
 visual dimension go missing: **Gate 1 is renderer *correctness*** — every graph shape draws,

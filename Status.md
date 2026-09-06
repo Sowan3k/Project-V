@@ -7,6 +7,113 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Living-route visual refinement — 2026-09-06
+
+By Codex
+
+Owner approved implementation of the Ribbon/Road ideas discussed against the original v1.0
+concept, subject to preserving the existing codebase. The frozen v2.0 requirements and
+invariants remain authoritative (FR-04–06, FR-09, FR-24, FR-26, FR-57, FR-77; invariants 24–25).
+
+- Ribbons retain visible names on phones through a local scroller, with clearer route
+  identity and lighter result rows. Category icons/colour and canonical stage order remain.
+- Larger Road stations carry stored estimated timing, explicit unknown timing and direct,
+  keyboard-accessible step links. Selected fields follow the map in context; a sticky selected
+  heading and return-to-road link support longer reading. The all-step index remains a native
+  disclosure. No new client components or animation dependency.
+- Optional/alternative branches are labelled from graph edges. Parallel labels require a
+  common direct sequential predecessor; equal rank alone does not prove parallel work inside
+  alternative paths. Branch height expands only the row containing that branch.
+- My Journey supplies owner-scoped private progress as presentation annotations; public
+  graphs carry none. Existing shadow comparisons also mark reordered/relabelled/retimed stages.
+  The passport motif replaces the immigration category's shield/checkmark.
+- Added 27 rendered-component tests, four surface tests and two layout tests. Full suite:
+  **846 passed**; final lint/typecheck passed. Isolated production build passed.
+- Static gallery and read-only production-preview checks cover 360/768/1280/1440, including
+  keyboard step selection and search with JavaScript disabled, with no page overflow.
+
+Two unrelated Next dev servers shared the original `.next` directory and caused intermittent
+manifest JSON/500 failures during early QA. They were left untouched; final QA uses a temporary
+isolated source/build copy with test settings and no copied secrets. Other sessions also edited
+unrelated application code; their changes were preserved. Details and limits are in Test.md.
+
+No database writes, seeding, migrations or deployment in this pass. Full authenticated mutation
+E2E and owner visual acceptance remain open. The generated renderer/application screenshots are
+under `scripts/renderer/out/` (ignored); this does not close a release or content-readiness gate.
+
+---
+
+## Phase 12E — the three audit-driven surfaces — 2026-09-06
+
+By Claude Code
+
+Audit remediation gate approved, so Phase 12E resumed. Closed the three findings the owner
+assigned to it: **C1/F6** contextual graph authoring, **C4/F8** multi-revision announcements,
+**C5/F12** admin and contributor discoverability. Full reconciliation and evidence in
+[Test.md](Test.md) §17.
+
+### Done
+
+- **C1 — a contributor can maintain the shape of a road.** The revision engine could revise a
+  route's title, relabel and retime a stage, connect two stages with any of four typed
+  connections, change a connection's kind and archive any of it since Phase 3. None of it was
+  reachable from any page: a contributor could add a stage and nothing else. Now reachable, in
+  place on the route, as `<details>` disclosures containing plain forms that work with
+  JavaScript disabled — no builder page, no canvas, no `orderIndex`, no second graph engine.
+- **C4 — an announcement can name every revision a change touched.** `announceChange` always
+  took arrays; the form supplied one `<select>`, so a structural change spanning several stages
+  could name one revision and the shadow described a fragment. Checkboxes now, not a
+  multi-select: ctrl-click is undiscoverable and unusable on a phone.
+- **C5 — the moderation queues and the contributor page are reachable.** Both admin surfaces
+  existed with nothing linking to them; contributor handles rendered as flat text at five sites
+  although the page explaining what that person contributed has existed since Phase 8.
+
+### Decisions taken
+
+- **Graph violations are split into corruption and incompleteness, and only corruption is
+  refused.** The test is whether a later *addition* repairs it. A cycle, a self-loop, a
+  duplicated connection and a dangling reference cannot be repaired by adding anything, so they
+  are refused inside the write transaction. A stage connected to nothing, a stage nothing leads
+  to, a road with no start and a rejoin nothing diverged into are all repaired by connecting
+  something — and are the ordinary state of a road halfway through being built. Enforcing them
+  would force a contributor to build a route in one exact order.
+- **The gate validates the outcome, inside the transaction, not the arguments.** Checking
+  intent means enumerating every way a write could go wrong and missing one.
+- **Graph semantics are expressed in contributor words, and the words are the feature.**
+  `sequential` is "Must be finished first", `optional_branch` is "An optional extra",
+  `alternative` is "Another way of doing it", `rejoin` is "Where the paths meet again" — each
+  with a one-line explainer, because these are different claims about the world and picking
+  wrong changes what the road says. A guard asserts *edge*, *node*, *graph* and *vertex* appear
+  nowhere a reader can see.
+- **Parallel work is expressed through timing, and the form says so out loud.** There is no
+  "these happen together" control and there must not be one: two stages whose windows overlap
+  ARE concurrent (§20.2, §20.3, invariant 22). A contributor who does not know that will
+  describe a parallel journey as a straight line, so the sentence sits under the timing fields
+  rather than in documentation.
+- **The safety role rides on the session** so the header can gate a moderation link without a
+  database query per page render — the session callback already read the user row for the
+  handle. It decides only what is *shown*; both admin pages still refuse server-side.
+
+### Blockers, unchanged
+
+- **Production is seven migrations behind.** Nothing here adds an eighth.
+- **No database run and no browser run.** The eight new F6 database tests and the twelve from
+  the audit gate are written and unexecuted — no marked disposable Postgres is reachable from
+  this workstation. They run in the CI database job.
+- **A concurrent session is editing the same tree.** It committed `8fb24f2` and `e40b0d8`
+  (renderer redesign) during this work, and `e40b0d8` swept the entire audit-remediation gate
+  into a commit titled "fix(renderer): keep the ribbon compressed". The work is intact; the
+  history now attributes it to the wrong change.
+
+### Next step
+
+The visual-fidelity remainder of Phase 12E, none of it started: **My Journey (VR-06)** — the
+largest single item — the safety surfaces (VR-11), a route's updates and disruptions (VR-10),
+the contribution flows against VR-08 and VR-09, and the empty/utility screens (F18). Then
+Phase 12F and 12G, neither started.
+
+---
+
 ## Audit remediation gate — 2026-09-05
 
 Independent Codex audit (against committed snapshot `d1150f3`) reconciled against current HEAD,
@@ -119,6 +226,86 @@ audit. Implemented in the existing SVG renderer (FR-04, FR-05, FR-57; invariants
 Uncommitted work from other sessions was preserved. This is a reviewed implementation pass,
 not owner visual acceptance: the Phase 12C screenshot criterion and Gate 4 remain open.
 Previews are generated under `scripts/renderer/out/` (ignored development artifacts).
+
+---
+
+## Session 16 — 2026-09-06
+
+**Goal:** unblock the deployment, fix the CI integration failure, and settle how test content is
+handled before launch.
+
+### Done
+
+- **Production is migrated and `/en/routes` is live.** It had been **7 migrations behind** the
+  deployed code since Phase 7 — the code queries `routes.mergedAt`, added in Phase 11, and the
+  database was still at Phase 6, so every search threw `P2022`. That is the whole of the "only
+  three pages work" problem the owner had been seeing for days. `migrate status` now reports no
+  drift, and the page renders the real search form with an honest "No routes yet".
+- **Fixed the CI integration failure** (`safety.db.test.ts`) and a second failure the
+  uncommitted renderer rework had introduced (`renderer-roundtrip.db.test.ts`).
+- Recorded the test-content decision in CLAUDE.md §10.2, and the revised gate ordering in
+  Phases.md.
+
+### Decisions taken
+
+- **Gates 1, 3 and 4 now run against hypothetical routes; only Gate 2 needs real content**
+  (owner). The owner researches and supplies the real routes himself once the engineering is
+  finished. Previously Gate 2 blocked everything, which would have left the platform idle for
+  weeks of research; now it is finished and reviewable *before* the research starts.
+- **No admin "delete route", and the reasoning is recorded in CLAUDE.md §10.2** so it does not
+  get re-litigated. There is nothing to delete (production holds 0 routes), cleanup is already
+  total (reset the disposable branch), and the button would outlive its reason. Three layers
+  currently refuse deletion — the ESLint boundary, the Prisma write guard, and Postgres
+  triggers — and a cleanup button would cut through all three.
+- **Two failing tests were stale, not two bugs**, and both had been asserting weaker things
+  than the code now guarantees:
+  - `safety.db.test.ts` recorded `quarantine_upheld` against a field nobody had quarantined,
+    and passed, because the service used to accept any outcome the enum allowed. It now
+    refuses — *recording it would not make it true* — which is right, so the missing
+    quarantine step was added rather than the refusal weakened.
+  - `renderer-roundtrip.db.test.ts` asserted the accessible name equalled "Route with 6 steps".
+    The name now enumerates the steps, which matters: a non-interactive ribbon is one image to
+    assistive technology, its inner `<title>` elements are unreachable, so a name that stops at
+    the count told a screen-reader user nothing about the route. Re-asserted as a prefix plus
+    content, so it can grow richer but cannot shrink back to a bare count.
+
+### Findings worth keeping
+
+- **A 200 status code is not proof a page works.** I reported `/en/routes` fixed on the strength
+  of `curl -o /dev/null -w %{http_code}` returning 200 — but a caught error renders through the
+  error boundary and still returns 200. The owner's screenshot showed the failure while my check
+  said success. Verify by **content** (`grep` for the page's own text and for the error
+  boundary), never by status alone.
+- **Eight of the ten local integration failures were Neon latency, not defects.** They time out
+  at the 30s default and pass in 39s against a longer one. CI uses a local `postgres:18`
+  container where 30s is ample, so only two of the ten were real. Already recorded in Test.md
+  §14 and §24; recorded again because it cost time twice.
+- **The pre-push review workflow returned a false all-clear.** It reported
+  `{"confirmed": [], "note": "No candidate findings."}` after all seven agents died on a session
+  limit — the journal held zero `result` lines. An empty result from a fan-out means *nothing
+  ran* until proven otherwise. The review was then done inline instead: CI gate (strengthened,
+  not weakened), migration (schema matches SQL, no code reads the dropped columns),
+  `safe-redirect` (sound against `//evil.com`, `/\evil.com`, `/%09/…`, control characters,
+  homoglyphs), and a secrets scan (clean).
+
+### Pending
+
+1. **Phase 12E** — contribution flows (VR-08, VR-09), safety surfaces (VR-11), route updates
+   (VR-10), contributor page, admin queues. Journey and sign-in are done.
+2. **Phase 12F** — phone IA: bottom tabs, route-as-tabs, tablet two-panel.
+3. **Phase 12G** — screenshot suite in CI, fidelity checklist per mockup, Gate 4.
+4. **Phase 13** — Gates 1, 3, 4 against fixtures; then the owner's content, then Gate 2.
+
+**Owner actions:** accept or reject the ribbon/road direction against VR-03 and VR-04 — still
+the one unticked exit criterion on 12C and 12D, and 12E builds on it.
+
+**Uncommitted:** a substantial renderer rework sits in the working tree (`route-map.tsx`,
+`route-visual.test.ts`, new densities, station links with `role="group"`). It is green locally
+but has not been reviewed or committed.
+
+### Next step
+
+Push the two test fixes, confirm CI green, then Phase 12E.
 
 ---
 
