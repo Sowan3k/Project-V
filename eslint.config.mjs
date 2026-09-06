@@ -52,6 +52,9 @@ export default tseslint.config(
   {
     ignores: [
       '.next/**',
+      // The isolated dist directory a review build writes to (Phase 12G). Generated output,
+      // exactly like `.next/**` above and ignored for the same reason.
+      '.next-review/**',
       'node_modules/**',
       'out/**',
       'build/**',

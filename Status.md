@@ -7,6 +7,92 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Session 18 — 2026-09-06
+
+By Claude Code
+
+**Goal:** the pending work standing *before* Phase 12E — which turned out to be one thing
+written three times, and not a phase at all.
+
+### Done
+
+**The finding first.** Every phase up to and including 12D is complete except two exit criteria,
+one on 12C and one on 12D, and they are the same criterion: *screenshots at four widths, beside
+the mockup, reviewed and accepted by the owner.* 12E ends with a third copy of it. None is
+engineering work — acceptance is the owner's — but all three were waiting on an artifact that
+did not exist, and Test.md §18 had already named it: "exactly the gap Phase 12G exists to close".
+
+**So the screenshot suite was built, out of order and on purpose.** Three commands and three
+files: `review:build` (a production build into `.next-review`), `review:start` (port 3101), and
+`review:shoot` (capture, overflow check, contact sheet). The screen → mockup pairing lives in
+`scripts/review/screens.mjs` where both the capture and the caption read it, because a
+screenshot captioned with the wrong mockup is worse than no sheet at all. Each pair carries a
+note saying what that comparison is *for* — a reviewer handed two images with no question
+attached compares typefaces, which are the things already decided and already guarded.
+
+**First run: 40 screenshots across 10 screens at 360 / 768 / 1280 / 1440, plus ribbon, road and
+field crops. Zero horizontal overflow anywhere.** That last one matters beyond this session: it
+is the standing Phase 12F exit criterion, the 4px overflow at 360px the E2E suite had been
+failing on since run #53. The `flex-wrap` fix in `route-context.tsx` from Phase 12E cured it;
+this is the first measurement across every screen that says so.
+
+Three screens were **not** captured — My Journey with private progress, correcting a field, and
+reporting — all needing a session. They are listed on the sheet in place rather than dropped,
+because a review set that silently skipped them would read as though they had been looked at,
+and those are exactly the surfaces Session 17 built without ever rendering.
+
+`npm run lint` clean · `npm run typecheck` clean · `npx vitest run` **903 passed** — unchanged,
+no guard edited, no test added or widened. Detail in [Test.md](Test.md) §19.
+
+### Decisions taken
+
+- **The suite judges nothing but horizontal overflow**, and says so on its own front page. Gate
+  4 is human-judged and cannot be automated away, for the same reason Gate 2's last line cannot.
+  `SeverityChip` is the standing proof: four labels, two appearances, every assertion in this
+  repository green. A sheet that scored itself would be inventing the authority the whole
+  product refuses to claim elsewhere.
+- **`.next` contention is fixed at its cause rather than worked around again.** Test.md §18
+  recorded it "has now cost time twice"; ports 3000 and 3100 were both occupied by other
+  sessions when this session started. A review build now writes to `.next-review`. Two side
+  effects were handled rather than tolerated: `next build` rewrites `tsconfig.json` to add the
+  new dist directory's types, so `scripts/review/build.mjs` restores it byte for byte; and
+  `typedRoutes` generates a registry per dist directory, so two were declared at once and
+  correctly-typed hrefs failed on the duplicate — the review build generates none. **The
+  ordinary path is unchanged**, verified by resolving the config with `NEXT_DIST_DIR` unset:
+  `distDir: '.next'`, `typedRoutes: true`.
+
+### Findings worth keeping
+
+- **The landing page's "Destinations with routes" band reads live route counts**, so against the
+  disposable branch it advertises `DE 748 routes`, `ZY 45`, `ZX 3` — integration-test debris with
+  invented country codes. Not a defect: production holds zero routes and shows the honest empty
+  state. But that band on the landing shot is **not** fidelity evidence, and a reviewer needs to
+  know that before reading it as though it were.
+- **The disposable branch holds 920 fixture routes** accumulated from months of integration runs.
+  Cleanup is a branch reset, never a delete path in the product (CLAUDE.md §10.2).
+- **The blocker Session 17 recorded is gone.** "No disposable Postgres reachable from this
+  workstation" — the test branch woke on the first attempt, carries its `platform_meta` marker,
+  and holds the 13-step Germany fixture. That is what made this session possible at all.
+
+### Blockers
+
+- **The owner's acceptance is now the only thing standing between 12C, 12D and their close**,
+  and it is not something this session could do. The sheet is at `scripts/review/out/index.html`.
+- **Three signed-in surfaces still have never been rendered in a browser.** An authenticated
+  capture pass is the remaining half of the suite, and belongs to 12G proper.
+- Phase 12F's own work — the bottom tab bar, the tablet two-panel composition and the widened
+  Playwright viewports — **is present in the working tree, uncommitted, from an earlier session
+  and left untouched here.** The screenshots were taken with it in place, so the phone shots show
+  the tab bar. It is not this session's to commit.
+
+### Next step
+
+Either the owner reviews the sheet — which closes 12C and 12D — or Phase 12F is finished and
+committed first, since its remaining scope (route-as-tabs on a phone, the step-chip strip,
+compact ribbons on discovery) changes the phone shots the sheet already holds.
+
+---
+
 ## Session 17 — 2026-09-06
 
 By Claude Code

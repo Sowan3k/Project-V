@@ -65,4 +65,10 @@ spikes/**/out/
 
 # renderer gallery output (development only)
 scripts/renderer/out/
+
+# visual-acceptance sheet and its isolated build (Phase 12G, development only).
+# The sheet is published as a build artifact for review, never committed: it is a few hundred
+# PNGs regenerated on every run, and a stale one in the tree would be worse than none.
+scripts/review/out/
+.next-review/
 /.shots.mjs

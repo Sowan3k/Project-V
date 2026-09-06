@@ -49,7 +49,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 12D | Public read path composition | Landing, discovery, route, step | ✅ |
 | 12E | Signed-in and community surfaces | Journey, changes, contribution, safety | ⬜ |
 | 12F | Mobile and tablet as their own product | Phone IA, not a narrower desktop | ⬜ |
-| 12G | Visual acceptance | Gate 4 green, screenshots reviewed | ⬜ |
+| 12G | Visual acceptance | Gate 4 green, screenshots reviewed | 🟡 |
 | 13 | Pre-launch gates and release | Gates 1–4 pass | ⬜ |
 | — | **Content track** (parallel, from Phase 1) | Real seeded routes | 🟡 |
 
@@ -1095,8 +1095,10 @@ wrapping through three rows with curved returns and step cards sitting on it.
 - ✅ Ribbon and road step counts and order still match for every fixture (invariant 25)
 - ✅ A ribbon occupies **at least 85% of its row's width** at every viewport, asserted in E2E —
   this is the defect that must not silently return
-- ⬜ Side-by-side screenshots of a real seeded route against VR-03 (ribbon) and VR-04 (road),
-  reviewed and accepted by the owner
+- 🟡 Side-by-side screenshots of a real seeded route against VR-03 (ribbon) and VR-04 (road),
+  reviewed and accepted by the owner — **the screenshots exist** as of 2026-09-06
+  (`npm run review:shoot`, Test.md §19), with ribbon and road crops at all four widths.
+  The acceptance is the owner's and is what remains
 - ✅ Renders with JavaScript disabled; zero client components added
 
 **Visual references:** VR-03 (ribbon band), VR-04 (wrapping road), VR-05/VR-13 (stepper)
@@ -1203,8 +1205,10 @@ become the passport's counted evidence in the same position and at the same weig
 VR-13's "Verified" / "98%" become source and last-confirmed language (BR-20, §8.6).
 
 **Exit criteria**
-- ⬜ Screenshots at 360/768/1280/1440 of landing, search, route and step reviewed side by side
-  against VR-01, VR-12, VR-04, VR-05 and VR-14, and accepted by the owner
+- 🟡 Screenshots at 360/768/1280/1440 of landing, search, route and step reviewed side by side
+  against VR-01, VR-12, VR-04, VR-05 and VR-14, and accepted by the owner — **produced**
+  2026-09-06 as a contact sheet pairing each screen with its mockup (Test.md §19). The
+  acceptance is the owner's and is what remains
 - ✅ Search results paginate; no page exceeds a reasonable document height
 - ✅ Every page uses `PageCanvas`; one left edge across header, content and footer (guarded)
 - ✅ Breadcrumbs on every route-context page, each segment a real link
@@ -1561,6 +1565,29 @@ the way it silently never arrived.
 - ⬜ Owner has reviewed the screenshot artifact set and accepted it
 - ⬜ The client-component count is still exactly one
 - ⬜ `Test.md`, `Status.md` and this file record the verified run and commit
+
+### Phase 12G — the screenshot suite, built ahead of the phase (2026-09-06)
+
+Built out of order, deliberately. Three phases — 12C, 12D and 12E — each ended with the same
+unticked criterion, and none of them could be closed without it: *screenshots at four widths,
+beside the mockup, accepted by the owner.* Leaving the suite until after 12F would have left
+three phases waiting on an artifact nobody had started.
+
+`npm run review:build` → `review:start` → `review:shoot` produces a contact sheet: every screen
+at 360/768/1280/1440 beside the mockup it answers to, with a note on each pair saying what the
+comparison is **for**. 40 screenshots across 10 screens on the first run, **zero horizontal
+overflow anywhere**, and the three session-only surfaces listed as not captured rather than
+quietly omitted.
+
+The suite judges nothing but overflow, and says so on its own front page. Gate 4 is human-judged
+and cannot be automated away — `SeverityChip` is the standing proof that every assertion in this
+repository can pass over a defect a person sees in one second.
+
+**What this leaves for 12G proper:** an authenticated capture pass for the three session-only
+surfaces, the fidelity checklist per mockup in `Test.md`, the accessibility and keyboard passes,
+navigation timings, and empty/loading/error states including Neon's cold start.
+
+Full detail, and the two `.next`/`typedRoutes` traps handled along the way, in Test.md §19.
 
 ---
 

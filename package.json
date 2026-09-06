@@ -31,6 +31,9 @@
     "postinstall": "prisma generate",
     "renderer:gallery": "tsx --tsconfig tsconfig.scripts.json scripts/renderer/gallery.tsx",
     "renderer:shoot": "node scripts/renderer/shoot.mjs",
+    "review:build": "dotenv -e .env.test.local -- node scripts/review/build.mjs",
+    "review:start": "dotenv -e .env.test.local -v NEXT_DIST_DIR=.next-review -- next start -p 3101",
+    "review:shoot": "node scripts/review/shoot.mjs",
     "fixture:germany": "dotenv -e .env.test.local -- tsx scripts/fixtures/germany-rwth-direct.ts",
     "db:wake": "dotenv -e .env.local -- node scripts/db/wake.mjs",
     "dev:test": "dotenv -e .env.test.local -- next dev"

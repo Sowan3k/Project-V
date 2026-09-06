@@ -1898,3 +1898,93 @@ The same shape as §22's "four bugs that never failed anything". It was found by
 mockup beside the component, which is the only method that finds it, and is the argument for
 Gate 4 rather than for another guard.
 
+
+---
+
+## §19 — The visual-acceptance sheet exists (2026-09-06)
+
+**What was outstanding, and it was one thing written three times.** Phase 12C, Phase 12D and
+Phase 12E each carry an unticked exit criterion of the same shape: *screenshots at four widths,
+placed beside the mockup, reviewed and accepted by the owner.* §18 above closed with the
+observation that this is "exactly the gap Phase 12G exists to close". It is now closed as far as
+engineering can close it — the pair is produced; the acceptance remains the owner's.
+
+### What was built
+
+| File | Role |
+|---|---|
+| `scripts/review/screens.mjs` | The screen → mockup pairing, and what each comparison is *for* |
+| `scripts/review/build.mjs` | A production build into `.next-review` that restores `tsconfig.json` |
+| `scripts/review/shoot.mjs` | Captures, checks overflow, writes the contact sheet |
+| `npm run review:build` / `review:start` / `review:shoot` | The three commands |
+
+The pairing is a file rather than a paragraph inside the shooter because two things read it —
+the capture and the caption — and a screenshot captioned with the wrong mockup is worse than no
+sheet. Each entry also carries a `look` note naming what that pair is evidence about, drawn from
+the exit criterion or CLAUDE.md §8.3. A reviewer handed two images with no question attached
+compares typefaces and colours, which are the things already decided and already guarded.
+
+### The run
+
+Against a local production build on the disposable branch, fixture
+`bd-de-masters-rwth-direct-v3` (13 steps — a road that *wraps* is the case VR-04 draws, and a
+three-step fixture proves nothing about it):
+
+- **40 screenshots across 10 screens** at 360 / 768 / 1280 / 1440, plus ribbon, road and field
+  crops.
+- **Zero horizontal overflow at every width on every screen.** This is the one thing the suite
+  asserts rather than merely photographs, and it is the standing Phase 12F exit criterion — the
+  4px overflow at 360px that the E2E suite had been failing on since run #53. The cause was the
+  non-wrapping four-tab nav in `route-context.tsx`, and the `flex-wrap` fix committed during
+  Phase 12E resolved it; this is the first measurement across every screen confirming it.
+- **3 screens not captured**, each stated on the sheet in place rather than dropped: My Journey
+  with private progress, correcting a field, and reporting. All three need an authenticated
+  session. Listing them was deliberate — a review set that silently skipped them would read as
+  though they had been looked at, and §18 records that these are precisely the surfaces built
+  without ever being rendered.
+
+### What the sheet is careful not to claim
+
+It judges nothing but overflow. Gate 4 is human-judged and cannot be automated away, for the
+same reason Gate 2's last line cannot; `SeverityChip` (§18) is the standing proof that a suite
+of green assertions can sit on top of a defect a person sees immediately. The sheet's own header
+says so, and states that the route content in every shot is hypothetical fixture content
+(CLAUDE.md §10.2) rather than launch content.
+
+### Two findings from looking at the output
+
+- **The landing page's "Destinations with routes" band is driven by live route counts**, so on
+  the disposable branch it lists `DE 748 routes`, `ZY 45`, `ZX 3` — accumulated integration-test
+  debris with invented country codes. Not a product defect: production holds zero routes and
+  shows the honest empty state (a 12D exit criterion, already ticked). But it does mean **that
+  one band on the landing shot is not fidelity evidence**, and a reviewer should know why before
+  reading it as though it were.
+- **The disposable branch holds 920 fixture routes** from months of integration runs. Cleanup is
+  a branch reset, never a delete path in the product (CLAUDE.md §10.2), and none of it has ever
+  been reachable from production.
+
+### The `.next` trap, fixed at its cause
+
+§18 recorded that a shared `.next` "has now cost time twice". Ports 3000 and 3100 were both
+occupied by other sessions when this work started, so the review build writes to `.next-review`
+via `NEXT_DIST_DIR` and serves on 3101. Two consequences had to be handled rather than tolerated:
+
+- `next build` adds the dist directory's `types` glob to `tsconfig.json` and no flag stops it, so
+  a screenshot run rewrote a tracked file. `scripts/review/build.mjs` snapshots and restores it
+  byte for byte, line endings included.
+- `typedRoutes` writes a route registry per dist directory, so two registries were declared at
+  once, `RouteImpl` twice, and correctly-typed hrefs failed on the duplicate. The review build
+  does not generate one. **The ordinary path is untouched and was verified so:** with
+  `NEXT_DIST_DIR` unset the resolved config is `distDir: '.next'`, `typedRoutes: true` —
+  identical to before — and `npm run typecheck` runs against the real registry on every commit.
+
+### Verification
+
+`npm run lint` clean · `npm run typecheck` clean · `npx vitest run` **903 passed, 34 files** —
+unchanged, no guard edited, nothing added to the suite. `.next-review/**` was added to the
+ESLint ignore list for the same reason `.next/**` is already there.
+
+**Not run:** the default `npm run build`. Other sessions' dev servers were listening on 3000 and
+3100 against this checkout's `.next`, and building into it is the exact trap this section is
+about. The default config path was verified by resolving it directly instead, which is stated
+rather than glossed.
