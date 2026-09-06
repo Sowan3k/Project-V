@@ -107,6 +107,41 @@ the student.
 
 ---
 
+## The decision, made — 2026-09-07 (Phase 12H)
+
+The owner asked for these to be considered during the density pass. **Nothing was installed, and
+the reasoning is worth keeping because the temptation will return.**
+
+The complaint that prompted the review was *"every space was smartly occupied. people have to
+scroll less."* It was measurable: at 1440×900 the route page was 3.8 screens and search 4.3,
+against about one and a half in the mockups. The cause, on every page, was the same — content the
+mockups put **side by side** was stacked, leaving a third of the screen empty beside it.
+
+**None of the first three candidates addresses that.** The problem was never that the pixels were
+dull; it was that a third of the screen was empty. A shader on the landing page would have
+produced a slower page with the same hole in it. The measurements below were achieved with layout
+alone: no dependency added, no bundle shipped, no client component created.
+
+| Screen | Before | After |
+|---|---|---|
+| Route | 3,439px | **2,418px** |
+| Search | 3,917px | **3,087px** |
+| Landing | 1,406px | **1,163px** |
+
+What produced them was `Visual References/`, which sits **above this file** in the hierarchy at
+the top of this page: VR-04 and VR-13 put the step index in a rail, VR-12 puts filters in a band,
+VR-01 puts destinations in the hero. The references were already there and already binding.
+
+`ui-ux-pro-max-skill` remains what this file already called it — the most useful of the four and
+the only one with no cost to the student, because it is guidance rather than a runtime dependency.
+
+**The first three stay available for a decorative hero**, on exactly the terms already written
+below: lazily loaded, behind a static fallback, disabled under `prefers-reduced-motion`, never
+blocking first paint, and measured on a throttled connection rather than a desktop impression.
+Adopting one would be a change request, not a styling decision.
+
+---
+
 ## How to decide, when the time comes
 
 1. **The core journey stays SVG and server-rendered.** Ribbons, roads, steps and fields are the

@@ -47,9 +47,10 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 12B | Design system and visual foundation | Tokens, primitives, brand — what a screen is made of | ✅ |
 | 12C | Ribbon and road as drawn | A route looks like a route, still route-agnostic | ✅ |
 | 12D | Public read path composition | Landing, discovery, route, step | ✅ |
-| 12E | Signed-in and community surfaces | Journey, changes, contribution, safety | ⬜ |
-| 12F | Mobile and tablet as their own product | Phone IA, not a narrower desktop | ⬜ |
+| 12E | Signed-in and community surfaces | Journey, changes, contribution, safety | ✅ |
+| 12F | Mobile and tablet as their own product | Phone IA, not a narrower desktop | ✅ |
 | 12G | Visual acceptance | Gate 4 green, screenshots reviewed | 🟡 |
+| 12H | Density: the composition around the drawing | Every space occupied; less scrolling | 🟡 |
 | 13 | Pre-launch gates and release | Gates 1–4 pass | ⬜ |
 | — | **Content track** (parallel, from Phase 1) | Real seeded routes | 🟡 |
 
@@ -1661,6 +1662,115 @@ surfaces, the fidelity checklist per mockup in `Test.md`, the accessibility and 
 navigation timings, and empty/loading/error states including Neon's cold start.
 
 Full detail, and the two `.next`/`typedRoutes` traps handled along the way, in Test.md §19.
+
+---
+
+## Phase 12H — Density: the composition around the drawing
+
+**Opened 2026-09-07 by the owner**, in the same message that accepted the ribbon and the road.
+The acceptance and the reservation are one sentence apart and both matter:
+
+> *"oh i just like these new rebons. um. all accepted"* … *"you can see there was every space was
+> smartly occupied. people have to scroll less. everything easily in one screen."*
+
+So the drawing is settled. What is not settled is the page around it — and unlike most design
+complaints this one is **measurable**, which is what makes it a phase rather than an opinion. At
+1440px with a 900px viewport, before this phase:
+
+| Screen | Height | Screens of scrolling |
+|---|---|---|
+| History | 5,012px | 5.6 |
+| Changes | 4,101px | 4.6 |
+| Search | 3,917px | 4.3 |
+| Route | 3,439px | 3.8 |
+| Step | 2,934px | 3.3 |
+| Landing | 1,406px | 1.6 |
+
+VR-04 and VR-12 each tell their whole story in about one and a half.
+
+### The diagnosis, and it is one thing repeated
+
+Every one of those pages **stacked what the mockups put side by side**, and then left a third of
+the screen empty beside the stack. Not a shortage of space — a refusal to use the space that was
+there:
+
+- the route page had a 1,518px road with a 450px maturity panel beside it, and then a 984px
+  index of the same thirteen stages *below* both;
+- search had four selects and a button in a four-of-twelve column beside a results list nearly
+  four thousand pixels tall;
+- the landing hero's left column ended 250px above the bottom of the illustration beside it,
+  with a whole destinations band further down.
+
+### What changed
+
+| Change | Reference | Effect |
+|---|---|---|
+| Step index moves into the rail | VR-04 "All Steps", VR-13 left column | Route **3,439 → 2,418** (−30%), and the rail stops being empty |
+| Search filters become a band | VR-12 | Frees the column the filters were wasting |
+| A key to the ribbon fills that column | VR-12's rail position | Six categories, their icons and their names — information that was present and unreadable |
+| Result row becomes two columns | VR-12 card | Search **3,917 → 3,087** (−21%); first screen shows three routes, not one and a half |
+| Route facts panel moves right of the title | VR-04 | Both halves of the header used |
+| Destinations move into the hero | VR-01 | Landing **1,406 → 1,163**, one band removed |
+
+### The finding worth keeping: width can cost height
+
+Giving the search results the full canvas was tried, measured, and **reverted** — it made the
+page *taller*, 3,917 → 4,364.
+
+A ribbon is an SVG with a viewBox and `w-full`, so it scales to its container in **both**
+dimensions. Widening the column from 826px to 1,280px scaled every band by 1.55×, and a route
+with parallel stages, whose ribbon carries lane gaps, grew by two hundred pixels. More width
+bought more height.
+
+`RIBBON.fitWidth` is 680 and tuned for that column. The same trap sits under the shadow
+comparison, whose two roads use `ROAD_NARROW` at 400px: giving *them* more room would make that
+page taller too, not shorter. **Space and scale are different dials here, and the renderer's
+densities are the scale dial** — a wider container is not a denser layout, it is a bigger
+picture. Anything later that widens a region holding a route visual has to change its density in
+the same commit or it will make the page worse while appearing to make it better.
+
+### What was not traded away
+
+Density passes are where qualifications get quietly trimmed, so, explicitly: nothing was removed.
+The fly window keeps its visible *"an estimate, not a guarantee"* in full (invariant 16, BR-18) —
+it was moved into a column, not shortened. Every category still states itself in words beside its
+colour (§10.4). The counts on the route header are still counts and stored dates, with the
+standing left to the passport (invariant 14). No copy was rewritten to fit a layout.
+
+### Design-References.md, checked at the owner's request
+
+The owner asked for the repos in that file to be considered. Three of the four are the wrong tool
+for this product, and that file already says so in its own words — this phase is the evidence:
+
+- **react-three-fiber**, **shadergradient**, **liquid-glass-js** — all three cost the reader a
+  JavaScript bundle, a GPU, or both, and none of them addresses what was actually wrong. The
+  problem was never that the pixels were dull; it was that a third of the screen was empty. A
+  shader on the landing page would have made a slower page with the same hole in it. The file's
+  own closing line is the argument: *"A distinctive product with a 4-second first paint on a
+  phone in Dhaka has failed at the thing it was built for."*
+- **ui-ux-pro-max-skill** — guidance rather than a runtime dependency, and the file already
+  ranks it "the most immediately useful of the four, and the only one with no cost to the
+  student". Its subject is exactly this phase's: palette, typography pairing and **density**.
+
+The thing that made these screens better was the mockups, which sit **above** that file in the
+hierarchy and are this product's own design intent. Nothing was installed.
+
+**Reconsider the first three only for a decorative hero**, on the terms that file already sets:
+lazily loaded, behind a static fallback, disabled under `prefers-reduced-motion`, never blocking
+first paint, and measured on a throttled connection. That would be a change request, not a
+styling decision.
+
+**Exit criteria**
+- ✅ No primary screen exceeds ~3 screens of scrolling at 1440×900 (landing 1.3, route 2.7,
+  search 3.4)
+- ✅ No page leaves a grid region structurally empty beside a tall neighbour
+- ✅ Nothing removed to gain density — every qualification, count and category word intact
+- ⬜ Changes (4.6) and History (5.6) — both dominated by renderer output in narrow columns, and
+  both blocked on the density-versus-width finding above. Neither is on the primary journey
+- ⬜ Owner review of the re-shot contact sheet
+
+**Visual references:** VR-01, VR-04, VR-12, VR-13
+**FRs:** FR-04, FR-05, FR-09 · **Quality expectation:** §7.2 layout architecture
 
 ---
 

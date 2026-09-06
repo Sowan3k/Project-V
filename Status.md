@@ -7,6 +7,109 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Session 19 — 2026-09-07
+
+By Claude Code
+
+**Goal:** the owner accepted the ribbon and road, and named one reservation. Act on it.
+
+### The acceptance, and what it closes
+
+> *"oh i just like these new rebons. um. all accepted"*
+
+That closes the criterion that had been the only unticked one on **12C and 12D** since
+2026-09-04, and which 12E and 12F were both building on top of. Recorded in Phases.md against
+both phases. The owner also accepted the four-width contact sheet, **with a reservation**, and
+the reservation is the rest of this session.
+
+### The reservation, measured
+
+> *"every space was smartly occupied. people have to scroll less. everything easily in one
+> screen."*
+
+Unlike most design feedback this one is measurable, which is what made it a phase rather than an
+opinion. At 1440×900, before: history 5.6 screens, changes 4.6, **search 4.3**, **route 3.8**,
+step 3.3, landing 1.6. VR-04 and VR-12 each tell their whole story in about one and a half.
+
+**The diagnosis was one thing, repeated on every page: what the mockups put side by side, we
+stacked — and then left a third of the screen empty beside the stack.** The route page had a
+1,518px road with a 450px panel beside it and a 984px index of the same thirteen stages *below*
+both. Search had four selects and a button in a column beside a results list four thousand
+pixels tall. The landing hero ran out of content 250px above the bottom of the illustration
+beside it, with a destinations band further down.
+
+### Done
+
+- **Step index into the rail** (VR-04's "All Steps", VR-13's left column). Route
+  **3,439 → 2,418px**, −30%, and the rail is no longer empty. A reader on stage 4 who wants
+  stage 5 now clicks instead of scrolling back past a wrapping road.
+- **Search filters become a band** (VR-12), and the freed column carries **a key to the ribbon** —
+  six categories, their icons, their names. Every band on that page was six categories in
+  journey order and nothing said what any of them meant: information present and unreadable.
+- **Result row becomes two columns.** Search **3,917 → 3,087px**; the first screen shows three
+  routes rather than one and a half.
+- **Route facts panel moves right of the title** (VR-04 puts its duration panel exactly there),
+  so both halves of the header are used.
+- **Destinations move into the landing hero** (VR-01). Landing **1,406 → 1,163px**, one whole
+  band removed, hero now one screen with nothing empty in it.
+
+903 unit tests unchanged; 55 browser assertions green at 360 and 1280.
+
+### The finding worth keeping: width can cost height
+
+Giving the search results the full canvas was tried, **measured, and reverted** — it made the
+page *taller*, 3,917 → 4,364.
+
+A ribbon is an SVG with a viewBox and `w-full`, so it scales in **both** dimensions. Widening
+the column from 826px to 1,280px scaled every band by 1.55×, and a route with parallel stages,
+whose ribbon carries lane gaps, grew two hundred pixels. `RIBBON.fitWidth` is 680 and tuned for
+that column. The same trap sits under the shadow comparison's two `ROAD_NARROW` roads at 400px,
+which is why Changes and History are left open rather than "fixed" by widening them.
+
+**Space and scale are different dials, and the renderer's densities are the scale dial.** A
+wider container is not a denser layout; it is a bigger picture. Anything that later widens a
+region holding a route visual has to change its density in the same commit.
+
+### On Design-References.md, checked at the owner's request
+
+Three of its four candidates — react-three-fiber, shadergradient, liquid-glass-js — cost the
+reader a bundle, a GPU or both, and **none of them addresses what was actually wrong**. The
+problem was never that the pixels were dull; it was that a third of the screen was empty. A
+shader on the landing page would have produced a slower page with the same hole in it. That
+file's own closing line is the argument, and this session is its evidence.
+
+The fourth, ui-ux-pro-max-skill, is guidance rather than a dependency and that file already
+ranks it the most useful of the four. What actually made these screens better was the mockups,
+which sit **above** that file in the hierarchy and are this product's own design intent.
+
+**Nothing was installed.** The verdict is recorded in that file so it is not re-litigated, and
+the first three stay available for a decorative hero on the terms already written there — lazy,
+static fallback, reduced-motion, never blocking first paint, measured on a throttled connection.
+That would be a change request.
+
+### Nothing was traded away for density
+
+Density passes are where qualifications get quietly trimmed, so, explicitly: the fly window keeps
+its visible *"an estimate, not a guarantee"* in full (invariant 16, BR-18) — moved into a column,
+not shortened. Every category still states itself in words beside its colour (§10.4). The header
+counts are still counts and stored dates (invariant 14). No copy was rewritten to fit a layout.
+
+### Open
+
+- **Changes (4.6 screens) and History (5.6)** — both dominated by renderer output in narrow
+  columns, both blocked on the width-costs-height finding. Neither is on the primary journey.
+- **Owner review of the re-shot contact sheet** (`npm run review:build && review:start &&
+  review:shoot`).
+- **Nothing has been pushed this session or the last.** CI is the authoritative gate and two
+  E2E items still rest on it.
+
+### Next step
+
+Re-shoot the sheet for the owner, then Changes and History — which need a density decision, not
+a layout one.
+
+---
+
 ## Session 18 — 2026-09-06
 
 By Claude Code
