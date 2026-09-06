@@ -1,172 +1,173 @@
-<div align="center">
-
 # ভিনদেশী এক্সপ্রেস · Vindeshi Express
 
-**Understand the road before you fly.**
+**Studying abroad becomes far easier when you can see the whole road before you take the first
+step. That is what this builds.**
 
-A Bangladesh-first, community-maintained navigation and tracking platform for students
-pursuing higher education abroad. A public good, not a business.
+A student in Dhaka who wants to do a Master's in Germany has to solve about forty problems in a
+particular order. Which documents, authenticated by whom. Whether the degree is recognised, and
+who decides that. Which English test, taken where in Bangladesh, valid for how long. What counts
+as proof of funds. Which embassy has jurisdiction, and how far ahead the appointment has to be
+booked. Almost none of it is written down in one place, and the part that is written down goes
+out of date quietly.
 
-</div>
-
----
-
-## What it is
-
-Compare the available ways to reach an overseas study destination, open a route to understand
-every step, privately follow it as your own journey, and benefit continuously as the community
-corrects and updates the public route.
-
-The idea in one sentence: **people ahead on the journey leave the route clearer for the people
-coming behind them.**
-
-A visitor searches `origin → destination → study level → intake`. Results appear as compact
-visual **ribbons**. Opening a ribbon unfolds it into a **road** of ordered **steps** — documents,
-IELTS, admission, funding, visa, departure. Each step expands into **fields**: a requirement, a
-procedure, a contact, an address, a cost, a deadline, somebody's experience, a warning. A
-signed-in user can **follow** a route as a private **journey**, mark progress, and see when the
-live public route changes underneath them.
+Vindeshi Express puts one such path on screen as a road, with every stage in order, and lets the
+people who have already walked it keep the road accurate for the people behind them.
 
 ---
 
-## Project status
+## How it works
 
-**Pre-launch. The engineering is essentially complete; the route content is not written yet.**
+Search `origin → destination → study level → intake`. Each way of getting there comes back as a
+**ribbon**: the route compressed into a single band you can compare at a glance.
 
-The application is built and tested — search, ribbons, roads, steps, fields, private journeys,
-the contribution loop, change propagation, shadow comparison, reporting and quarantine all work
-end to end. What does not exist yet is *real route content*, which the project owner researches
-and supplies before launch.
+Open a ribbon and it unfolds into a **road**, the same route at full size, with every **step** in
+sequence: documents, tests, admission, funding, visa, departure. Open a step and you get its
+**fields**, which are the smallest thing anyone maintains. A field is one requirement, one
+procedure, one contact, one address, one cost, one deadline, or one person's experience. Each
+carries its own source, its own last-confirmed date, and its own history.
 
-That gap is deliberate, and it is the most important thing to understand about this repository:
+Sign in and you can **follow** a route. That gives you a private journey: the live public route,
+plus your own progress, your own target dates, your own notes. Nobody else can see any of it. If
+the public route changes while you are partway along it, you are shown what changed, where, and
+whether it lands ahead of you or behind you.
 
-> **A fabricated route is worse than an empty platform.** A reader cannot tell an invented route
-> from a researched one, and the whole product rests on that difference staying visible.
-
-So the production database holds **zero routes**, and always has. Every route you see in the
-screenshots below is a **development fixture** on a disposable database — it exists to exercise
-the mechanism, it says so on its own face, and it is deleted by resetting that database rather
-than by any delete path in the product.
+Anyone signed in can improve a route. Four actions, deliberately small: **add**, **update**,
+**confirm** that something is still true, or **challenge** something that is not. Every one of
+them writes a revision and keeps the previous value.
 
 ---
 
 ## What it looks like
 
-> **Every route in these screenshots is a development fixture, not published content.** Its
-> durations, dates and requirements are for exercising the software. The product labels them as
-> such on screen, which is why you can see it doing so below.
+Every route below is a **development fixture**, not published content. It exists to exercise the
+software, and it says so on its own face. Real route content is researched separately and has not
+been written yet.
 
 ### The landing page
 
-Minimal by intent. Complexity appears only after the visitor acts, and nothing here needs an
-account — search, routes, steps, sources and safety signals are all readable signed out.
+Nothing here needs an account. Search, routes, steps, sources and safety signals are all readable
+signed out; signing in only unlocks contributing and private tracking.
 
-![The Vindeshi Express landing page: a Bengali wordmark, the headline "Understand the road before you fly", a "Find my route" button, and a panel illustrating the six kinds of stage a route is made of](docs/screenshots/landing.png)
-
-### A ribbon
-
-A ribbon is **not a card and not a preview — it is the route, compressed.** The same stages, in
-the same order, at a density you can compare across search results at a glance. It carries the
-route's shape, including where it branches.
-
-![A ribbon: one continuous band of interlocking coloured chevrons, each carrying a category icon, with two places where the route branches into parallel stages](docs/screenshots/ribbon.png)
+![The Vindeshi Express landing page. A Bengali wordmark above the headline "Understand the road before you fly", a "Find my route" button, badges reading Free to use, Community maintained, No document upload and No account needed to read, and a panel illustrating the six kinds of stage a route is made of](docs/screenshots/landing.png)
 
 ### The road
 
-Opening a ribbon unfolds it into the same object at full density. The road wraps across rows,
-carries every stage in order with its category and timing, and shows what the route's standing
-actually is — here, an experimental route nobody has confirmed yet.
+A route is a graph, not a list, so it draws as one. This one runs thirteen stages, wraps across
+rows, and splits where stages genuinely happen at the same time. To the right is what the route's
+standing actually is: experimental, nobody has confirmed anything, one contributor, and a plain
+statement that an absence of warnings is not evidence of anything.
 
-![A route page showing a thirteen-stage road wrapping across four rows with curved connectors, beside a panel stating the route is experimental with no confirmations](docs/screenshots/route-road.png)
+![A route page showing the title "Bangladesh to Germany, Master's by direct university application", a development fixture notice, thirteen steps, an expected fly window of October 2029 to September 2030, and a wrapping road of numbered coloured stages beside a panel headed "Read this route with care"](docs/screenshots/route-road.png)
 
-### A step, and where its information came from
+### A ribbon
 
-The smallest maintained unit is a **field**, and every field states what kind of claim it is,
-who asserts it and when it was last confirmed. Note what this one says: the information has *not*
-been researched, and the product says so rather than filling the gap with something plausible.
+The ribbon is not a card and not a thumbnail. It is the same route, compressed: same stages, same
+order, same branches, small enough to compare several at once.
 
-![A step detail panel showing a field grouped under "From the community", carrying a caution that it is a community submission not corroborated by anyone else, and stating plainly that the topic has not been researched](docs/screenshots/step-fields.png)
+![A ribbon: one continuous band of interlocking coloured chevrons, each carrying a category icon, with two points where the band splits into parallel stages](docs/screenshots/ribbon.png)
+
+### A field, and where it came from
+
+This is the part most of the design effort went into. Read what this field says: the topic has
+not been researched, and rather than filling the space with something plausible, the route
+records the gap and says so.
+
+![A step detail panel. Under a heading "From the community", a field states that several topics have not been researched and that the route is a development fixture, deliberately incomplete rather than filled in with plausible guesses. Below it a caution reads "Community submission, not corroborated by anyone else"](docs/screenshots/step-fields.png)
 
 ### On a phone
 
-A phone gets a different information architecture, not a narrower desktop one: bottom tab
-navigation, a road recomposed into two columns rather than shrunk, and the same complete route.
+Most students arrive on a phone browser, so the phone gets its own information architecture
+rather than a squeezed copy of the desktop one: bottom tab navigation, and a road recomposed into
+two columns instead of five.
 
-<img src="docs/screenshots/phone-route.png" alt="The same route on a 390px phone: bottom tab bar with Explore, My Journey and Sign in; the route title, standing and tabs; and the road recomposed into two columns" width="360">
+<img src="docs/screenshots/phone-route.png" alt="The same route on a 390 pixel phone: a bottom tab bar with Explore, My Journey and Sign in; the route title, its development fixture notice, its standing and its tabs; and the road recomposed into two columns" width="360">
 
 ---
 
-## What this project is **not**
+## Where the project stands
 
-Stated as plainly as what it is, because each of these has been considered and ruled out:
+The application is built and tested end to end. Search, ribbons, roads, steps, fields, private
+journeys, the contribution loop, change propagation, shadow comparison, reporting and quarantine
+all work.
 
-- Not a scholarship finder or university ranking site
-- Not an education agency, consultancy, or application service
+What does not exist yet is route content. The production database holds zero routes and always
+has, because of a rule the whole project rests on:
+
+> A fabricated route is worse than an empty platform. A reader cannot tell an invented route from
+> a researched one, and the moment that difference stops being visible, nothing else here is
+> worth anything.
+
+So the seed content is researched by hand before launch, and until then the only routes that
+exist live on a disposable database, label themselves as fixtures, and are removed by resetting
+that database rather than by any delete path in the product. There is no admin delete button, and
+that was a decision rather than an omission.
+
+---
+
+## What it refuses to be
+
+- **Not an agency or a consultancy.** It submits nothing on anyone's behalf and takes no fee.
 - **Not a document vault.** It never collects passports, transcripts, test certificates, bank
-  statements, visa documents or admission letters. There is no file upload anywhere in it.
-- Not a verification authority. It never verifies a user's claimed progress, and it never claims
-  to have verified a route.
-- Not a social feed, a follower culture, or a messaging network
-- Not a paid-placement marketplace. **Trust cannot be bought here** — no sponsorship, ad or
-  payment can influence a route's order, standing, source classification or badges.
-- Not flight or accommodation booking, loans, jobs, or travel sales
-- Not AI-dependent. AI is not a feature of it.
+  statements, visa documents or admission letters. There is no upload endpoint anywhere in it, so
+  there is nothing to leak.
+- **Not a verifier.** It never verifies a user's claimed progress and never claims to have
+  verified a route. It shows sources, dates and who said what, and lets you judge.
+- **Not for sale.** No sponsorship, advertisement or payment can move a route up the results,
+  raise its standing, change how a source is classified, or affect a moderation decision.
+- **Not a scholarship finder, a ranking site, a social feed, or a booking service.**
+- **Not built on AI.** The dependency list is six packages long and none of them is a model.
 
 ---
 
 ## The rules the code actually obeys
 
-These are enforced by tests, lint rules, a database client extension and Postgres triggers —
-not by good intentions:
+Every row below is enforced by something other than good intentions: a test, an ESLint boundary,
+a Prisma client extension, or a Postgres trigger.
 
-| Rule | What it means in the code |
+| Rule | How it is held |
 |---|---|
-| **Knowledge is never destroyed** | No delete path for routes, steps or fields exists for any normal user. Obsolete content is challenged and archived, never erased. Postgres triggers refuse `DELETE` outright. |
-| **Every update writes a revision** | Changing a field creates a new revision preserving the prior value, its author and its timestamp. There is exactly one door into shared knowledge, and everything else is refused. |
-| **Nobody owns a route** | Route creators get no special rights over what they created. Anyone signed in may correct anything. |
-| **Private progress stays private** | A user's journey, dates and notes are visible to nobody else, ever. Journey queries cannot be constructed without a user id. |
-| **No evidence, ever** | Marking your own progress never requires proof of anything. There is no upload endpoint to require it with. |
-| **Uncertainty stays visible** | An official requirement and somebody's experience are different claim types and can never overwrite each other. A contested field renders as contested. |
-| **No reports ≠ safe** | Nothing derives a safety badge from an absence of complaints. |
-| **Counts decide nothing** | Follower numbers, vote totals and report volume never automatically confer or remove standing. |
-| **Estimates say they are estimates** | An expected departure window is a planning aid, and is worded as one. |
-| **The renderer knows nothing about routes** | No country, destination or route may require bespoke artwork or special-cased code. A route created by a contributor at 2am draws correctly with no developer involved. |
+| Shared knowledge is never destroyed | No delete path exists for routes, steps or fields for any normal user. Obsolete content is challenged and archived. Postgres triggers refuse `DELETE` even from psql. |
+| Every edit keeps the old value | All revisioned writes go through one service. A raw `prisma.field.update()` anywhere else is refused at runtime and blocked at lint time. |
+| Nobody owns a route | There is no owner check on any edit. The person who created a route has no rights over it that you do not have. |
+| Private progress stays private | Journey queries take the session user id as a required argument, so a query that forgets to scope itself does not compile. |
+| Progress never requires proof | Marking a step complete asks for nothing. There is no upload path to ask with. |
+| An official rule and someone's experience never merge | They are different claim types, cannot overwrite one another, and are grouped separately on screen. |
+| Silence is not safety | Nothing derives a safe or verified badge from an absence of reports. |
+| Counts decide nothing on their own | Follower numbers, votes and report volume never automatically archive, rank, promote or trust anything. |
+| Estimates are labelled as estimates | An expected departure window is a planning aid and is worded as one, never as a date you will fly. |
+| The renderer knows nothing about routes | No country, destination or route may need bespoke artwork or special-cased code. Proved by a test: two routes with identical structure and different destinations must lay out to identical geometry, label text aside. |
 
 ---
 
 ## Built with
 
-| Layer | Choice |
-|---|---|
-| Framework | Next.js 15 (App Router), React 19, TypeScript strict |
-| Database | Neon serverless PostgreSQL 18 |
-| ORM | Prisma |
-| Auth | Auth.js (NextAuth), Google sign-in |
-| Styling | Tailwind CSS |
-| Route visuals | A data-driven SVG renderer built from hand-authored primitives — no chart library |
-| Testing | Vitest (unit, architecture, integration) + Playwright (end to end) |
-| Hosting | Vercel |
+Next.js 15 and React 19 on the App Router, TypeScript in strict mode, Prisma against Neon
+serverless Postgres, Auth.js for Google sign-in, Tailwind for styling, Vitest and Playwright for
+tests, deployed on Vercel.
 
-The read path ships **one client component** and works with JavaScript disabled — a student in
-Dhaka on a slow connection is the person this is built for.
+The route visuals are a data-driven SVG renderer built from hand-authored primitives, with no
+chart library. A road segment, a junction, a step marker, a branch and a shadow segment are drawn
+once each; every route in existence is assembled from those.
+
+The read path ships **one client component** and works with JavaScript switched off. That is not
+a boast, it is the requirement: a student in Dhaka on a slow connection is the person this is
+for.
 
 ---
 
-## Running it locally
+## Running it
 
 ```bash
 npm install
-cp .env.example .env.local     # then fill in DATABASE_URL and the auth secrets
+cp .env.example .env.local     # fill in DATABASE_URL, AUTH_SECRET and the Google client
 npm run db:deploy              # apply migrations
 npm run dev                    # http://localhost:3000
 ```
 
-Common commands:
-
 ```bash
-npm run lint                   # eslint
+npm run lint                   # eslint, including the database import boundary
 npm run typecheck              # tsc --noEmit
-npm run test                   # vitest — unit and architecture tests
+npm run test                   # vitest: unit, architecture and invariant tests
 npm run test:e2e               # playwright
 npm run build                  # production build
 
@@ -175,45 +176,56 @@ npm run db:objects             # tables, enum types and row counts
 npm run db:studio              # inspect data
 ```
 
-> **Never point a seed or a test at a production database.** Test writes are refused unless the
-> target database positively identifies itself as disposable, and the guard fails closed — an
-> unreachable database is "unknown", and unknown is not permission.
+One warning worth reading before you run anything that writes. Test writes are refused unless the
+target database positively identifies itself as disposable, and the check fails closed: an
+unreachable database counts as unknown, and unknown is not permission. Shared route knowledge is
+deliberately undeletable, so a mistaken seed against production is not something an apology
+undoes.
 
 ---
 
-## How this repository is organised
+## Reading the repository
 
-The working documents are as much a part of the project as the code, and they are meant to be
-read:
+The written record is part of the project and is meant to be read, not skimmed:
 
-| File | What it holds |
+| File | What is in it |
 |---|---|
-| [`CLAUDE.md`](CLAUDE.md) | The project's rules: vocabulary, invariants, conventions, and the reasoning behind each |
-| [`REQUIREMENTS.md`](REQUIREMENTS.md) | The frozen requirements baseline — 81 functional requirements, 35 business rules, 47 decisions |
-| [`Phases.md`](Phases.md) | The development plan, phase by phase, with exit criteria and the pre-launch gates |
-| [`Status.md`](Status.md) | An append-only session log: what was done, what was decided, what is blocked |
-| [`Test.md`](Test.md) | The test ledger — what is tested, what is not, and the defects worth remembering |
-| [`Visual References/`](Visual%20References/) | The UI mockups that define design intent |
+| [`CLAUDE.md`](CLAUDE.md) | The rules: vocabulary, the invariants listed above, conventions, and the argument behind each one |
+| [`REQUIREMENTS.md`](REQUIREMENTS.md) | The frozen baseline: 81 functional requirements, 35 business rules, 47 recorded decisions |
+| [`Phases.md`](Phases.md) | The plan, phase by phase, with exit criteria and the four pre-launch gates |
+| [`Status.md`](Status.md) | A session log: what was done, what was decided, what is blocked |
+| [`Test.md`](Test.md) | The test ledger, including the defects that no test caught and why |
+| [`Visual References/`](Visual%20References/) | The mockups that define design intent |
 
-Every behaviour is traceable to a requirement id, and every deliberate departure from a mockup
-is written down with the rule that forced it. An unexplained difference is treated as a defect;
-an explained one is a decision.
+Every behaviour traces to a requirement id. Every deliberate departure from a mockup is written
+down together with the rule that forced it, because an unexplained difference is a defect and an
+explained one is a decision.
+
+---
+
+## Licence
+
+Licensed under the [GNU Affero General Public License v3.0](LICENSE) or later.
+
+The AGPL is the right fit for a public good. You may use, study, change and share this freely.
+If you run a modified version as a service that other people can reach, you have to publish your
+changes too. In other words, this can be forked and improved by anybody, and it cannot be quietly
+turned into a closed commercial study-abroad product.
+
+Copyright © 2026 the Vindeshi Express contributors.
 
 ---
 
 ## Supporting it
 
-The platform is free and will stay free. There are no paid features, no premium routes and no
-paid rankings.
+The platform is free and stays free. No paid features, no premium routes, no paid rankings.
 
-There is one voluntary support link in the footer, and it is the only monetisation of any kind.
-It changes nothing: the platform never sees a payment, and supporters are **indistinguishable
-from non-supporters to the system** — not by policy, but because no supporter flag exists to
-condition anything on. Route order, standing, source classification and moderation cannot be
-influenced by it, since there is nothing for them to read.
-
----
+There is one voluntary support link in the footer and it is the only monetisation of any kind.
+It changes nothing at all: the platform never sees a payment, and a supporter is indistinguishable
+from a non-supporter to the system. Not by policy, but by construction, because no supporter flag
+exists for anything to read.
 
 <div align="center">
-<sub>Every step before you fly.</sub>
+<br>
+<sub><b>Every step before you fly.</b></sub>
 </div>

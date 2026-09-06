@@ -1,6 +1,7 @@
 {
   "name": "vindeshi-express",
   "version": "0.0.0",
+  "license": "AGPL-3.0-or-later",
   "private": true,
   "description": "Bangladesh-first, community-maintained navigation and tracking platform for students pursuing higher education abroad.",
   "engines": {
