@@ -9,9 +9,11 @@ import {
   ExactChange,
   FollowerChangeList,
   ResolveDisruptionControl,
+  SeverityLegend,
+  UpdateActivity,
 } from '@/components/changes'
 import { ContentColumn, GridRegion, PageGrid } from '@/components/layout'
-import { buttonClass } from '@/components/ui'
+import { buttonClass, GuidanceList, inputClass, labelClass, Rail } from '@/components/ui'
 import { RouteContext } from '@/components/route-context'
 import { ShadowCompare } from '@/components/shadow-compare'
 import { CHANGE_SEVERITIES, ROUTE_CHANGE_KINDS } from '@/domain/enums'
@@ -26,6 +28,8 @@ import {
   recentRevisionsForRoute,
   shadowForChange,
   shadowSince,
+  type ChangeView,
+  type DisruptionView,
 } from '@/server/changes/read'
 import { followerChangeReport } from '@/server/journeys/changes'
 import { getRouteBySlug, type RouteDetail } from '@/server/routes/read'
@@ -66,9 +70,8 @@ import {
  */
 export const dynamic = 'force-dynamic'
 
-const INPUT =
-  'mt-1 block w-full rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
-const LABEL = 'block text-xs text-ink-700'
+const INPUT = inputClass('compact')
+const LABEL = labelClass('compact')
 
 /**
  * The route's own name in the browser tab - Phase 12.
@@ -116,8 +119,49 @@ export default async function RouteChangesPage({
   const resolve =
     viewer === null ? undefined : { locale, slug, action: resolveDisruptionAction }
 
+  /*
+   * Fetched once here rather than inside each list — Phase 12E.
+   *
+   * VR-10's rail counts the same announcements the list beneath it renders, so the two must
+   * agree; two independent reads of a route that a contributor may be editing can differ by a
+   * row and produce a rail that contradicts the page it is beside. A follower's report already
+   * carries both, so this costs an extra query only for an anonymous reader — which is exactly
+   * where it was already being paid, one level further down.
+   */
+  const announced: readonly ChangeView[] =
+    report === null
+      ? await changesForRoute(route.id)
+      : report.changes.map((entry) => entry.change)
+  const disruptions: readonly DisruptionView[] =
+    report === null
+      ? await disruptionsForRoute(route.id, { now })
+      : report.disruptions.map((entry) => entry.disruption)
+
+  /*
+   * VR-10's right rail, at the two things it holds that belong to *one* route.
+   *
+   * Its "Impact on My Journey" band and its "Filter Updates" panel both assume a cross-route
+   * feed, which is out of scope (§35) and would be a change request. What survives the move to
+   * a single route is the orientation each was providing: how much this route has moved, and
+   * what the four levels mean. "Subscribe to Alerts" and "Manage Alert Settings" are not built
+   * (§8.6, §35); the page says so at its foot rather than offering a control that does nothing.
+   */
+  const rail = (
+    <>
+      <Rail title={t.changes.summaryTitle} level={2}>
+        <UpdateActivity changes={announced} disruptions={disruptions} dictionary={t} />
+      </Rail>
+      <Rail title={t.changes.permanentVsTemporaryTitle} level={2}>
+        <GuidanceList lines={t.changes.permanentVsTemporary} />
+      </Rail>
+      <Rail title={t.changes.severityLegendTitle} level={2}>
+        <SeverityLegend dictionary={t} />
+      </Rail>
+    </>
+  )
+
   return (
-    <RouteContext route={route} dictionary={t} locale={locale} tab="changes">
+    <RouteContext route={route} dictionary={t} locale={locale} tab="changes" rail={rail}>
       <ContentColumn width="canvas">
         <h2 className="text-section font-semibold tracking-tight text-ink-900">{t.changes.title}</h2>
         <ContentColumn width="reading">
@@ -142,7 +186,7 @@ export default async function RouteChangesPage({
           </ContentColumn>
 
           {report === null ? (
-            <AnonymousChangeList routeId={route.id} locale={locale} dictionary={t} />
+            <AnonymousChangeList changes={announced} locale={locale} dictionary={t} />
           ) : (
             <FollowerChangeList
               entries={report.changes}
@@ -167,7 +211,7 @@ export default async function RouteChangesPage({
 
           {report === null ? (
             <PublicDisruptions
-              routeId={route.id}
+              disruptions={disruptions}
               dictionary={t}
               now={now}
               resolve={resolve}
@@ -294,16 +338,15 @@ async function FollowerPanel({
   )
 }
 
-async function AnonymousChangeList({
-  routeId,
+function AnonymousChangeList({
+  changes,
   locale,
   dictionary: t,
 }: {
-  routeId: string
+  changes: readonly ChangeView[]
   locale: string
   dictionary: Dictionary
 }) {
-  const changes = await changesForRoute(routeId)
   if (changes.length === 0) {
     return <p className="mt-3 text-sm text-ink-700">{t.changes.noAnnouncements}</p>
   }
@@ -338,13 +381,13 @@ async function ExactChangeFor({
  * Disruptions for a reader with no journey — no relevance, because there is no progress to
  * measure against and inventing a position would be a lie.
  */
-async function PublicDisruptions({
-  routeId,
+function PublicDisruptions({
+  disruptions,
   dictionary: t,
   now,
   resolve,
 }: {
-  routeId: string
+  disruptions: readonly DisruptionView[]
   dictionary: Dictionary
   now: Date
   resolve?: {
@@ -353,7 +396,6 @@ async function PublicDisruptions({
     action: (formData: FormData) => void | Promise<void>
   }
 }) {
-  const disruptions = await disruptionsForRoute(routeId, { now })
   if (disruptions.length === 0) {
     return <p className="mt-3 text-sm text-ink-700">{t.changes.noDisruptions}</p>
   }

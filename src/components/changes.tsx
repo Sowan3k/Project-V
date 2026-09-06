@@ -1,33 +1,31 @@
 import { ComparisonRows } from '@/components/shadow-compare'
-import { ContributorLink } from '@/components/ui'
+import { ContributorLink, Disclosure, inputClass } from '@/components/ui'
 import { Caution } from '@/components/trust'
 import type { ChangeRelevance, DisruptionRelevance } from '@/domain/changes'
 import { daysRemaining } from '@/domain/changes'
 import type { ChangeSeverity } from '@/domain/enums'
-import { ChangeSeverity as Severity, FOLLOWER_CHANGE_STANCES } from '@/domain/enums'
+import { CHANGE_SEVERITIES, ChangeSeverity as Severity, FOLLOWER_CHANGE_STANCES } from '@/domain/enums'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 import type { ChangeShadow, ChangeView, DisruptionView } from '@/server/changes/read'
 import type { RelevantChange, RelevantDisruption } from '@/server/journeys/changes'
 
 /**
- * Changes and disruptions as a reader sees them — Phase 10.
+ * Changes and disruptions as a reader sees them — Phase 10, recomposed against VR-10 in 12E.
  *
  * FR-28, FR-29, FR-32, FR-59, FR-60, FR-61, FR-63, FR-76. §13.2, §13.3, §41. Invariants 8,
  * 19, 21.
  *
  * ─────────────────────────────────────────────────────────────────────────────────────────
- * **Severity is shown as words, not as an alarm scale.**
+ * **Severity is shown as words and weight, not as an alarm palette.**
  *
- * VR-10 renders severity as coloured chips and *also* a second "Impact: High / Medium / Low"
- * column. Two scales for one judgement is one too many, and the second is not in the baseline
- * — §41.2 defines exactly four levels and defines each by what it means to the follower. So
- * there is one chip, its words are §41.2's meanings rather than the bare enum name
- * ("May need action", not "Important"), and only `critical` gets the attention colour.
+ * VR-10 renders severity as four coloured chips and *also* a second "Impact: High / Medium /
+ * Low" column. Two scales for one judgement is one too many, and the second is not in the
+ * baseline — §41.2 defines exactly four levels and defines each by what it means to the
+ * follower. So there is one chip, its words are §41.2's meanings rather than the bare enum
+ * name ("May need action", not "Important"), and the four are told apart by ink weight.
  *
- * That last part is Phase 6's rule applied to change: a colour on every severity is a colour
- * on none. `--color-caution-*` means "there is something here to read" and nothing else — it
- * is the same colour a disputed field and a shortened link get, and it never carries meaning
- * alone (CLAUDE.md §7.3, §10.4).
+ * The reasoning is written out on `SeverityChip` below, because it is the same reasoning
+ * CLAUDE.md §11 used to decide that route maturity gets no palette either.
  *
  * ─────────────────────────────────────────────────────────────────────────────────────────
  * **What a follower is told about their own position is never a verdict on their progress.**
@@ -37,13 +35,35 @@ import type { RelevantChange, RelevantDisruption } from '@/server/journeys/chang
  * because no such conclusion is ever ours to draw (FR-30, BR-17, §41.3, invariant 8).
  */
 
-const INPUT =
-  'mt-1 block w-full rounded-control border border-hairline bg-surface px-2 py-1.5 text-sm text-ink-900'
+const INPUT = inputClass('compact')
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════
    Severity and dates
    ══════════════════════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * The four levels, told apart by **weight and word** — §41.2, VR-10, CLAUDE.md §7.3.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * VR-10 draws four coloured chips — red, orange, amber, blue — and a rail of four coloured
+ * dots to match. Four levels *must* look materially different from one another and until now
+ * they did not: `critical` was loud and the other three were the same grey chip, which is a
+ * two-level scale wearing four labels.
+ *
+ * They are four now, and none of it is a palette. This is the §11 route-maturity decision
+ * applied to the other ordered scale in the product, for the same three reasons: a hue per
+ * level puts a coloured badge on the ordinary case, which is precisely the "badge on
+ * everything is a badge on nothing" failure §7.3 exists to prevent; a red chip on a
+ * contributor's judgement dresses that judgement as a measurement, which the change
+ * vocabulary guard forbids in words and should not permit in pixels; and `--color-caution-*`
+ * means "there is something here to read" and nothing else, so spending it four times over
+ * would make it mean nothing anywhere.
+ *
+ * So the ramp is ink weight, and the words carry the meaning — they already say what §41.2
+ * says each level *means* rather than naming the enum ("May need action", not "Important").
+ * `critical` alone gets the attention colour and an icon, because it is the only level whose
+ * definition is that it can invalidate the path somebody is on.
+ */
 function SeverityChip({
   severity,
   dictionary: t,
@@ -51,18 +71,161 @@ function SeverityChip({
   severity: ChangeSeverity
   dictionary: Dictionary
 }) {
-  // One attention colour, reserved for the one level that means "this could break your path".
-  const loud = severity === Severity.critical
+  const weight: Record<ChangeSeverity, string> = {
+    critical: 'border-caution-500 bg-caution-50 font-semibold text-caution-900',
+    important: 'border-ink-500 bg-surface font-medium text-ink-900',
+    relevant: 'border-hairline bg-surface text-ink-700',
+    informational: 'border-hairline bg-surface-muted text-ink-500',
+  }
   return (
     <span
-      className={`rounded-full border px-2 py-0.5 text-xs whitespace-nowrap ${
-        loud
-          ? 'border-caution-500/40 bg-caution-50 font-medium text-caution-900'
-          : 'border-hairline bg-surface-muted text-ink-700'
-      }`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-micro whitespace-nowrap ${weight[severity]}`}
     >
+      {severity === Severity.critical ? (
+        // Meaning never rests on colour (§10.4). The one loud level carries a mark too.
+        <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true" className="shrink-0">
+          <path
+            d="M6 1.5 L11 10.5 L1 10.5 Z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinejoin="round"
+          />
+          <path d="M6 4.8 V7.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+          <circle cx="6" cy="8.8" r="0.6" fill="currentColor" />
+        </svg>
+      ) : null}
       {t.changes.severity[severity]}
     </span>
+  )
+}
+
+/**
+ * What kind of thing this is — VR-10's "Type" column, made explicit rather than positional.
+ *
+ * The mockup mixes permanent changes and temporary disruptions in one list and tells them
+ * apart with a type label. This page keeps them in two labelled sections, which is stronger
+ * — but a reader who arrives at a card by deep link or by scrolling past the heading has only
+ * the card in front of them, and BR-27's distinction is exactly the one that is expensive to
+ * get wrong. "Germany adds a visa document" and "the Dhaka centre is shut for a fortnight"
+ * are different claims about the world, and one of them expires by itself.
+ */
+export function ChangeTypeMark({
+  kind,
+  dictionary: t,
+}: {
+  kind: 'permanent' | 'temporary'
+  dictionary: Dictionary
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-micro whitespace-nowrap text-ink-500">
+      <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true" className="shrink-0">
+        {kind === 'permanent' ? (
+          // A road that forks: the route itself is different from here on.
+          <path
+            d="M6 11 V6.5 M6 6.5 L2.5 3 M6 6.5 L9.5 3"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+          />
+        ) : (
+          // A clock: it has a window, and the window closes.
+          <>
+            <circle cx="6" cy="6" r="4.6" fill="none" stroke="currentColor" strokeWidth="1.3" />
+            <path d="M6 3.4 V6.2 L8 7.4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+          </>
+        )}
+      </svg>
+      {kind === 'permanent' ? t.changes.typePermanent : t.changes.typeTemporary}
+    </span>
+  )
+}
+
+/**
+ * How much this route has moved, in counted facts — VR-10's "Impact on My Journey" position.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * The mockup puts a four-number band at the top of its right rail. Its numbers are an impact
+ * tally across every route the reader follows, which belongs to a cross-route feed that is
+ * out of scope (§35) and would be a change request. The same position on *this* route can
+ * carry the same orientation honestly: how many changes have been announced here, at which
+ * levels, and how many disruptions are running now.
+ *
+ * **These counts decide nothing and are not allowed to** (FR-71, invariant 14). Nothing reads
+ * them; they are not summed into a score, they do not order the list beneath them, and a route
+ * with many announced changes is not thereby worse than one with none — a route nobody has
+ * ever corrected is the more common reason for a low number. A level with no changes is
+ * omitted rather than shown as a zero, because four zeroes look like a verdict and an absent
+ * row looks like what it is.
+ */
+export function UpdateActivity({
+  changes,
+  disruptions,
+  dictionary: t,
+}: {
+  changes: readonly ChangeView[]
+  disruptions: readonly DisruptionView[]
+  dictionary: Dictionary
+}) {
+  const active = disruptions.filter((disruption) => disruption.active).length
+  const bySeverity = [...CHANGE_SEVERITIES]
+    .reverse()
+    .map((severity) => ({
+      severity,
+      count: changes.filter((change) => change.severity === severity).length,
+    }))
+    .filter((entry) => entry.count > 0)
+
+  if (changes.length === 0 && active === 0) {
+    return <p className="text-meta leading-5 text-ink-700">{t.changes.activityNone}</p>
+  }
+
+  return (
+    <>
+      <p className="text-meta text-ink-700">{t.changes.activityAnnounced(changes.length)}</p>
+      {bySeverity.length === 0 ? null : (
+        <ul className="mt-2 space-y-1.5">
+          {bySeverity.map((entry) => (
+            <li key={entry.severity} className="flex items-center gap-2">
+              <span className="w-6 shrink-0 text-meta font-semibold text-ink-900">
+                {entry.count}
+              </span>
+              <SeverityChip severity={entry.severity} dictionary={t} />
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-3 border-t border-hairline pt-2 text-meta text-ink-700">
+        {t.changes.activityDisruptions(active)}
+      </p>
+      {/* The sentence that keeps a count from reading as a verdict either way. */}
+      <p className="mt-2 text-micro leading-5 text-ink-500">{t.changes.activityNotAJudgement}</p>
+    </>
+  )
+}
+
+/**
+ * The four levels explained once, where a reader can find them — VR-10's rail.
+ *
+ * The mockup's version is a filter with four checkboxes. Filtering one route's handful of
+ * announcements is machinery for a problem this page does not have, and the cross-route feed
+ * it belongs to is out of scope (§35, and it would be a change request). What is worth
+ * keeping is the part underneath: four levels stated in order, with the sentence saying who
+ * decided them.
+ */
+export function SeverityLegend({ dictionary: t }: { dictionary: Dictionary }) {
+  return (
+    <>
+      <ul className="space-y-2">
+        {[...CHANGE_SEVERITIES].reverse().map((severity) => (
+          <li key={severity}>
+            <SeverityChip severity={severity} dictionary={t} />
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 text-meta leading-5 text-ink-500">{t.changes.severityExplainer}</p>
+    </>
   )
 }
 
@@ -117,10 +280,15 @@ export function AnnouncedChangeCard({
   return (
     <li className="rounded-panel border border-hairline bg-surface p-4 shadow-panel">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-        <h3 className="text-sm font-semibold text-ink-900">{change.title}</h3>
+        <div className="min-w-0">
+          {/* BR-27's distinction on the face of the card, not only in the heading above the
+              list — a card reached by deep link arrives without its heading. */}
+          <ChangeTypeMark kind="permanent" dictionary={t} />
+          <h3 className="mt-1 text-sm font-semibold text-ink-900">{change.title}</h3>
+        </div>
         <div className="flex flex-wrap gap-1.5">
           <SeverityChip severity={change.severity} dictionary={t} />
-          <span className="rounded-full border border-hairline bg-surface-muted px-2 py-0.5 text-xs whitespace-nowrap text-ink-700">
+          <span className="rounded-full border border-hairline bg-surface-muted px-2 py-0.5 text-micro whitespace-nowrap text-ink-700">
             {t.changes.kind[change.kind]}
           </span>
         </div>
@@ -361,10 +529,13 @@ export function DisruptionCard({
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-        <h3 className="text-sm font-semibold text-ink-900">{disruption.title}</h3>
+        <div className="min-w-0">
+          <ChangeTypeMark kind="temporary" dictionary={t} />
+          <h3 className="mt-1 text-sm font-semibold text-ink-900">{disruption.title}</h3>
+        </div>
         <div className="flex flex-wrap gap-1.5">
           <SeverityChip severity={disruption.severity} dictionary={t} />
-          <span className="rounded-full border border-hairline bg-surface px-2 py-0.5 text-xs whitespace-nowrap text-ink-700">
+          <span className="rounded-full border border-hairline bg-surface px-2 py-0.5 text-micro whitespace-nowrap text-ink-700">
             {state}
           </span>
         </div>
@@ -540,12 +711,11 @@ export function ExactChange({
   }
 
   return (
-    <details className="mt-3 border-t border-hairline pt-2">
-      <summary className="cursor-pointer text-xs text-brand-700">
-        {t.changes.exactlyWhatChanged}
-      </summary>
-
-      <p className="mt-2 text-xs leading-5 text-ink-500">{t.changes.exactlyWhatChangedHint}</p>
+    <Disclosure
+      summary={t.changes.exactlyWhatChanged}
+      className="mt-3 border-t border-hairline pt-2"
+    >
+      <p className="mt-2 text-meta leading-5 text-ink-500">{t.changes.exactlyWhatChangedHint}</p>
 
       {shadow.fieldChanges.length === 0 ? null : (
         <ul className="mt-2 space-y-2">
@@ -575,6 +745,6 @@ export function ExactChange({
           dictionary={t}
         />
       ) : null}
-    </details>
+    </Disclosure>
   )
 }

@@ -1179,6 +1179,36 @@ export const en = {
     } satisfies Record<ChangeSeverity, string>,
     severityExplainer:
       'Set by the contributor who recorded the change, describing what it means for someone following this route. It is a judgement, not a measurement.',
+    severityLegendTitle: 'The four levels',
+
+    // ── VR-10's type column and activity band — Phase 12E ────────────────────────
+    //
+    // BR-27's distinction on the face of every card, not only in the heading above the list:
+    // a card reached by deep link arrives without its heading, and "Germany adds a visa
+    // document" and "the Dhaka centre is shut for a fortnight" are different claims about the
+    // world — one of which expires by itself (invariant 19).
+    typePermanent: 'Permanent change to the route',
+    typeTemporary: 'Temporary — it expires on its own',
+
+    // The counts in VR-10's rail, for this route. They decide nothing and nothing reads them
+    // (FR-71, invariant 14), which is what the last line says out loud.
+    activityAnnounced: (n: number) =>
+      n === 0
+        ? 'No changes have been announced on this route.'
+        : n === 1
+          ? '1 change has been announced on this route.'
+          : `${n} changes have been announced on this route.`,
+    activityDisruptions: (n: number) =>
+      n === 0 ? 'No disruption is running now.' : n === 1 ? '1 disruption is running now.' : `${n} disruptions are running now.`,
+    activityNone: 'Nothing has been announced or reported as disrupted on this route yet.',
+    activityNotAJudgement:
+      'These are counts, and nothing on this platform reads them. A route with many announced changes is being maintained; a route with none may simply be one nobody has corrected yet.',
+    permanentVsTemporaryTitle: 'Two different things',
+    permanentVsTemporary: [
+      'A change alters the route itself. It stays until somebody changes it again, and every version before it is kept.',
+      'A disruption is a closure, a delay or a shortage with a date and a place. It expires on its own and rewrites nothing.',
+      'They are recorded separately and on purpose. A fortnight of flooding filed as a permanent change to a country’s visa rules cannot be told apart from the real thing afterwards.',
+    ],
 
     bearing: {
       not_following: 'About this route',
