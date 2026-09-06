@@ -177,19 +177,65 @@ in [Test.md](Test.md) §18; every departure in [Phases.md](Phases.md) under Phas
 
 - **Nothing recomposed here was rendered in a browser except the create-route sign-in prompt.**
   Every other surface is behind a session, behind route content, or behind the administrator
-  role, and production holds zero routes by design (§10.2) with no disposable Postgres reachable
-  from this workstation. Typecheck, lint, 903 tests and a production build prove the types, the
-  guards and the server rendering — they do not prove it looks right. Listed precisely in
-  Test.md §18.
+  role, and production holds zero routes by design (§10.2). Typecheck, lint, 903 tests and a
+  production build prove the types, the guards and the server rendering — they do not prove it
+  looks right. Listed precisely in Test.md §18.
+
+  **Correction to session 16's note:** the disposable Neon `test` branch *is* reachable from
+  this workstation — `dotenv -e .env.test.local -- node scripts/db/wake.mjs` answered on the
+  first attempt, and the Playwright suite ran against it later in this same session. Session 16
+  recorded it as unreachable and that was wrong, which is worth correcting because it is the
+  reason two passes of database-backed work were left unexecuted.
 - **The owner's acceptance of the ribbon and road against VR-03 and VR-04 is still the one
   unticked exit criterion on 12C and 12D**, and 12E now sits on top of it.
 
+### Phase 12F, later the same session
+
+**The bottom tab bar** (`7f9200d`, `c497516`). Server-rendered, no client component, three tabs
+— Explore, My Journey, Account. The active tab comes from a request header the middleware sets,
+because `usePathname` is a client hook and lighting one tab is not worth a bundle in front of
+every page; the alternative, an `activeTab` prop threaded through fourteen pages, is the same
+fact written fourteen times and wrong the first time somebody adds a fifteenth.
+
+**Three tabs, not VR-12's four.** There is no cross-route updates feed — outside Phase 10's
+scope, a change request if wanted, and proactive notification is deferred (§35). A tab leading
+nowhere is worse than an absent one, which is the argument the site header already made about
+VR-01's five desktop items.
+
+**The tablet was a defect, not a gap.** `GridRegion`'s default mapping sent both a span-8 body
+and a span-4 rail to a full tablet row, so at exactly 768px the body filled the row, the rail
+dropped to the next one at half width, and the other half was empty — on every route, search,
+create-route, contributor and moderation page. `tablet` is now an explicit override out of six,
+because no single rule is right for both a road-beside-a-rail (4+2) and the landing page's
+hero-beside-an-illustration (3+3).
+
+**Verified in a browser this time**, unlike the 12E surfaces: `presentation.spec.ts` passes in
+full at 360, 768 and 1280, the new assertions pass at 390, and the JavaScript-disabled journey
+now proves the bar navigates without a bundle. **The standing Phase 12 overflow failure at 360px
+is green.** Evidence in Test.md §20.
+
+**Findings.** A geometric assertion is only as good as its locator: the two-panel test first
+failed at −389.75px overlap, which read exactly like the bug it was written to catch, and was a
+loose `main section` locator matching something in the body. And the shared-`.next` trap cost
+time twice more — three different build errors, all one cause, all gone after a single rebuild
+with no source change.
+
+**Concurrency.** Another session was working in this checkout throughout and committed Phase
+12G's visual-acceptance sheet (`3068d3e`) mid-way. Its commit raced one of mine and silently
+reset my index; the work was intact and re-committed as `c497516`. Nothing of theirs was
+committed by me and nothing of mine by them, but this is the second session in a row where two
+agents shared one working tree, and the failure modes are not obvious.
+
+**Phase 12G is theirs, not mine.** They built it while I was on 12F, and it is the artifact
+Test.md §18 named as the gap. I did not duplicate it.
+
+---
+
 ### Next step
 
-Phase 12F — the phone and tablet as their own product: bottom tab bar (Explore / My Journey /
-Updates / Profile), route-as-tabs with the horizontal step-chip strip, a genuinely two-panel
-tablet composition, and the 4px overflow at 360px fixed at its cause. Then 12G, whose screenshot
-suite would have exercised all six of the surfaces this session could not open.
+Phase 13's gates. Gates 1, 3 and 4 run against hypothetical routes on the disposable branch;
+Gate 2 waits for the owner's researched content. Gate 4 also needs the owner's eye on the 12G
+sheet, which is the acceptance criterion 12C, 12D, 12E and 12F all still share.
 
 ---
 

@@ -1528,16 +1528,52 @@ its information architecture, not in its widths.
   actual cause — the non-wrapping four-tab nav in `route-context.tsx` is the next suspect
 
 **Exit criteria**
-- ⬜ Zero horizontal overflow on every page at 360px, 390px and 768px — the outstanding Phase 12
-  E2E failure is green and stays green
+- ✅ Zero horizontal overflow on every page at 360px, 390px and 768px (2026-09-06). The
+  standing Phase 12 failure is green: `no page scrolls sideways` and `the road scrolls inside
+  its own container, never the page` both pass at all three widths
 - ⬜ Phone screenshots reviewed against the phone panels in VR-12, VR-13 and VR-14 and accepted
-- ⬜ A phone reaches every read-path destination in the same number of interactions as desktop,
-  or fewer
-- ⬜ Bottom navigation is server-rendered and keyboard reachable; no client component added
-- ⬜ Touch targets ≥ 44px; the whole phone path works with JavaScript disabled
+  — **the owner's to close**; the 12G sheet is what makes it reviewable
+- ✅ A phone reaches every read-path destination in the same number of interactions as desktop,
+  or fewer. Explore, My Journey and Account are one tap from anywhere on a phone, where on
+  desktop they are one click in a header the reader may have scrolled past
+- ✅ Bottom navigation is server-rendered and keyboard reachable; no client component added —
+  the client-component count is still exactly one
+- ✅ Touch targets ≥ 44px (asserted, measured in the browser); the whole phone path works with
+  JavaScript disabled (asserted in `route-journey.spec.ts`)
 
 **Visual references:** VR-12, VR-13, VR-14
 **FRs:** FR-47 · **Quality expectation:** Mobile usefulness (§32)
+
+### Phase 12F result (2026-09-06)
+
+**The bottom tab bar.** Server-rendered, no client component, three tabs. The active tab comes
+from a request header the middleware sets rather than from `usePathname`, because a client hook
+here would put a bundle in front of every page in the application to light one tab — and the
+alternative, threading an `activeTab` prop through fourteen pages, is the same fact written
+fourteen times and wrong the first time somebody adds a fifteenth.
+
+**The tablet was a defect, not a gap.** `GridRegion`'s default mapping sent both a span-8 body
+and a span-4 rail to a full tablet row, so at exactly 768px the body filled the row, the rail
+dropped to the next one at half width, and the other half was empty — on every route, search,
+create-route, contributor and moderation page. Not the stacked phone layout and not a two-panel
+one: a desktop layout with a hole in it. `tablet` is now an explicit override out of six, because
+no single global rule is right for both a road-beside-a-rail (which wants 4+2) and the landing
+page's hero-beside-an-illustration (which wants 3+3, since a 28px headline in a third of 768px
+is cramped).
+
+Playwright gained `mobile-390` and `tablet-768`. 390 is not "360 plus a bit" — it is where a
+two-up row starts fitting, so a layout tuned only at 360 can break there and nowhere else.
+
+#### Departures from VR-12 and VR-13
+
+| Departure | Why |
+|---|---|
+| Three bottom tabs, not four; **no Updates tab** | There is no cross-route updates feed. It was outside Phase 10's scope, this file records that adding one is a change request first, and proactive notification is deferred (§35, §8.6). A tab leading nowhere is worse than an absent one — the argument the site header already made about VR-01's five desktop items. Change activity for a route is on that route's Changes tab, which is where a reader is when they want it |
+| "Account", not VR-12's "Profile" | There is no profile. The tab goes to the reader's own contributor page — the same page everybody else sees, because there is no private profile and nothing private to show (§24.3) |
+| **The phone route keeps the narrow road; no separate step-chip strip** | VR-13's phone shows a compressed chip strip above an accordion. `ROAD_NARROW` already *is* the phone composition — "a different composition, not a smaller one" — and a second hand-built strip would be a third maintained view of one graph, which invariants 24 and 25 forbid. More importantly, the phone road's design is the subject of the owner's **outstanding acceptance on 12C and 12D**; changing it here would pre-empt a decision explicitly reserved for the owner |
+| **Step detail expands in place, not as its own phone view** | §7.1 is explicit: a route is one coherent scrollable journey, and "a step selection that visually replaces the route is wrong even when the URL is correct". That is a rule in this file, and §8.1 ranks it above the mockup |
+| Route tabs wrap rather than scroll sideways at 360px | VR-13 fits three tabs in a row; ours are four and wrap onto a second line. The alternative is a row a reader has to drag sideways to discover that History exists. Wrapping is also what fixed the 4px overflow this phase inherited |
+| No "swipeable destination row" of popular routes | Every card in VR-12's row is illustrative content — landmarks, follower counts, freshness percentages (§8.6) — and production holds zero routes by design (§10.2). A carousel of invented destinations is the one thing §45 answers with honest emptiness instead |
 
 ---
 

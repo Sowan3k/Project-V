@@ -1988,3 +1988,93 @@ ESLint ignore list for the same reason `.next/**` is already there.
 3100 against this checkout's `.next`, and building into it is the exact trap this section is
 about. The default config path was verified by resolving it directly instead, which is stated
 rather than glossed.
+
+---
+
+## §20 — Phase 12F: the phone and tablet verified in a browser (2026-09-06)
+
+Unlike §18, almost all of this **was** exercised in a real browser, because the phone
+composition is on the anonymous read path and needs neither a session nor route content beyond
+the seeded fixture.
+
+### What ran, at which widths
+
+`playwright.config.ts` gained `mobile-390` and `tablet-768`, so the suite now runs at four
+widths. Everything below was run locally with `--workers=1` against a fresh server, which §24
+names as the only local Playwright result worth trusting.
+
+| Project | Spec | Result |
+|---|---|---|
+| `mobile-360` | `presentation.spec.ts`, whole file | **all passed** |
+| `mobile-390` | overflow, bottom bar, two-panel | **11 passed** |
+| `tablet-768` | `presentation.spec.ts`, whole file | **all passed** |
+| `desktop-1280` | `presentation.spec.ts`, whole file | **23 passed, 3 skipped** (the three phone-only assertions) |
+| `mobile-360` | `route-journey.spec.ts` — the JavaScript-disabled journey | **passed** |
+
+Six new assertions, and the shapes are chosen deliberately:
+
+- **Visibility, not presence.** The bar is `md:hidden`, so a test that counted elements would
+  pass at every width and prove nothing about either. It asserts *visible* below 768 and
+  *hidden* from 768 up, in the same test, branching on the viewport.
+- **Touch targets measured, not assumed.** `boundingBox().height >= 44` on every tab, read from
+  the laid-out page. A class name saying `min-h-14` proves nothing about what the browser did
+  with it.
+- **The two-panel tablet is geometric.** It asserts the body and rail share a horizontal band
+  at ≥768 and do not below it, rather than checking for `md:col-span-4`. A class assertion
+  would keep passing if Tailwind quietly stopped generating the utility, which is exactly the
+  failure mode.
+- **The bar is proved not to cover the page**, by scrolling to the end and comparing the
+  footer's bottom edge to the bar's top edge. `position: fixed` takes the bar out of flow; the
+  shell pads for it, and this is the difference between padding that exists and padding that
+  was intended.
+- **It navigates with JavaScript disabled**, asserted inside the existing no-JS journey test.
+  "The whole journey works without JavaScript" is not true on a phone unless the thing a reader
+  moves around with does.
+
+### The standing Phase 12 overflow failure is green
+
+`no page scrolls sideways` and `the road scrolls inside its own container, never the page` both
+pass at 360, 390 and 768. Phases.md had named the non-wrapping four-tab nav in
+`route-context.tsx` as the next suspect; it was already fixed by the `flex-wrap` added in the
+Phase 12E pass, and this is the run that confirms it rather than assuming.
+
+### One test failure that was the test's fault, recorded because the shape recurs
+
+The two-panel assertion failed first with an overlap of **−389.75px**, which reads exactly like
+the layout bug it was written to catch. It was not: the locator was
+`main section` filtered by `/follower|contributor|confirm/i`, which matched a section inside the
+*body*, so the test was comparing the road against something two hundred pixels below it and
+concluding they were on different rows. Replaced with the passport's accessible name
+(`getByRole('region', { name: 'What is known about this route' })`), which is unambiguous.
+
+The general rule, and it is the second time this file has recorded a version of it: **a
+geometric assertion is only as good as its locator, and a loose locator fails in a way that
+looks like a product defect.** Prefer an accessible name — it is stable, it is the thing a
+screen-reader user navigates by, and if it changes the test *should* fail.
+
+### The shared-`.next` trap, twice more, and now fixed at its cause
+
+Two local runs died in ways that looked like product breakage and were not:
+
+```
+Type 'string' is not assignable to type 'UrlObject | RouteImpl<string>'
+Error: ENOENT: ... .next\server\pages\_app.js
+[Error [PageNotFoundError]: Cannot find module for page: /[locale]]
+```
+
+All three are one cause: another session in this checkout was building into the same `.next`.
+`npm run build` on its own succeeded immediately afterwards with no source change. That session
+has since fixed it at source by giving a review build its own `NEXT_DIST_DIR` (§19).
+
+**What this cost, and the rule:** a build error naming a file you did not touch, in a checkout
+another process is writing to, is a concurrency symptom until proved otherwise. Rebuild once
+before believing it.
+
+### Still not exercised
+
+- **Phone screenshots against the VR-12/VR-13/VR-14 phone panels** — acceptance is the owner's,
+  and the 12G sheet is what makes it reviewable.
+- **The signed-in phone path.** The bar's Account tab and the My Journey tab were exercised
+  signed out; the signed-in variants (Account → the reader's own contributor page) were not.
+  They differ only in the `href` the same component computes.
+
