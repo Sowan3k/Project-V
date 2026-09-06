@@ -7,6 +7,106 @@ Read this first when starting a session, then [Phases.md](Phases.md) and [Test.m
 
 ---
 
+## Session 17 — 2026-09-06
+
+By Claude Code
+
+**Goal:** finish Phase 12E — recompose the community surfaces against their visual references,
+and put every deliberate departure in writing.
+
+### Done
+
+Six commits, deliberately split, on top of `54714b1`.
+
+- **The design system gained the layer below its panels and buttons** (`3126fcc`). Form
+  primitives, a disclosure, a numbered flow, a guidance list, a fact list and a choice grid.
+  The reason it was needed first: `const INPUT = 'mt-1 block w-full rounded-control …'` had been
+  written out **seven** times, across `contribute`, `safety`, `structure`, the changes page, the
+  create-route page and both admin queues, and the seven had drifted apart. That is the Phase
+  12B failure one layer down, on the surfaces a contributor spends longest looking at.
+- **VR-08 — correcting a field is a comparison now** (`00f2374`). Current value beside the
+  correction, with whom the current claim applies to, who asserts it, when it was last confirmed
+  and how many versions it has had. It had been a pre-filled textarea and nothing else.
+- **VR-09 — creating a route, in two halves** (`44f7af3`). The basics band and an honest
+  two-stage bar on `/routes/new`; and **"Build the road" as a real region on the route**, which
+  is where VR-09's "Build Your Road" panel belongs. Those controls had been three unlabelled
+  disclosures under the route index.
+- **VR-11 — the report category grid** (`d2f297a`), plus "what happens next" and the explanation
+  of what withholding does, the latter folded into the quarantine notice itself.
+- **VR-10 — four severity levels that look like four** (`a85c3bf`), the permanent/temporary
+  distinction on the face of every card, and the right rail.
+- **The contributor page and both moderation queues** (`b616498`), composed from principle since
+  none has a mockup.
+
+`npx vitest run` **903 passed**, unchanged; lint and typecheck clean; production build compiled
+with the shared first-load JS still at 103 kB and the client-component count still one. Evidence
+in [Test.md](Test.md) §18; every departure in [Phases.md](Phases.md) under Phase 12E.
+
+### Decisions taken
+
+- **Severity gets four ink weights, not four colours.** VR-10 draws red / orange / amber / blue.
+  This is the CLAUDE.md §11 route-maturity decision applied to the other ordered scale in the
+  product, for the same three reasons: a hue per level puts a coloured badge on the ordinary
+  case, which is the failure §7.3 exists to prevent; a red chip on a *contributor's judgement*
+  dresses that judgement as a measurement, which the change-vocabulary guard forbids in words
+  and should not permit in pixels; and `--color-caution-*` means "there is something here to
+  read" and nothing else, so spending it four times over would make it mean nothing anywhere.
+- **VR-08's and VR-11's dedicated pages stay disclosures on the field.** §7.1 classifies Update
+  and Report as short transient actions returning to the same place, and §8.1 ranks that above
+  a mockup. It is also better: the field stays visible above the form, which is the context both
+  mockups have to re-state in a panel precisely *because* they navigated away.
+- **VR-09's five-stage wizard becomes two honest stages.** Only the basics need a form of their
+  own; until the route exists there is nothing to add steps to. Naming the second stage matters
+  more than the count — a contributor who does not know the road comes next publishes a route
+  with no steps and thinks they have finished.
+- **Three mockup panels were kept in position and had their content replaced rather than being
+  dropped**, per the §12B–12G substitution rule: VR-08's "How it works" (its stages 4 and 5 are
+  the approval gate we refuse) became the guidance list; VR-09's live "Route Summary (Draft)"
+  became what publishing actually does; VR-10's cross-route "Impact on My Journey" became this
+  route's own activity, with the sentence saying the counts decide nothing.
+- **VR-09's "avoid personal opinions" and VR-11's screenshot upload were replaced, not silently
+  omitted.** The first contradicts FR-54 — a student's own experience is a first-class claim
+  type — so the tip asks them to say *which kind* of claim it is. The second is a §8.6 exception,
+  and the form now says there is nowhere on this platform to upload a file, which is a fact
+  about the product worth a reader knowing.
+
+### Findings worth keeping
+
+- **Two guards fired on honest code, and both were obeyed rather than widened.** The §25
+  gamification guard on a prop named `points` (renamed `lines`); the invariant-13 monetisation
+  guard on the word "advertising" in a report-category description (reworded to "selling
+  something"). Both guards are blunt on purpose. Widening a guard until it stops catching honest
+  code is how a guard ends up catching nothing.
+- **`SeverityChip` is a defect no assertion in this repository could have caught.** Four labels,
+  two appearances — the enum was complete, the dictionary exhaustive, `satisfies Record<…>` held,
+  every test passed, and §41.2's four-level scale still reached the reader as a two-level one.
+  Nothing here can see that two branches of a ternary produce the same class string. Found by
+  opening the mockup beside the component, which is the argument for Gate 4 rather than for
+  another guard.
+- **`.next` was shared with another session's dev server on :3000 during the build.** It
+  survived, but §24 warns about exactly this and the port should have been checked first. It has
+  now cost time twice.
+
+### Blockers, unchanged
+
+- **Nothing recomposed here was rendered in a browser except the create-route sign-in prompt.**
+  Every other surface is behind a session, behind route content, or behind the administrator
+  role, and production holds zero routes by design (§10.2) with no disposable Postgres reachable
+  from this workstation. Typecheck, lint, 903 tests and a production build prove the types, the
+  guards and the server rendering — they do not prove it looks right. Listed precisely in
+  Test.md §18.
+- **The owner's acceptance of the ribbon and road against VR-03 and VR-04 is still the one
+  unticked exit criterion on 12C and 12D**, and 12E now sits on top of it.
+
+### Next step
+
+Phase 12F — the phone and tablet as their own product: bottom tab bar (Explore / My Journey /
+Updates / Profile), route-as-tabs with the horizontal step-chip strip, a genuinely two-panel
+tablet composition, and the 4px overflow at 360px fixed at its cause. Then 12G, whose screenshot
+suite would have exercised all six of the surfaces this session could not open.
+
+---
+
 ## Living-route visual refinement — 2026-09-06
 
 By Codex

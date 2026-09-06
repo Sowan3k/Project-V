@@ -1808,3 +1808,93 @@ could not tell whether a route's standing or a step's visibility was meant.
   JavaScript disabled, but that is a source assertion and not a browser one.
 - **No owner visual review.** Phase 12E's exit criteria require screenshots at four viewports
   accepted by the owner; that is Phase 12G's gate and remains open.
+
+---
+
+## §18 — Phase 12E: recomposing against the mockups (2026-09-06)
+
+Five surfaces recomposed — VR-08, VR-09, VR-10, VR-11, plus the contributor page and both
+moderation queues. What follows is what was actually run, what two guards caught, and the
+part that was **not** exercised, which is the larger half.
+
+### Run, and green
+
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit` | clean, after each of the six commits |
+| `npx eslint .` | clean |
+| `npx vitest run` | **903 passed / 34 files**, unchanged count — no guard was edited, added or skipped |
+| `npx next build` | compiled; every route still `●`/`ƒ` server-rendered, first-load JS **103 kB shared**, unchanged |
+| Content check against the built server on :3101 | `/en`, `/en/routes`, `/en/routes/new`, `/en/signin`, `/en/journeys` all render their own copy and **none** contains the error-boundary string "Something went wrong on this page" |
+
+The content check is deliberately not a status-code check. §24's first trap: a caught error
+renders through the boundary and still answers 200, so a 200 proves the server replied and
+nothing else.
+
+### Two guards fired, and both were obeyed rather than widened
+
+Worth recording because the temptation in both cases was to loosen the pattern, and in both
+cases the pattern was right and the *code* was the thing to change.
+
+**The §25 gamification guard, on a prop named `points`.** `GuidanceList({ points })` tripped
+`/\b(leaderboard|reputationScore|karma|points|badgeLevel|…)\b/i` across `src/`. The guard cannot
+tell a prop name from a currency, and it should not try: the word is forbidden because
+contribution must never become a score, and a regex that started making exceptions for "the
+harmless uses" would end up making one for the harmful use too. Renamed `lines`. Cost: one
+identifier.
+
+**The invariant-13 monetisation guard, on the word "advertising".** A new report-category
+description read "Advertising, or the same thing posted over and over", and
+`/(sponsor|promoted|advertis|premium|paywall|supporter|donor|boosted)/i` refused it. Again the
+guard is blunt on purpose — it is the thing standing between this product and a sponsored
+ranking — and again the copy could simply say the same thing differently: "Selling something, or
+the same thing posted over and over."
+
+**The rule:** a guard firing on honest code is not evidence the guard is too wide. Widening a
+guard until it stops catching honest code is how a guard ends up catching nothing.
+
+### What was *not* exercised, and why
+
+Everything recomposed here except the create-route sign-in prompt is **behind a session, or
+behind route content, or behind the administrator role.** Production holds zero routes
+(CLAUDE.md §10.2, and deliberately), and no marked-disposable Postgres was reachable from this
+workstation, so none of the following was rendered in a browser this session:
+
+- the VR-08 comparison panel (needs a signed-in viewer and a field)
+- the VR-09 "Build the road" region on a route (needs a signed-in viewer and a route)
+- the VR-10 rail with real announcements and disruptions (needs a route with both)
+- the VR-11 report grid (needs a signed-in viewer and a field)
+- the contributor page with counts (needs a contributor with history)
+- both moderation queues (need the administrator role)
+
+They are proved to the extent that typecheck, lint, 903 unit and architecture tests and a
+production build can prove them, which is: the types are right, no guard is violated, and every
+page compiles and is server-rendered. That is **not** proof they look right, and the honest
+statement of where this sits is that the visual half of Phase 12E is verified by inspection of
+the source and by the reference images, not by a rendered screen.
+
+**This is exactly the gap Phase 12G exists to close** and the reason its screenshot suite is
+worth building: a fixture route on the disposable branch plus a signed-in Playwright context
+would have exercised all six of the above in one run.
+
+### A trap re-encountered: `.next` is shared
+
+A `next dev` server belonging to another session was listening on :3000 when `next build` ran.
+The build succeeded and the content checks above were served from it, but §24 warns about this
+for good reason and it was avoidable — the port should have been checked first. Recorded again
+because it has now cost time twice, and because the *symptom* when it goes wrong (a server
+answering from a half-written build) looks exactly like a product regression.
+
+### One thing a guard could not have caught, and still cannot
+
+`SeverityChip` had four labels and two appearances. Nothing failed: the enum was complete, the
+dictionary was exhaustive, `satisfies Record<ChangeSeverity, string>` held, and every test
+passed. The defect was that `important`, `relevant` and `informational` rendered identically, so
+§41.2's four-level scale reached the reader as a two-level one — and **no assertion in this
+repository can see that two branches of a ternary produce the same class string** without being
+written specifically to look for it.
+
+The same shape as §22's "four bugs that never failed anything". It was found by opening the
+mockup beside the component, which is the only method that finds it, and is the argument for
+Gate 4 rather than for another guard.
+

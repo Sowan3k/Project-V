@@ -1314,11 +1314,12 @@ Phase 10's scope; if it is wanted it is a change request first.
 
 **Exit criteria**
 - ⬜ Screenshots at all four viewports reviewed against VR-06, VR-07, VR-08, VR-09, VR-10 and
-  VR-11, and accepted by the owner
-- ⬜ Privacy, revision, safety, lifecycle and monetisation guards pass **unmodified**
-- ⬜ Every substitution above is present in this file and enforced by an existing guard
-- ⬜ No upload control exists anywhere in the application, asserted at the action boundary
-- ⬜ Contribution controls remain reachable in minimal interaction and work without JavaScript
+  VR-11, and accepted by the owner — **the owner's to close; 12G builds the suite**
+- ✅ Privacy, revision, safety, lifecycle and monetisation guards pass **unmodified** (2026-09-06)
+- ✅ Every substitution above is present in this file and enforced by an existing guard
+- ✅ No upload control exists anywhere in the application, asserted at the action boundary
+  (`journey-privacy.test.ts` §invariant 6, `safety.test.ts`, `schema-shape.test.ts`)
+- ✅ Contribution controls remain reachable in minimal interaction and work without JavaScript
 
 **Visual references:** VR-06, VR-07, VR-08, VR-09, VR-10, VR-11
 **FRs:** FR-13–FR-18, FR-23–FR-30, FR-35–FR-37, FR-42, FR-50, FR-55, FR-60, FR-61, FR-77
@@ -1364,9 +1365,142 @@ status, recognition or standing, which §25 warns against.
 nested inside the route body's eight-of-twelve region, so each road got about 285px. A road at
 285px defeats the point of showing two. The counts lead as a summary; the roads share the width.
 
-**Still open in this phase:** My Journey (VR-06), the contribution flows (VR-08, VR-09), the
-safety surfaces (VR-11), a route's updates and disruptions (VR-10), the contributor page and
-the admin queues.
+**Still open when that pass ended:** My Journey (VR-06), the contribution flows (VR-08, VR-09),
+the safety surfaces (VR-11), a route's updates and disruptions (VR-10), the contributor page and
+the admin queues. VR-06 and VR-07 were closed shortly afterwards; the rest are closed below.
+
+### Phase 12E — the community surfaces recomposed (2026-09-06)
+
+The surfaces had been brought onto the design system in the previous pass — panels, radii,
+headings from the token scale — but not **composed** against their references. This pass is the
+composition, and the departures below are the whole point of writing it down: *an unexplained
+departure from a mockup is a defect; an explained one is a decision.*
+
+Six primitives came first, because four of the five surfaces needed the same ones and the
+alternative was each inventing its own for the fourth time. `inputClass` / `labelClass` /
+`FormField` / `FormFieldset` — the `const INPUT = 'mt-1 block w-full rounded-control …'` literal
+had been written out **seven** times across `contribute`, `safety`, `structure`, the changes
+page, the create-route page and both admin queues, and the seven had drifted. `Disclosure` — the
+most repeated shape in the application, with the expand marker drawn back and rotated by CSS on
+`[open]`, because `list-none` had left every summary reading as an ordinary link. `NumberedFlow`,
+`GuidanceList`, `FactList`, `ChoiceGrid`. All server components; the client-component count is
+still one.
+
+#### VR-08 — correcting a field
+
+**Built:** the comparison. Current value on the left with the four facts that make a correction
+useful rather than merely different — whom the claim applies to, who asserts it, when it was last
+confirmed, how many versions it has already had — and the correction form on the right. Before
+this it was a textarea pre-filled with the current value and nothing else, so a contributor could
+not see what they were changing while changing it.
+
+| Departure | Why |
+|---|---|
+| A disclosure on the field, not a dedicated update page | §7.1 classifies Update as a short transient action returning to the same place, and §8.1 ranks that above the mockup. It is also better: the field stays visible above the form, which is the context VR-08 has to re-state in a panel *because* it navigated away |
+| No four-stage wizard | Its last two stages are "Community reviews" and "Update goes live when confirmed", which are a §8.6 mockup exception and fail a Phase 8 guard. A wizard whose last two stages are refused is not a wizard, and a multi-page one needs server-side draft state for a form that fits on one screen. Stages 1–3 survive as the guidance list |
+| "Avoid personal opinions" replaced, not dropped | A student's own experience *is* community experience and a first-class claim type (FR-54, invariant 11). The tip asks them to say which kind of claim it is instead |
+
+#### VR-09 — creating a route
+
+**Built:** the basics band (from / destination / study level / route type / intake across one
+row, then title and description across the full width), a stage bar, and a rail. And the second
+half, which is the part that matters: **"Build Your Road" now exists on the route**, with a
+title, an instruction and the authoring controls beneath it. Those had been three unlabelled
+disclosures hanging off the bottom of the route index — so the one capability that turns an empty
+experimental route into a usable one read as housekeeping.
+
+| Departure | Why |
+|---|---|
+| Two stages, not five | Only the basics need a form of their own; until the route exists there is nothing to add steps or fields to. Naming stage two matters more than the count — a contributor who does not know the road comes next publishes a route with no steps and assumes they have finished |
+| No "Save as Draft" / "Draft saved 2 min ago" | A draft is server state for a one-screen form, and it would need somewhere to live that is neither a route nor a revision. Publishing *is* the save: the route is created immediately as experimental (FR-74), which removes the need |
+| No live "Route Summary (Draft)" rail | It mirrors fields as they are typed, which needs JavaScript. That position carries what publishing actually *does* instead — the thing a first-time contributor does not know |
+| Country codes, not a country picker | A curated list would either restrict where a contributor may say they are going, contrary to FR-13, or require shipping an ISO-3166 table nobody has decided on |
+| The step strip is not repeated on the create page | It is already at the top of the route, drawn by the renderer from the same graph, which is what VR-09's preview pane approximates. A second copy could only disagree with the first |
+
+#### VR-10 — updates and disruptions
+
+**Built:** four severity levels that look like four; the permanent/temporary distinction on the
+face of every card; and the right rail.
+
+Severity had four labels and two appearances — `critical` loud, the other three an identical grey
+chip. That is a two-level scale wearing four names, and §41.2 defines four.
+
+**They are four now and none of it is a palette.** This is the §11 route-maturity decision applied
+to the other ordered scale in the product, for the same three reasons: a hue per level puts a
+coloured badge on the ordinary case, which is the "badge on everything is a badge on nothing"
+failure §7.3 exists to prevent; a red chip on a contributor's *judgement* dresses that judgement
+as a measurement, which the change-vocabulary guard forbids in words and should not permit in
+pixels; and `--color-caution-*` means "there is something here to read" and nothing else, so
+spending it four times over would make it mean nothing anywhere. The ramp is ink weight and the
+words already carry §41.2's meanings. `critical` alone keeps the attention colour, and gains an
+icon so nothing rests on colour (§10.4).
+
+| Departure | Why |
+|---|---|
+| Four ink weights, not four colours | Above. The same reasoning that closed the maturity-palette decision |
+| No second "Impact: High / Medium / Low" axis | Two scales for one judgement is one too many, and the second is not in the baseline (§41.2) |
+| No "Subscribe to Alerts", no "Manage Alert Settings" | Proactive external notification is deferred (§35, §8.6). The page says so at its foot rather than offering a control that does nothing |
+| Severity legend, not a severity filter | VR-10's is a four-checkbox filter for a cross-route feed. Filtering one route's handful of announcements is machinery for a problem this page does not have |
+| Activity counts for **this route**, not "Impact on My Journey" | The mockup's band tallies across every route the reader follows — that is the cross-route feed, which is out of scope and would be a change request. The same rail position carries the same orientation honestly. The counts decide nothing and nothing reads them (FR-71, invariant 14), and the panel says so; a level with no changes is omitted, because four zeroes look like a verdict |
+
+#### VR-11 — report and safety
+
+**Built:** the category grid. Eight report reasons had been eight one-line `<option>`s, which is
+the shape most likely to produce the wrong report — "phishing or a scam" and "another serious
+concern" look equally plausible to somebody who has just found an out-of-date deadline. Each now
+carries a sentence saying what it is for. Also built: "what happens next", and the explanation of
+what withholding does — the latter folded into the quarantine notice itself, because the moment a
+reader wants those four sentences is the moment they meet one.
+
+| Departure | Why |
+|---|---|
+| A disclosure on the field, not a Report & Safety Center | §7.1 again, and a report is *about a specific field*. A centre has to ask "where did you find this?" — VR-11 has exactly that dropdown — where reporting in place already knows |
+| No screenshot upload | §8.6, decided 2026-09-02: no upload endpoint, no blob storage, no attachment table. Said out loud rather than left as a missing control — "there is nowhere on this platform to upload a file" is a fact worth a reader knowing (invariant 6) |
+| No "Recently Quarantined Items" | Reports are not a public accusation board (§23.1, §23.3). A public list of withheld items with their domains is a directory of exactly what it is protecting people from |
+| No Safety Leaderboard | §25 — contribution is not a competitive game |
+| No "12,842+ resolved / 5,213 reporters / 98% reviewed" band | Illustrative (§8.6), and a percentage of reports reviewed is a claim about our own performance: easy to make, hard to keep true |
+| "Our Commitment: we review all reports and take action" is not written | A promise with a volume in it. What replaces it is the sequence itself, including the part easiest to leave out — a person decides, and no number of reports decides anything on its own (FR-71, invariant 14) |
+
+#### The contributor page and the two moderation queues
+
+None has a mockup, so each is composed from the principle that governs it.
+
+- **Contributor page.** Four sentences in an unstyled list became the counted band VR-04 and
+  VR-14 use for a route's own facts, plus a rail saying why the page exists: every claim names
+  who made it, and this platform deliberately has no reputation score to show instead. The
+  "confirmed by somebody else" figure is the only one anybody but the contributor had a hand in.
+  It is deliberately **not** divided by the total — a ratio is a rating with its arithmetic
+  hidden, and §11 has not decided what a rating would mean (§25).
+- **Reports queue.** Gains VR-11's withholding explanation, pointed at the person deciding
+  instead of the person affected. Its empty state says what an empty queue means: nobody has
+  reported anything, *not* that anything has been checked and found sound (BR-04, invariant 12).
+- **Routes queue.** The periodic review gets its own panel rather than a small button with a
+  sentence trailing after it. Lifecycle standing is the **neutral** chip whatever the state,
+  because §11 closed the maturity-palette decision by deciding there is none and an
+  administration screen is not an exception to it. The empty case states what production has
+  always been — nothing published yet (§10.2).
+
+`buttonClass` gained a `caution` tone, which is what the hand-written `bg-caution-900` filled
+buttons in two files were reaching for. Deliberately the *same* attention colour as every other
+caution (§7.3): one colour meaning "read this", never a palette of severities.
+
+#### Exit criteria — where they stand
+
+- ⬜ Screenshots at four viewports reviewed against VR-06…VR-11 and **accepted by the owner** —
+  outstanding, and it is the owner's to close. 12G builds the suite that makes it reviewable
+- ✅ Privacy, revision, safety, lifecycle and monetisation guards pass **unmodified** — 903 tests,
+  no guard edited. Two guards *fired* during this work and both were obeyed rather than widened:
+  the §25 gamification guard on a prop named `points` (renamed `lines`), and the invariant-13
+  monetisation guard on the word "advertising" in a report-category description (reworded)
+- ✅ Every substitution is in this file and enforced by an existing guard
+- ✅ No upload control exists anywhere in the application
+- ✅ Contribution controls remain reachable in minimal interaction and work without JavaScript —
+  every control added here is a `<details>` containing a plain form; the `open:w-full` trick that
+  lets an action be a chip when closed and a two-column comparison when open is pure CSS
+
+**Still open in this phase:** nothing from the original scope list. VR-06 (My Journey) and VR-07
+(shadow comparison) were closed in the previous pass; VR-08, VR-09, VR-10, VR-11, the contributor
+page and both admin queues are closed here.
 
 ---
 
