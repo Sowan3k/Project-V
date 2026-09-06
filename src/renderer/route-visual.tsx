@@ -165,9 +165,27 @@ function RouteVisual({
        */
       style={{
         maxWidth: density.showLabels ? width : undefined,
-        // Long ribbons scroll within their own container instead of reducing every symbol
-        // to a few pixels. Both forms still share the same graph and canonical order.
-        minWidth: density.showLabels ? undefined : width,
+        /**
+         * **A ribbon is pinned only when it genuinely does not fit — never merely because it
+         * has a target width.**
+         *
+         * This used to be `width` unconditionally, which pinned every band to its own viewBox
+         * whatever room it had. A band whose target was wider than its column therefore
+         * scrolled sideways even when it held two stages and could have fitted comfortably.
+         *
+         * `frame.width` exceeds `fitWidth` in exactly one case: the route is long enough that
+         * columns bottomed out on their readable floor and the content outgrew the target. So
+         * comparing the two *is* the question "did this route stop fitting", already answered
+         * by the layout pass, and needs no new flag to carry it.
+         *
+         * A route that fits now fills its container exactly, at every width, because
+         * `w-full` scales the viewBox to the space available. A route that does not fit keeps
+         * its stages legible and scrolls locally, which is what the pin was always for.
+         */
+        minWidth:
+          density.showLabels || density.fitWidth === undefined || width <= density.fitWidth
+            ? undefined
+            : width,
       }}
       // The interface face, so labels on the road match labels beside it. Falls back to the
       // system stack if the variable is unset — a road that renders in the wrong font is a
@@ -198,8 +216,25 @@ function RouteVisual({
         frame.edges.map((placed) => <Connector key={placed.edge.id} placed={placed} />)
       )}
 
-      {first === undefined ? null : <StartMarker node={first} label={strings.start} />}
-      {last === undefined ? null : (
+      {/*
+        **Terminals on the road, not on the ribbon — VR-03/VR-04.**
+
+        VR-04's road runs from a start dot to a fly marker and both belong there. VR-03's
+        ribbon has neither: the band simply starts and stops, and the row above it already
+        says which pair of countries it runs between, so a dot repeating that is a third
+        statement of the same fact.
+
+        They are also what made the band sit inside a wide margin — both are drawn *outside*
+        the first and last stage, so the padding had to be deep enough to hold them, and the
+        ribbon paid twenty units of inset at each end to carry two marks it did not need.
+
+        Keyed on `showLabels`, which is the density's own road/ribbon distinction, so nothing
+        here learns anything about which route it is drawing (invariant 24).
+      */}
+      {!density.showLabels || first === undefined ? null : (
+        <StartMarker node={first} label={strings.start} />
+      )}
+      {!density.showLabels || last === undefined ? null : (
         <DestinationMarker node={last} label={strings.destination} reverse={Math.floor(last.rank / density.columnsPerRow) % 2 === 1} />
       )}
 
@@ -296,11 +331,22 @@ export function Road(props: RouteVisualProps & { density?: Density }) {
  * Not a card and not a preview — the same route through the same layout pass, drawn small.
  * Opening it unfolds the identical structure (D-33, FR-04, FR-05).
  */
+/**
+ * **The switch is at `lg`, not `sm`, and that is a container question rather than a phone one.**
+ *
+ * A density's `fitWidth` is the width the band is drawn to, so it should match the space the
+ * band actually gets — and that is not the viewport. At 768px the search page gives its
+ * results column about 427px, so the wide band's 680 was pinned a quarter wider than its own
+ * container and scrolled sideways on a tablet. The narrow band fits there and scales up into
+ * it; the wide one is right from `lg`, where the column is finally wide enough to hold it.
+ *
+ * Measured at five viewports rather than reasoned about — the numbers are in Test.md §20.
+ */
 export function Ribbon(props: RouteVisualProps) {
   return (
     <>
-      <div className="sm:hidden"><RouteVisual {...props} density={RIBBON_NARROW} /></div>
-      <div className="hidden sm:block"><RouteVisual {...props} density={RIBBON} /></div>
+      <div className="lg:hidden"><RouteVisual {...props} density={RIBBON_NARROW} /></div>
+      <div className="hidden lg:block"><RouteVisual {...props} density={RIBBON} /></div>
     </>
   )
 }

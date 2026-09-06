@@ -71,18 +71,40 @@ function hrefs(graph: RouteGraph): Record<string, string> {
   return Object.fromEntries(graph.steps.map((s) => [s.id, `/en/routes/example?step=${s.id}#route-step-info`]))
 }
 
-describe('a Ribbon retains readable stages at both densities', () => {
-  it.each([6, 20])('paints every label in a %i-stage Ribbon, including the phone version', (count) => {
+describe('a Ribbon carries every stage at both densities', () => {
+  /**
+   * **This asserted painted labels until 2026-09-06, and the owner's decision moved them.**
+   *
+   * VR-03's ribbon is a thin saturated band of icons with no text in it; the names live on
+   * the road. So the guarantee worth guarding changed shape rather than going away, and it is
+   * now the stronger of the two: a reader who cannot see the band must still receive **every
+   * stage, named, in canonical order**. A sighted reader gets the icons and one click to the
+   * road; nobody gets a shorter route than anybody else.
+   *
+   * Deleting this test when the labels left would have been the wrong move — it is precisely
+   * the case where a compression could quietly start dropping stages and nothing would say so.
+   */
+  it.each([6, 20])('names every stage of a %i-stage Ribbon to assistive technology', (count) => {
     const graph = linear(count)
     const markup = renderToStaticMarkup(createElement(Ribbon, { graph, strings }))
     const drawings = [...markup.matchAll(/<svg\b[\s\S]*?<\/svg>/g)].map((m) => m[0])
     expect(drawings).toHaveLength(2)
     for (const drawing of drawings) {
       expect(stageIds(drawing)).toEqual(layout(graph, ROAD).order)
-      for (const s of graph.steps) expect(paintedText(drawing)).toContain(s.label)
       expect(drawing).toContain('data-route-visual="ribbon"')
+
+      // Invariant 25 in the form that survives the labels leaving: the accessible name lists
+      // the same stages the road draws, in the same order.
       const accessibleName = drawing.match(/aria-label="([^"]+)"/)?.[1] ?? ''
       for (const s of graph.steps) expect(accessibleName).toContain(s.label)
+      const named = graph.steps.map((s) => accessibleName.indexOf(s.label))
+      expect(named, 'stages are named in canonical order').toEqual([...named].sort((a, b) => a - b))
+
+      // Each segment also carries its own name, so hovering or focusing one identifies it.
+      for (const s of graph.steps) expect(drawing).toContain(s.label)
+
+      // And no text is painted into the band itself — that is what made it a flowchart.
+      expect(paintedText(drawing)).toBe('')
       expect(drawing).not.toContain('<a ')
     }
   })

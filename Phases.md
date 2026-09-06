@@ -1148,6 +1148,41 @@ a serpentine with curved returns rather than shrinking.
 
 ---
 
+### The ribbon becomes a ribbon — owner decision, 2026-09-06
+
+The owner's verdict on the search results: *"the ribbon does not look like a ribbon, it looks
+like a flowchart box."* It did. Every renderer test passed throughout — structural equivalence,
+generative coverage, ribbon/road step agreement — and the thing on screen was still boxes joined
+by a line. The third defect in this project found by opening the mockup beside the product, and
+the third that no assertion here could have produced.
+
+**VR-03's ribbon is a thin saturated band: one icon per stage, no names, no numbers.** Ours was
+a pale slab 82 units tall carrying a wrapped step name, an ordinal and a category stripe — which
+is a flowchart node whatever shape its edges are cut into. Five separate causes, all fixed, all
+in Test.md §20: the columns did not quite fill their row; the chevrons did not tessellate, so
+every join left a wedge; the band was sized for three lines of text it never had; the fill and
+label made each segment a card; and the start dot and fly marker forced 20 units of inset at
+each end.
+
+**This supersedes the "ribbons retain visible names" note of earlier the same day**, on the
+owner's instruction, and only for the ribbon. Nothing is lost: every segment's `<title>` and the
+visual's `aria-label` carry the full name in canonical order — so a screen reader gets a named
+sequence, which is *more* than the band gives a sighted reader — and the road one click away
+carries every name in full at every width. Meaning still never rests on colour (§10.4): each
+stage carries its category icon and states its category in words to assistive technology.
+
+**A measurement nobody had made.** `fitWidth` is the width a band is drawn to, so it must match
+the container — and it never had. Measured at five viewports, **three of five overflowed**: the
+density switched at `sm` so a 768px tablet got the 680-wide band in a 427px column; the narrow
+band targeted the 360px viewport rather than its 304px container; and every band was pinned to
+its own viewBox whatever room it had, so even a two-stage route scrolled sideways. All three are
+fixed and all four viewports are now clean.
+
+Two tests were rewritten rather than deleted, because both asserted the decision that changed:
+the ribbon's painted labels became an assertion that the *accessible* name carries every stage
+in canonical order and that no text is painted into the band; and the 132-unit label floor moved
+to 32 with the thing it measured.
+
 ### Route-block design follow-up — 2026-09-05
 
 Owner requested less generic route blocks. The shared primitives now use a category header,

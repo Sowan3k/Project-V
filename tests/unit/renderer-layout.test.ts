@@ -407,9 +407,15 @@ describe('the hard shapes produce the structure they claim', () => {
         expect(Math.round(frame.width), `${ranks} ranks, ${density.fitWidth}px target`).toBe(
           Math.round(Math.max(density.fitWidth ?? 0, minimumShape.width)),
         )
-        // A readable station has room for the three-line labels asserted in route-visual
-        // tests. This floor must not silently shrink to make the width test pass.
-        for (const node of frame.nodes) expect(node.width).toBeGreaterThanOrEqual(132)
+        /**
+         * A stage must stay wide enough to read as a stage. **The floor was 132, sized for
+         * the three-line labels the ribbon used to paint; the owner moved those to the road
+         * on 2026-09-06 and the band now carries one icon.** The floor moved with the thing
+         * it was measuring rather than being dropped — a stage narrower than its own mark is
+         * still the defect this guards, and the number would otherwise drift to whatever the
+         * width arithmetic happened to produce.
+         */
+        for (const node of frame.nodes) expect(node.width).toBeGreaterThanOrEqual(32)
       }
     }
 

@@ -2078,3 +2078,95 @@ before believing it.
   signed out; the signed-in variants (Account → the reader's own contributor page) were not.
   They differ only in the `href` the same component computes.
 
+
+---
+
+## §20 — The ribbon was a flowchart, and five things made it one (2026-09-06)
+
+**Found by the owner looking at it**, which is the third time this project has recorded that
+sentence and the third time no assertion in the repository could have produced it. The verdict
+was exact: *"the ribbon does not look like a ribbon, it looks like a flowchart box."*
+
+It did, and §18's `SeverityChip` lesson repeats here — every renderer test passed throughout.
+Structural equivalence held, generative coverage held, ribbon and road agreed on step count and
+order, and the thing on screen was still boxes joined by a line.
+
+### The five causes, in the order they mattered
+
+| # | Cause | Fix |
+|---|---|---|
+| 1 | `FILL = 0.94` left a sliver of page between every pair, and the edge connector drew *through* it — boxes joined by an arrow | Fill the column exactly; adjacent segments meet and the connector between them has zero length |
+| 2 | The chevrons did not tessellate. Point apex at `x + w`, next notch apex at `x + w + notch` — two shapes drawn to the same boundary from opposite sides, leaving a wedge belonging to neither | Point apex at `x + w + notch`, so each internal boundary is one shared polyline |
+| 3 | `nodeHeight: 82`, sized for three wrapped lines that a fitted column almost never needs — two fifths of every segment empty, caption in the top-left corner | 30, and the band holds one icon |
+| 4 | Pale fill, category-ink text, an ordinal and a top stripe — a labelled card | Saturated category fill, one white icon, nothing else (VR-03) |
+| 5 | The start dot and fly marker are drawn *outside* the first and last stage, so the band paid 20 units of inset at each end to carry them | Terminals on the road only; ribbon padding 8 |
+
+Owner-approved on 2026-09-06, and it supersedes the "ribbons retain visible names" note of
+earlier the same day. Every name is still in the segment's `<title>` and in the visual's
+`aria-label`, in canonical order, and the road carries them in full at every width.
+
+### Two arithmetic traps behind cause 1
+
+Filling a column exactly turned a drawing decision into arithmetic, and both halves failed
+first:
+
+- **The non-overlap guard fired on floating point.** `x` is built as `padding + nodeWidth / 2 +
+  column · columnWidth`, so with a column of 640/3 the difference between two neighbours'
+  centres came back as 213.33333333333331 against a width of 213.33333333333334 — an apparent
+  overlap of 3 × 10⁻¹⁴ and a failing test for a drawing no eye could fault. **The guard was not
+  given a tolerance.** The column is truncated to whole units instead, which makes every centre,
+  width and difference exact, and the guard stays as strict as it was written.
+- **Truncation then undershot the target**, and rounding to nearest overshot it — 320/3 rounded
+  up gives a band a unit wider than the width it was asked to fit. Floor, and let the canvas
+  keep the target width with the remainder in the right margin. A fitted width that overshoots
+  is not fitted.
+
+### The measurement that found three more defects
+
+`fitWidth` is the width a band is drawn to, so it has to match the **container**, and nobody had
+ever checked that it did. Measured across five viewports:
+
+| Viewport | Ribbon container | Band was | Result |
+|---|---|---|---|
+| 360 | 304px | 360 | scrolled sideways |
+| 390 | 334px | 360 | scrolled sideways |
+| 768 | 427px | 680 | scrolled badly — a quarter wider than its column |
+| 1280 | 755px | 680 | fitted |
+| 1440 | 808px | 680 | fitted |
+
+Three of five. The causes were independent and all three are fixed:
+
+- **The density switched at `sm` (640px)**, so a 768px tablet got the 680-wide band in a 427px
+  column. It switches at `lg` now — a container question, not a phone one.
+- **`RIBBON_NARROW` targeted 360**, the viewport, when the container is 304 once the page gutter
+  and the card's padding are taken off. It targets 300.
+- **Every band was pinned to its own viewBox width** by `minWidth`, whatever room it had — so a
+  two-stage route scrolled. The pin now applies only when `frame.width` exceeds `fitWidth`,
+  which is precisely the case where columns bottomed out on their floor and the route genuinely
+  stopped fitting. A route that fits fills its container exactly at every width.
+
+After: **no local scroll and no page overflow at 360, 768, 1280 or 1440**, and the drawing went
+from 91–128px tall around a 32px band to 55–77px.
+
+### Two tests were changed, deliberately, and neither was weakened
+
+Both asserted the decision the owner reversed, so both would have been *wrong* to leave and
+wrong to delete:
+
+- `route-visual.test.ts` asserted the ribbon **paints** every step name. It now asserts the
+  guarantee that replaced it and is the stronger one: the accessible name carries every stage,
+  **in canonical order**, at both densities — plus that no text is painted into the band, which
+  is the defect itself, now guarded.
+- `renderer-layout.test.ts` asserted a 132-unit floor per stage, sized for three lines of label.
+  The floor moved to 32 with the thing it was measuring. A stage narrower than its own mark is
+  still the defect it guards.
+
+### Verification
+
+`npm run lint` clean · `npm run typecheck` clean · `npx vitest run` **903 passed, 34 files** —
+the same count as before the work, with two tests rewritten rather than added or removed. The
+full acceptance sheet was regenerated: 40 screenshots, zero horizontal overflow.
+
+**Not verified:** how the band reads on a real phone rather than an emulated viewport, and how
+it reads to somebody with deuteranopia — the icons carry the category and the palette was fitted
+for this in Phase 12B, but neither claim is measured here.

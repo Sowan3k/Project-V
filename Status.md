@@ -85,11 +85,39 @@ no guard edited, no test added or widened. Detail in [Test.md](Test.md) §19.
   and left untouched here.** The screenshots were taken with it in place, so the phone shots show
   the tab bar. It is not this session's to commit.
 
+### Then the owner opened the sheet, and the ribbon was wrong
+
+*"The ribbon does not look like a ribbon, it looks like a flowchart box."* Correct, and a better
+diagnosis than the one this session had reached on its own — which was the milder "the element
+size versus the text inside looks awkward". The band was a pale slab 82 units tall carrying a
+wrapped step name; VR-03's is a thin saturated band of icons.
+
+**Five independent causes, all fixed, full detail in [Test.md](Test.md) §20.** The columns did
+not quite fill their row and the edge connector drew through the gap; the chevrons did not
+tessellate, so every join left a wedge belonging to neither shape; the band was sized for three
+lines of label it almost never had; the pale fill and the caption made each segment a card; and
+the start dot and fly marker are drawn outside the first and last stage, so the band paid twenty
+units of inset at each end to carry them.
+
+**And a measurement nobody had made.** `fitWidth` is the width a band is drawn to, so it has to
+match the *container* — never checked. Three viewports of five overflowed, including a tablet
+getting the 680-wide band in a 427px column. All fixed; 360, 768, 1280 and 1440 are now clean.
+
+**Two tests were rewritten, deliberately.** Both asserted the decision the owner reversed, so
+leaving them was wrong and deleting them was worse. The ribbon's painted labels became an
+assertion that the accessible name carries every stage *in canonical order* and that no text is
+painted into the band; the 132-unit label floor moved to 32 with the thing it measured. Suite
+still 903, no guard widened.
+
+Also this session, at the owner's request: `scripts/renderer/out` deleted — 8.4 MB of ad-hoc dev
+screenshots from earlier sessions, superseded by the review suite and regenerable.
+
 ### Next step
 
-Either the owner reviews the sheet — which closes 12C and 12D — or Phase 12F is finished and
-committed first, since its remaining scope (route-as-tabs on a phone, the step-chip strip,
-compact ribbons on discovery) changes the phone shots the sheet already holds.
+Either the owner reviews the regenerated sheet — which closes 12C and 12D — or Phase 12F is
+finished first, since its remaining scope (route-as-tabs on a phone, the step-chip strip,
+compact ribbons on discovery) changes the phone shots the sheet holds. The ribbon rework has
+already taken the "compact ribbons on discovery" item off 12F's list.
 
 ---
 

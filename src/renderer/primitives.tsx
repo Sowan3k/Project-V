@@ -239,15 +239,41 @@ export function RoadSegment({ placed, density }: { placed: PlacedEdge; density: 
 }
 
 /**
- * One segment of the compressed ribbon — Phase 12C, VR-03.
+ * One segment of the compressed ribbon — VR-03.
  *
  * An interlocking chevron rather than a rounded box: the point carries direction, which is
  * what makes a row of them read as *a journey in order* at a glance instead of as a row of
  * swatches. The notch on the left receives the previous segment's point, so the band reads as
  * continuous even though every segment is drawn independently.
  *
- * Category ink on a pale fill keeps names readable. The stronger outline and upper stripe
- * carry the segmented band, matching the icon/header treatment on the expanded blocks.
+ * ═════════════════════════════════════════════════════════════════════════════════════════
+ * **Saturated fill, a white icon, and no text — owner decision, 2026-09-06.**
+ *
+ * This was a pale fill carrying the step's name in category ink, sized for up to three
+ * wrapped lines. The owner's verdict on it was exact: *"the ribbon does not look like a
+ * ribbon, it looks like a flowchart box"* — and it did, because a box with a sentence in it
+ * is a flowchart node whatever shape you cut its edges into. VR-03's ribbon is a **thin
+ * saturated band**: one icon per stage, no names, no numbers, the whole route legible as a
+ * run of colour in about thirty units of height.
+ *
+ * This supersedes the "ribbons retain visible names" note of 2026-09-06, on the owner's
+ * instruction, and only for the ribbon. Nothing is actually lost by it:
+ *
+ * - **The name is still there for anyone who cannot see the icon.** Every segment carries a
+ *   `<title>` with its ordinal, name and category, and the visual's `aria-label` lists all of
+ *   them in order — so a screen reader reads a ribbon as a named sequence, which is more than
+ *   a sighted reader gets from the band alone.
+ * - **The road one click away carries every name in full**, at every width. The ribbon is the
+ *   compressed form of exactly that object (invariant 25); compression that keeps the shape
+ *   and drops the words is what makes it a *different density* rather than a second design.
+ * - **Meaning still never rests on colour** (§10.4). Each stage carries its category icon,
+ *   the shapes are distinct, and the accessible name states the category in words. What is
+ *   gone is a text label that was illegible at phone width anyway.
+ *
+ * White on category `ink` is the pairing the contrast test already measures — `presentation
+ * .test.ts` proves every category ink is at least 4.5:1 against white, worst case 6.13:1 —
+ * so the icon is comfortably above the 3:1 that a non-text graphic needs, with no new token
+ * and no new measurement to keep true.
  */
 export function RibbonSegment({
   node,
@@ -278,51 +304,101 @@ export function RibbonSegment({
    * so shallow it reads as a rectangle and the band loses its direction; purely proportional
    * to width, a two-step route gets a point deeper than the segment is tall and the band
    * turns into a row of arrowheads.
+   *
+   * ─────────────────────────────────────────────────────────────────────────────────────────
+   * **The point overhangs the segment's own width, and that is what makes the band tile.**
+   *
+   * It used to stop at the right edge: point apex at `x + w`, next segment's notch apex at
+   * `x + w + notch`. Two shapes drawn to the same boundary from opposite sides — which leaves
+   * a wedge belonging to neither, so at thirteen stages the band showed a row of little gaps
+   * and went back to reading as separate shapes. Making the columns abut had fixed the *gap*
+   * and not the *geometry*.
+   *
+   * A right-pointing chevron only tessellates when its point reaches exactly as far past its
+   * width as the following notch is cut back: point apex at `x + w + notch`, so the next
+   * segment's notch — whose apex is at its own `x + notch`, the same coordinate — receives it
+   * precisely. Every internal boundary is then one shared polyline rather than two.
+   *
+   * The drawn path therefore overhangs its column by `notch` while `node.width` does not, and
+   * that is deliberate: `node.width` is the *layout* box the non-overlap guard measures, and
+   * two boxes that merely touch are what lets the ink interlock across the seam. The last
+   * segment's point overhangs the final column into the padding, which is why the padding must
+   * stay wider than a notch.
    */
   const notch = Math.min(h * 0.16, w * 0.07)
-  const textX = x + notch + 10
-  const captions = labelLines(node.step.label, Math.max(8, Math.floor((w - notch * 2 - 20) / 6.4)))
+
+  /**
+   * The icon fills the band's height rather than sitting at a fixed size.
+   *
+   * A constant would be wrong at both ends: the same glyph has to work in a wide segment on a
+   * two-stage route and in a narrow one on a twenty-stage route, and those differ by an order
+   * of magnitude in width while the height stays put. Tying it to height keeps the mark the
+   * same visual weight all along the band, and the second term stops it colliding with the
+   * notch when a route is long enough for columns to reach their floor.
+   */
+  const icon = Math.min(h * 0.56, (w - notch * 2) * 0.62)
 
   const state = archived ? archivedLabel : added ? addedLabel : null
-  const description = `${node.ordinal}. ${node.step.label} — ${categoryLabel}${state ? ` (${state})` : ''}`
+  const description = `${node.ordinal}. ${node.step.label} — ${categoryLabel}${relationship === undefined ? '' : ` — ${relationship}`}${state ? ` (${state})` : ''}`
 
   return (
     <g data-step-id={node.step.id} opacity={archived ? 0.6 : 1}>
       <title>{description}</title>
-      {relationship ? <text x={node.x} y={y - 9} textAnchor="middle" fontSize={10} fill="var(--color-ink-700)">{relationship}</text> : null}
+      {/*
+        **No branch caption painted on the band.**
+
+        It used to be drawn nine units above the segment. That was survivable while the band
+        was 82 units tall and lanes were 112 apart; at 30 and 42 the caption lands inside the
+        segment above it, and a route with three parallel stages stacked three "Parallel work"
+        labels across the chevrons. VR-03's ribbon carries no captions at all.
+
+        The information is not dropped, it moves to where a reader can act on it: the `<title>`
+        below states it on hover and to assistive technology, the visual's `aria-label` states
+        it for every stage in order, and the road — which has the room — draws it.
+      */}
+      {/*
+        Saturated category fill. A departing stage keeps the shape and loses the colour — it
+        is drawn as an outline on the page's own ground, which reads as *absent from the band*
+        rather than as one more coloured stage among the live ones.
+      */}
       <path
-        d={`M ${x} ${y} L ${x + w - notch} ${y} L ${x + w} ${y + h / 2} L ${x + w - notch} ${y + h} L ${x} ${y + h} L ${x + notch} ${y + h / 2} Z`}
-        fill={style.fill}
-        stroke={added || archived ? style.ink : style.line}
-        strokeWidth={added ? 2.5 : 1}
+        /*
+          The point runs half a unit past where the next notch begins. Two shapes meeting on
+          an exact diagonal leave a pale hairline: neither covers the boundary pixels fully,
+          so the antialiaser blends both against the page and the seam reappears as a gap —
+          the very thing the tessellation is for. The overlap is drawn *under* the following
+          segment, which is painted after it in canonical order, so it closes the seam and
+          changes nothing else.
+        */
+        d={`M ${x} ${y} L ${x + w} ${y} L ${x + w + notch + 0.5} ${y + h / 2} L ${x + w} ${y + h} L ${x} ${y + h} L ${x + notch} ${y + h / 2} Z`}
+        fill={archived ? 'var(--color-surface)' : style.ink}
+        stroke={archived ? style.ink : 'none'}
+        strokeWidth={archived ? 1 : 0}
         {...(archived ? { strokeDasharray: '4 3' } : {})}
       />
-      <path
-        d={`M ${x + notch + 3} ${y + 2} H ${x + w - notch - 3}`}
-        stroke={style.line}
-        strokeWidth={3}
-        strokeLinecap="round"
-      />
+      {/*
+        A newly added stage is outlined *inside* its own edge rather than on it. An outline on
+        the boundary would be half-covered by the neighbour it interlocks with, since the whole
+        point of the band is that the segments meet — so the highlight has to sit within the
+        shape to survive being abutted on both sides.
+      */}
+      {added ? (
+        <path
+          d={`M ${x + 2} ${y + 2} L ${x + w - 1} ${y + 2} L ${x + w + notch - 3} ${y + h / 2} L ${x + w - 1} ${y + h - 2} L ${x + 2} ${y + h - 2} L ${x + notch + 3} ${y + h / 2} Z`}
+          fill="none"
+          stroke="var(--color-surface)"
+          strokeWidth={1.6}
+        />
+      ) : null}
       <CategoryIcon
         category={node.step.category}
-        cx={textX + 8}
-        cy={y + 18}
-        size={18}
+        cx={x + notch + (w - notch) / 2}
+        cy={y + h / 2}
+        size={icon}
+        // White on category ink: the pairing `presentation.test.ts` already measures at ≥4.5:1.
+        // A departing stage has no fill to sit on, so its mark returns to the category ink.
+        colour={archived ? style.ink : 'var(--color-surface)'}
       />
-      <text x={x + w - notch - 10} y={y + 22} textAnchor="end" fontSize={10} fill={style.ink}>
-        {String(node.ordinal).padStart(2, '0')}
-      </text>
-        <text
-          x={textX}
-          y={y + 43}
-          fontSize={12.5}
-          fontWeight={600}
-          fill={style.ink}
-        >
-          {captions.map((line, index) => (
-            <tspan key={index} x={textX} dy={index === 0 ? 0 : 15}>{line}</tspan>
-          ))}
-        </text>
     </g>
   )
 }

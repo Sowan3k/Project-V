@@ -65,9 +65,23 @@ export interface Density {
    * wide, and still not a ribbon. VR-03 shows segments that abut: the band *is* the route, and
    * gaps between them break the one thing it has to convey.
    *
-   * The fraction is just under 1 so a hairline of page shows between segments and the eye can
-   * count them. It is also what keeps the non-overlap guarantee: adjacent markers sit one
-   * column apart and are narrower than a column, so they cannot touch.
+   * **The markers fill their column exactly, and that is the whole point.** An earlier value
+   * of 0.94 left a sliver of page between every pair — the intent was "a hairline so the eye
+   * can count them", but the effect was a row of separated shapes joined by a visible
+   * connector, which is a flowchart. A ribbon is one band divided into segments, not boxes
+   * with arrows between them.
+   *
+   * Filling exactly makes the chevrons **tessellate**: each segment's point reaches its own
+   * right edge and each one's notch is cut in from its own left edge, both at the vertical
+   * middle and both `notch` deep. Abutting columns therefore interlock perfectly — the point
+   * of one occupies precisely the notch of the next — and the seam a reader counts by is the
+   * two segments' own outlines meeting, not a gap.
+   *
+   * The non-overlap guarantee survives: adjacent centres are exactly one `columnWidth` apart
+   * and each marker is exactly one `columnWidth` wide, so the test's `|Δx| < (wa + wb) / 2`
+   * compares equals and is false. That equality is only exact because `columnWidth` is
+   * truncated to whole units — see the note on it below, which is where filling exactly stops
+   * being a drawing decision and becomes arithmetic.
    */
   readonly fillColumns?: boolean
   /**
@@ -126,35 +140,75 @@ export const ROAD_NARROW: Density = {
 }
 
 /**
- * Single-row Ribbon with readable names at every viewport.
- * The 680/360 target widths preserve readable type and symbols. Long bands retain minimum
- * segment spacing and scroll inside their container. Same graph, order and layout pass.
+ * The compressed form: one row, one saturated chevron per stage, no text — VR-03.
+ *
+ * The 680/360 targets are what the band is stretched to fit, so a four-stage route and a
+ * fourteen-stage one come out the same height and the same width, differing only in how
+ * finely the band is divided. A route long enough to reach the column floor exceeds its
+ * target and scrolls inside its container rather than shrinking its stages away.
+ *
+ * Same graph, same canonical order and the same layout pass as the road (invariant 25).
  */
 export const RIBBON: Density = {
   columnsPerRow: Number.POSITIVE_INFINITY,
-  // The floor, not the value: `fillColumns` derives the real width from this. A very long
-  // route bottoms out here and retains enough width for its names in a local scroller.
-  columnWidth: 144,
-  // Room for the category/ordinal and up to three short lines. Branch captions live in
-  // the lane gap; no stage is removed or reduced to an icon to fit a smaller screen.
-  rowHeight: 108,
+  /**
+   * The floor, not the value: `fillColumns` derives the real width from this. A very long
+   * route bottoms out here and scrolls locally rather than shrinking its stages away.
+   *
+   * **144 until the ribbon carried names; 34 now that it carries an icon.** The old floor was
+   * sized to fit up to three wrapped lines of a step name, and with the names gone it was
+   * reserving width for nothing — a twenty-stage route was forced to 2,920 units and scrolled
+   * for no reason a reader could see. 34 is what a category mark needs to stay legible.
+   */
+  columnWidth: 34,
+  /**
+   * Just deep enough to hold the band and let it breathe.
+   *
+   * 46 while the ribbon still carried the start dot and the fly marker, which are drawn
+   * outside the first and last stage and so had to be paid for in every direction. With the
+   * terminals now on the road only (see `route-visual.tsx`), the row is the band plus a
+   * little, and the drawing stops being mostly margin: the SVG was rendering about 91px tall
+   * around a 32px band.
+   */
+  rowHeight: 38,
   // Must exceed nodeHeight, or concurrent steps stack on top of each other and the ribbon
   // silently shows fewer steps than the road. Spike A shipped that bug for an afternoon.
-  laneGap: 112,
+  laneGap: 42,
   // Ignored while `fillColumns` is on — kept as the shape this density would have without it.
-  nodeWidth: 132,
-  nodeHeight: 82,
-  padding: 20,
+  nodeWidth: 32,
+  /**
+   * **A band, not a row of cards — owner decision, 2026-09-06.**
+   *
+   * This was 82: a slab sized for three wrapped lines of a step name, which at the widths
+   * `fillColumns` produces meant roughly two fifths of every segment stood empty with its
+   * caption in the top-left corner. The owner's verdict was that it read as a flowchart box
+   * rather than as a ribbon, and it did.
+   *
+   * VR-03's ribbon is about thirty units tall and holds one icon per stage. At that height a
+   * segment is wider than it is tall at every step count the product supports, which is what
+   * makes a row of them read as one band rather than as a queue of shapes. The renderer still
+   * knows nothing about *which* route it draws: this is a density constant, identical for
+   * every graph (invariant 24).
+   */
+  nodeHeight: 30,
+  padding: 8,
   showLabels: false,
   fitWidth: 680,
   fillColumns: true,
   carriageway: 0,
 }
 
-/** Readable names on a phone, using the same ranks and lanes in a local scroller. */
+/**
+ * The same band on a phone or a narrow column.
+ *
+ * **300, not 360.** The target has to be the width of the *container*, not of the viewport:
+ * a search result at 360px gives the band about 304px once the page gutter and the card's own
+ * padding are taken off, so a 360-wide band was pinned wider than the space it had and
+ * scrolled sideways on a two-stage route. Measured rather than assumed — see Test.md §20.
+ */
 export const RIBBON_NARROW: Density = {
   ...RIBBON,
-  fitWidth: 360,
+  fitWidth: 300,
 }
 
 export interface PlacedNode {
@@ -280,7 +334,7 @@ export function layout(graph: RouteGraph, density: Density): Layout {
    * hairline of page shows between segments — and, because it is under 1, adjacent markers
    * are narrower than the distance between them and cannot overlap.
    */
-  const FILL = 0.94
+  const FILL = 1
 
   /**
    * Solving `width = 2·padding + nodeWidth + (columns−1)·columnWidth` for `columnWidth`.
@@ -302,14 +356,43 @@ export function layout(graph: RouteGraph, density: Density): Layout {
    * `columnWidth` in the width formula, and now is. `FILL` is non-zero, so there is no
    * division by zero to guard against.
    */
+  /**
+   * **Rounded to whole units, and that is load-bearing arithmetic rather than tidiness.**
+   *
+   * With `fillColumns` a marker is exactly as wide as its column, so two adjacent markers
+   * touch and must not overlap by even a fraction — `renderer-layout.test.ts` asserts it, and
+   * rightly, because a marker wider than its column is how the ribbon once silently drew
+   * fewer steps than the road.
+   *
+   * Unrounded, that assertion fails on arithmetic alone. A column of 640/3 is not
+   * representable in binary, and `x` is built as `padding + nodeWidth / 2 + column ·
+   * columnWidth` — so subtracting two neighbours' centres returns 213.33333333333331 where
+   * the width is 213.33333333333334, an apparent overlap of 3 × 10⁻¹⁴ units and a failing
+   * test for a drawing no eye could fault.
+   *
+   * Truncating removes the problem rather than tolerating it: whole numbers and halves are
+   * both exact in binary, so every centre, width and difference is exact and the neighbours
+   * land precisely edge to edge. The guard stays as strict as it was written. It also draws
+   * better — segment edges fall on whole user units instead of a third of one.
+   *
+   * **Down rather than to nearest**, which is the difference between the content finishing
+   * just inside the target and just outside it. Rounding 320/3 up gave a band a single unit
+   * wider than the width it was asked to fit, and a fitted width that overshoots is not
+   * fitted. Undershooting is absorbed by the margin (see `width` at the end of this function);
+   * overshooting would have to be absorbed by the page.
+   *
+   * A no-op for any density without `fitWidth`: those already carry integer columns.
+   */
   const columnWidth =
     density.fitWidth === undefined
       ? density.columnWidth
-      : Math.max(
-          density.columnWidth,
-          (density.fitWidth - density.padding * 2) /
-            ((density.fillColumns === true ? FILL : density.nodeWidth / density.columnWidth) +
-              gaps),
+      : Math.floor(
+          Math.max(
+            density.columnWidth,
+            (density.fitWidth - density.padding * 2) /
+              ((density.fillColumns === true ? FILL : density.nodeWidth / density.columnWidth) +
+                gaps),
+          ),
         )
 
   const nodeWidth = density.fillColumns === true ? columnWidth * FILL : density.nodeWidth
@@ -424,11 +507,25 @@ export function layout(graph: RouteGraph, density: Density): Layout {
   }
 
   const columns = columnsOnWidestRow
+  const contentWidth = density.padding * 2 + nodeWidth + (columns - 1) * columnWidth
 
   return {
     nodes,
     edges: placedEdges,
-    width: density.padding * 2 + nodeWidth + (columns - 1) * columnWidth,
+    /**
+     * The canvas keeps the target width; the rounding remainder goes into the right margin.
+     *
+     * Whole-unit columns cannot always divide a target exactly — three ranks of 640 leaves one
+     * unit over — so the drawn content can finish a pixel or two short. Shrinking the canvas
+     * to match would make the ribbon's own width depend on whether its step count happened to
+     * divide, which is the kind of quiet inconsistency the fitted width exists to remove.
+     *
+     * `Math.max` is what keeps the other case right: once a route is long enough for columns
+     * to bottom out on their readable floor, the content is *wider* than the target and the
+     * canvas has to grow with it, so the band scrolls in its container rather than shrinking
+     * its stages to fit.
+     */
+    width: density.fitWidth === undefined ? contentWidth : Math.max(density.fitWidth, contentWidth),
     height: density.padding * 2 + rowsHeight,
     rowCount,
     order: nodes.map((n) => n.step.id),
