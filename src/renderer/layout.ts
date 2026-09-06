@@ -30,7 +30,7 @@ export interface Density {
   readonly nodeWidth: number
   readonly nodeHeight: number
   readonly padding: number
-  /** Whether there is room for text inside a marker. */
+  /** Expanded station detail (Road) rather than a compressed labelled band (Ribbon). */
   readonly showLabels: boolean
   /**
    * Stretch the layout so it naturally comes out this wide — Phase 12C.
@@ -50,7 +50,7 @@ export interface Density {
    * makes the layout come out `fitWidth` wide, and `columnWidth` becomes the floor beneath
    * it. The floor is what keeps the existing non-overlap guarantee intact: a twenty-step
    * route whose fitted spacing would be narrower than a marker keeps the minimum and the
-   * ribbon simply comes out wider than the target, which the viewBox then scales down.
+   * ribbon simply comes out wider than the target and scrolls locally instead of shrinking.
    *
    * Derived from **structure alone** — the number of ranks — so two routes with the same
    * shape still produce identical geometry and the structural-equivalence proof of invariant
@@ -85,16 +85,16 @@ export const ROAD: Density = {
   // The Road normally shares a canvas with route context. Three readable stages fit that
   // panel; five forced the type and icons to shrink into a thumbnail (FR-05, VR-04).
   columnsPerRow: 3,
-  columnWidth: 214,
-  rowHeight: 174,
-  laneGap: 130,
+  columnWidth: 264,
+  rowHeight: 212,
+  laneGap: 174,
   // Step *cards* rather than markers — VR-04 puts the number, icon, title and duration on
   // the road itself, and a 128×52 marker has room for a truncated title and nothing else.
-  nodeWidth: 176,
-  nodeHeight: 116,
-  padding: 32,
+  nodeWidth: 226,
+  nodeHeight: 152,
+  padding: 34,
   showLabels: true,
-  carriageway: 30,
+  carriageway: 14,
 }
 
 /**
@@ -102,15 +102,8 @@ export const ROAD: Density = {
  * slightly narrower carriageway. A density constant, not a second renderer (invariant 25).
  */
 export const ROAD_COMPACT: Density = {
-  columnsPerRow: 3,
-  columnWidth: 214,
-  rowHeight: 174,
-  laneGap: 130,
-  nodeWidth: 176,
-  nodeHeight: 116,
-  padding: 34,
-  showLabels: true,
-  carriageway: 28,
+  ...ROAD,
+  carriageway: 12,
 }
 
 /**
@@ -122,64 +115,45 @@ export const ROAD_COMPACT: Density = {
  */
 export const ROAD_NARROW: Density = {
   columnsPerRow: 2,
-  columnWidth: 144,
-  rowHeight: 158,
-  laneGap: 126,
-  nodeWidth: 128,
-  nodeHeight: 114,
+  columnWidth: 152,
+  rowHeight: 202,
+  laneGap: 174,
+  nodeWidth: 132,
+  nodeHeight: 156,
   padding: 20,
   showLabels: true,
-  carriageway: 24,
+  carriageway: 10,
 }
 
 /**
- * Single-row Ribbon, with labels where segments allow and icons on narrow screens.
+ * Single-row Ribbon with readable names at every viewport.
  * The 680/360 target widths preserve readable type and symbols. Long bands retain minimum
  * segment spacing and scroll inside their container. Same graph, order and layout pass.
  */
 export const RIBBON: Density = {
   columnsPerRow: Number.POSITIVE_INFINITY,
   // The floor, not the value: `fillColumns` derives the real width from this. A very long
-  // route bottoms out here and retains enough width for its symbols in a local scroller.
-  columnWidth: 46,
-  /**
-   * ───────────────────────────────────────────────────────────────────────────────────────
-   * **These are ribbon proportions, and keeping them that way is the whole constraint.**
-   *
-   * An earlier pass raised `nodeHeight` to 78 and `laneGap` to 92 so the segments could carry
-   * a readable label. The label was the right idea and it stays — being able to read
-   * *Documents · IELTS · PTE* without opening the route is worth real estate. But at those
-   * numbers a three-step ribbon measured **359px tall inside a 522px card**, and a one-step
-   * route 158px, so a 1440px screen showed barely one result: the ribbon had become a second
-   * road, and D-33 and invariant 25 exist because it must be the road *compressed*. A list
-   * you cannot compare at a glance is not a list of ribbons.
-   *
-   * 52 is chosen against the label threshold rather than by eye — `RibbonSegment` draws
-   * captions at `h >= 50`, so this is the smallest band that still carries words. It gives
-   * 96px for any route on one rank, whatever its length, and the extra height a genuinely
-   * concurrent route needs is spent only when there is concurrency to show.
-   */
-  rowHeight: 68,
+  // route bottoms out here and retains enough width for its names in a local scroller.
+  columnWidth: 144,
+  // Room for the category/ordinal and up to three short lines. Branch captions live in
+  // the lane gap; no stage is removed or reduced to an icon to fit a smaller screen.
+  rowHeight: 108,
   // Must exceed nodeHeight, or concurrent steps stack on top of each other and the ribbon
   // silently shows fewer steps than the road. Spike A shipped that bug for an afternoon.
-  laneGap: 60,
+  laneGap: 112,
   // Ignored while `fillColumns` is on — kept as the shape this density would have without it.
-  nodeWidth: 42,
-  nodeHeight: 52,
-  padding: 14,
+  nodeWidth: 132,
+  nodeHeight: 82,
+  padding: 20,
   showLabels: false,
   fitWidth: 680,
   fillColumns: true,
   carriageway: 0,
 }
 
-/** Readable symbols on a phone, using the same ranks and lanes as the labelled band. */
+/** Readable names on a phone, using the same ranks and lanes in a local scroller. */
 export const RIBBON_NARROW: Density = {
   ...RIBBON,
-  columnWidth: 40,
-  nodeHeight: 38,
-  laneGap: 48,
-  rowHeight: 54,
   fitWidth: 360,
 }
 
@@ -283,7 +257,6 @@ export function layout(graph: RouteGraph, density: Density): Layout {
   }
 
   const rowCount = Number.isFinite(perRow) ? Math.floor(maxRank / perRow) + 1 : 1
-  const maxLanes = Math.max(1, ...[...byRank.values()].map((l) => l.length))
 
   /**
    * Rank spacing, stretched to `fitWidth` where one is asked for.
@@ -345,8 +318,23 @@ export function layout(graph: RouteGraph, density: Density): Layout {
   // concurrent steps a fixed row height let the lane fan push nodes to negative y, where
   // they were silently clipped. A route with nine parallel activities is unusual, not
   // invalid, so the row grows rather than the content being cut.
-  const laneSpan = (maxLanes - 1) * density.laneGap
-  const rowHeight = Math.max(density.rowHeight, density.nodeHeight + laneSpan + density.padding)
+  // Only the row containing a branch needs its extra height. Applying the largest fan to
+  // every row left long empty returns around otherwise linear portions of the route.
+  const rowLanes = Array.from({ length: rowCount }, () => 1)
+  for (const [r, stepsAtRank] of byRank) {
+    const row = columnFor(r).row
+    rowLanes[row] = Math.max(rowLanes[row] ?? 1, stepsAtRank.length)
+  }
+  const rowHeights = rowLanes.map((lanes) => Math.max(
+    density.rowHeight,
+    density.nodeHeight + (lanes - 1) * density.laneGap + density.padding,
+  ))
+  const rowStarts: number[] = []
+  let rowsHeight = 0
+  for (const height of rowHeights) {
+    rowStarts.push(rowsHeight)
+    rowsHeight += height
+  }
 
   const ordered = [...byRank.entries()].sort((a, b) => a[0] - b[0])
   const nodes: PlacedNode[] = []
@@ -365,7 +353,7 @@ export function layout(graph: RouteGraph, density: Density): Layout {
         // Coordinates are centres, so the first column must sit half a node in from the
         // padding or the leftmost marker overhangs the canvas.
         x: density.padding + nodeWidth / 2 + column * columnWidth,
-        y: density.padding + row * rowHeight + rowHeight / 2 + laneOffset,
+        y: density.padding + (rowStarts[row] ?? 0) + (rowHeights[row] ?? density.rowHeight) / 2 + laneOffset,
         width: nodeWidth,
         height: density.nodeHeight,
         ordinal,
@@ -441,7 +429,7 @@ export function layout(graph: RouteGraph, density: Density): Layout {
     nodes,
     edges: placedEdges,
     width: density.padding * 2 + nodeWidth + (columns - 1) * columnWidth,
-    height: density.padding * 2 + rowCount * rowHeight,
+    height: density.padding * 2 + rowsHeight,
     rowCount,
     order: nodes.map((n) => n.step.id),
   }

@@ -6,6 +6,7 @@ import { ContentColumn, GridRegion, PageCanvas, PageGrid } from '@/components/la
 import { ROUTE_LIFECYCLE_STATES } from '@/domain/enums'
 import { mergeCompatibility } from '@/domain/merge'
 import { isLocale } from '@/i18n/config'
+import { ContributorLink } from '@/components/ui'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { currentViewer } from '@/server/auth'
@@ -139,7 +140,8 @@ export default async function AdminRoutesPage({
                     <p className="mt-1 text-xs leading-5 text-ink-700">{flag.note}</p>
                   )}
                   <p className="mt-1 text-xs text-ink-500">
-                    {flag.flaggedByHandle ?? '—'} · {flag.createdAt.toISOString().slice(0, 10)}
+                    <ContributorLink handle={flag.flaggedByHandle} locale={locale} /> ·{' '}
+                    {flag.createdAt.toISOString().slice(0, 10)}
                   </p>
 
                   <form action={resolveDuplicateFlagAction} className="mt-3 flex flex-wrap items-end gap-2">

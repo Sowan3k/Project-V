@@ -12,6 +12,7 @@ import { SourceClass as Source, StepCategory, StepEdgeKind } from '@/domain/enum
 import { expectedFlyWindow, type FlyWindow } from '@/domain/fly-window'
 import { SEARCHABLE_LIFECYCLE_STATES } from '@/domain/lifecycle'
 import type { RouteGraph } from '@/domain/graph/types'
+import { incompletenessViolations } from '@/domain/graph/validate'
 import {
   RECENT_ACTIVITY_WINDOW_DAYS,
   type RouteTrustInput,
@@ -795,4 +796,161 @@ export async function getRouteHistory(routeId: string, limit = 100): Promise<rea
   return entries
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id))
     .slice(0, limit)
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   Route structure, for the contributor who maintains it — Phase 12E, FR-14, FR-57, D-37
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Everything a contributor needs to see and change the shape of a route.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **Why this is separate from `getRouteBySlug`.**
+ *
+ * `StepView` is what a *reader* needs: a label, a category, timing and a field count. It
+ * deliberately carries no revision id and no connections, because a reader has no use for
+ * either and the route page is the hottest query in the product.
+ *
+ * A contributor needs three things a reader does not:
+ *
+ *   * **`currentRevisionId`** on every step and connection, so an edit can declare what it
+ *     was based on. Without it every structural edit silently wins over a concurrent one,
+ *     which is precisely the last-write-wins the revision ledger exists to prevent
+ *     (FR-70, BR-21, invariant 15).
+ *   * **The connections themselves**, with their kind. Ordering lives in edges and nowhere
+ *     else (invariant 22), so a road cannot be maintained without seeing them.
+ *   * **The archived steps and connections**, so archival is reversible in the interface and
+ *     not only in the service. Archived is not deleted (FR-45, BR-15, invariant 4), and that
+ *     is an empty promise if nothing can bring content back.
+ *
+ * So this is loaded only on the surfaces that edit structure, and the read path stays as
+ * light as it was.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **It also reports what is unfinished, and that is not the same as what is wrong.**
+ *
+ * `incomplete` carries the violations a later addition repairs — a step connected to nothing,
+ * a step unreachable from the start, a rejoin nothing diverged into. These are the ordinary
+ * state of a road halfway through being built, so they are *shown* rather than refused;
+ * refusing them would force a contributor to build a route in one exact order. The violations
+ * no addition can repair — a cycle, a duplicate connection — never appear here, because the
+ * revision service refuses to commit them at all (`assertNoGraphCorruption`).
+ */
+export interface StructureStep {
+  readonly id: string
+  readonly label: string
+  readonly category: StepCategory
+  readonly earliestStartOffsetDays: number | null
+  readonly typicalDurationDays: number | null
+  readonly archived: boolean
+  /** What an edit to this step should declare it was based on (invariant 15). */
+  readonly currentRevisionId: string | null
+  readonly fieldCount: number
+}
+
+export interface StructureEdge {
+  readonly id: string
+  readonly fromStepId: string
+  readonly toStepId: string
+  readonly kind: StepEdgeKind
+  readonly archived: boolean
+  readonly currentRevisionId: string | null
+}
+
+export interface RouteStructure {
+  readonly routeId: string
+  /**
+   * What an edit to the route's title or summary should declare it was based on.
+   *
+   * Deliberately here rather than on `RouteSummary`: a reader has no use for it, and
+   * `getRouteBySlug` is the hottest query in the product (invariant 15).
+   */
+  readonly routeCurrentRevisionId: string | null
+  readonly steps: readonly StructureStep[]
+  readonly edges: readonly StructureEdge[]
+  /**
+   * What is still unfinished about this road. Never a refusal — see the note above.
+   * Each entry names the step or connection it implicates, so the interface can point at it.
+   */
+  readonly incomplete: readonly { readonly code: string; readonly subjects: readonly string[] }[]
+}
+
+export async function getRouteStructure(routeId: string): Promise<RouteStructure> {
+  const [route, steps, edges] = await Promise.all([
+    prisma.route.findUniqueOrThrow({
+      where: { id: routeId },
+      select: { currentRevisionId: true },
+    }),
+    prisma.step.findMany({
+      where: { routeId },
+      select: {
+        id: true,
+        archivedAt: true,
+        currentRevisionId: true,
+        currentRevision: {
+          select: {
+            label: true,
+            category: true,
+            earliestStartOffsetDays: true,
+            typicalDurationDays: true,
+          },
+        },
+        _count: { select: { fields: { where: { archivedAt: null } } } },
+      },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.stepEdge.findMany({
+      where: { routeId },
+      select: {
+        id: true,
+        fromStepId: true,
+        toStepId: true,
+        archivedAt: true,
+        currentRevisionId: true,
+        currentRevision: { select: { kind: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    }),
+  ])
+
+  const structureSteps: StructureStep[] = steps.map((step) => ({
+    id: step.id,
+    label: step.currentRevision?.label ?? '',
+    category: step.currentRevision?.category ?? StepCategory.documents_preparation,
+    earliestStartOffsetDays: step.currentRevision?.earliestStartOffsetDays ?? null,
+    typicalDurationDays: step.currentRevision?.typicalDurationDays ?? null,
+    archived: step.archivedAt !== null,
+    currentRevisionId: step.currentRevisionId,
+    fieldCount: step._count.fields,
+  }))
+
+  const structureEdges: StructureEdge[] = edges.map((edge) => ({
+    id: edge.id,
+    fromStepId: edge.fromStepId,
+    toStepId: edge.toStepId,
+    kind: edge.currentRevision?.kind ?? StepEdgeKind.sequential,
+    archived: edge.archivedAt !== null,
+    currentRevisionId: edge.currentRevisionId,
+  }))
+
+  const incomplete = incompletenessViolations({
+    steps: structureSteps.map((step) => ({
+      id: step.id,
+      label: step.label,
+      category: step.category,
+      archived: step.archived,
+      earliestStartOffsetDays: step.earliestStartOffsetDays,
+      typicalDurationDays: step.typicalDurationDays,
+    })),
+    edges: structureEdges,
+  }).map((violation) => ({ code: violation.code, subjects: violation.subjects }))
+
+  return {
+    routeId,
+    routeCurrentRevisionId: route.currentRevisionId,
+    steps: structureSteps,
+    edges: structureEdges,
+    incomplete,
+  }
 }

@@ -208,7 +208,14 @@ describe('the contribution actions use it, and keep no silent fallback', () => {
   it('the add-step action creates the step and its edge in one operation', () => {
     // Audit F7: two calls meant a failure between them left an unreachable step on the road.
     const code = withoutComments(read('src/app/[locale]/routes/[slug]/actions.ts'))
-    expect(code).toContain('addStepWithConnection')
-    expect(code).not.toMatch(/\baddEdge\(/)
+    // Scoped to this action's own body. `addEdge` is legitimately called elsewhere in the file
+    // since Phase 12E — `connectStepsAction` joins two steps that already exist — and a
+    // file-wide check would forbid the feature rather than the defect it replaced.
+    const body = code.slice(
+      code.indexOf('export async function addStepAction'),
+      code.indexOf('export async function addFieldAction'),
+    )
+    expect(body).toContain('addStepWithConnection')
+    expect(body).not.toMatch(/\baddEdge\(/)
   })
 })

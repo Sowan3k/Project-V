@@ -6,7 +6,7 @@ import {
   updateFieldAction,
 } from '@/app/[locale]/routes/[slug]/actions'
 import { Caution } from '@/components/trust'
-import { buttonClass } from '@/components/ui'
+import { buttonClass, ContributorLink } from '@/components/ui'
 import {
   CHALLENGE_REASONS,
   FIELD_APPLICABILITIES,
@@ -348,9 +348,11 @@ export function AddStepForm({
 /** Open challenges on a field, shown with the field rather than tucked away (FR-49). */
 export function OpenChallenges({
   field,
+  locale,
   dictionary: t,
 }: {
   field: FieldView
+  locale: string
   dictionary: Dictionary
 }) {
   if (field.openChallenges.length === 0) return null
@@ -365,7 +367,12 @@ export function OpenChallenges({
             <span className="text-ink-500">
               {' '}
               · {challenge.createdAt.toISOString().slice(0, 10)}
-              {challenge.authorHandle === null ? '' : ` · ${challenge.authorHandle}`}
+              {challenge.authorHandle === null ? null : (
+                <>
+                  {' · '}
+                  <ContributorLink handle={challenge.authorHandle} locale={locale} />
+                </>
+              )}
             </span>
           </Caution>
         </li>

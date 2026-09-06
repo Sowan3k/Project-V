@@ -3,6 +3,7 @@ import type { Adapter, AdapterUser } from 'next-auth/adapters'
 import Google from 'next-auth/providers/google'
 import type { NextAuthConfig } from 'next-auth'
 
+import { UserRole } from '@/domain/enums'
 import { DEFAULT_LOCALE } from '@/i18n/config'
 import { prisma } from '@/server/db/client'
 
@@ -196,11 +197,31 @@ export const authConfig: NextAuthConfig = {
     async session({ session, user }) {
       const stored = await prisma.user.findUnique({
         where: { id: user.id },
-        select: { handle: true },
+        select: { handle: true, role: true },
       })
       return {
         ...session,
-        user: { ...session.user, id: user.id, handle: stored?.handle ?? '', email: '' },
+        user: {
+          ...session.user,
+          id: user.id,
+          handle: stored?.handle ?? '',
+          /**
+           * The safety role, on the session — Phase 12E, audit F12.
+           *
+           * The administrator queues existed with nothing linking to them, so the only way in
+           * was to know the URL. Putting a link in the header needs the role at render time,
+           * and the header renders on every page — a role lookup there would be a database
+           * query per page view for a link almost nobody sees.
+           *
+           * This callback already reads the user row for the handle, so the role rides along
+           * in the same query and costs nothing. It is a *safety* role and gates nothing
+           * editorial (§22, §23.3): ordinary contribution is deliberately outside its reach,
+           * and every administrator surface re-checks it server-side anyway. A hidden link is
+           * not a permission (CLAUDE.md §9), so this only decides what is *shown*.
+           */
+          role: stored?.role ?? UserRole.member,
+          email: '',
+        },
       }
     },
   },

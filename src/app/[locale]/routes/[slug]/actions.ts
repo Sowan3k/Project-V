@@ -14,9 +14,11 @@ import {
   StepEdgeKind,
 } from '@/domain/enums'
 import {
+  ARCHIVE_INTENT,
   boundedOptionalText,
   LIMITS,
   optionalId,
+  optionalWholeNumber,
   requiredEnum,
   requiredId,
   requiredText,
@@ -26,11 +28,21 @@ import { text } from '@/lib/form-fields'
 import { currentViewer } from '@/server/auth'
 import { flagDuplicate } from '@/server/lifecycle/service'
 import {
+  addEdge,
   addField,
   addStepWithConnection,
+  archiveEdge,
+  archiveField,
+  archiveStep,
   challengeField,
   confirmField,
+  restoreEdge,
+  restoreField,
+  restoreStep,
+  reviseEdge,
   reviseField,
+  reviseRoute,
+  reviseStep,
 } from '@/server/revisions/service'
 
 /**
@@ -75,6 +87,14 @@ async function requireContributor(locale: string, next: string): Promise<{ id: s
  * because publishing a source class or a category the contributor did not choose is a
  * quieter failure than an error but a worse one: their name is on it (FR-33, invariant 11).
  */
+
+/**
+ * Ten years of days.
+ *
+ * A ceiling rather than a judgement: step timing is a planning aid (invariant 16, BR-18,
+ * D-30), and a route stage that takes longer than a decade is a typo rather than a route.
+ */
+const MAX_TIMING_DAYS = 3650
 
 /** Applicability is a set, so it arrives as repeated checkbox values (FR-81). */
 function applicabilities(form: FormData): FieldApplicability[] {
@@ -239,6 +259,215 @@ export async function challengeFieldAction(formData: FormData): Promise<void> {
     reason: requiredEnum(formData, 'reason', CHALLENGE_REASONS, 'Challenge reason'),
     note: boundedOptionalText(formData, 'note', { max: LIMITS.note, label: 'The note' }),
   })
+
+  revalidatePath(`/${locale}/routes/${slug}`)
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   MAINTAINING THE SHAPE OF THE ROAD — Phase 12E, audit F6. FR-14, FR-16, FR-21, FR-57, FR-69.
+   ══════════════════════════════════════════════════════════════════════════════════════════
+
+   **What this closes.** The revision engine has been able to revise a route's title, relabel
+   and retime a step, change what kind of connection joins two steps, and archive and restore
+   any of it since Phase 3. None of it was reachable from any page. A contributor could add a
+   step and nothing else — so a route whose stages were named wrongly, ordered wrongly, or
+   which needed an optional detour, could not be corrected by the community that maintains it.
+   Tests proved the engine could represent a real non-linear process; the product could not
+   maintain one.
+
+   **Everything here goes through the same append-only engine.** Each action below calls a
+   function in `src/server/revisions/service.ts`, which writes a revision carrying the author,
+   the timestamp and the reason, in one transaction (FR-20, BR-03, invariant 2). Nothing is
+   overwritten and nothing is deleted: archiving takes a step or a connection out of the
+   current road and leaves it in the history, and restoring brings it back (FR-21, FR-45,
+   BR-15, invariant 4).
+
+   **No ownership, and no approval.** Any signed-in contributor may reshape any route, exactly
+   as they may correct any field (FR-44, FR-69, BR-01, D-18, invariant 3, §43.1). There is no
+   pending state and no reviewer.
+
+   **`basedOnRevisionId` is carried through every edit.** Two contributors reshaping the same
+   step produce two revisions sharing a parent — a fork, preserved and detectable — rather than
+   one silently overwriting the other (FR-70, BR-21, invariant 15).
+
+   **The graph gate is in the service, not here.** A connection that would close a cycle,
+   duplicate an existing one or join two steps of different routes is refused inside the
+   transaction by `assertNoGraphCorruption`, which validates the resulting graph rather than
+   the arguments. A form cannot get past it, and neither can a hand-made POST. */
+
+/** FR-16 — correct what the route as a whole is called, or what it says it covers. */
+export async function reviseRouteAction(formData: FormData): Promise<void> {
+  const locale = text(formData, 'locale')
+  const slug = text(formData, 'slug')
+  const viewer = await requireContributor(locale, `/${locale}/routes/${slug}`)
+
+  await reviseRoute({
+    actor: { id: viewer.id },
+    routeId: requiredId(formData, 'routeId', 'The route'),
+    basedOnRevisionId: optionalId(formData, 'basedOnRevisionId', 'The version being corrected'),
+    title: requiredText(formData, 'title', { max: LIMITS.title, label: 'A route title' }),
+    summary: boundedOptionalText(formData, 'summary', {
+      max: LIMITS.summary,
+      label: 'The summary',
+    }),
+    reason: boundedOptionalText(formData, 'reason', { max: LIMITS.note, label: 'The reason' }),
+  })
+
+  revalidatePath(`/${locale}/routes/${slug}`)
+}
+
+/**
+ * FR-16 — correct a stage: what it is called, which kind of stage it is, and its timing.
+ *
+ * **The timing fields are how this product says two stages happen at the same time.** There is
+ * no orderIndex and no "parallel" flag (invariant 22, §20.2, §20.3): two stages whose windows
+ * overlap ARE concurrent, the timeline lays them out in separate lanes, and the road draws
+ * them side by side. So "when can this start" and "how long does it usually take" are not
+ * decoration — they are the whole mechanism, which is why they are asked here in plain words
+ * rather than left to a graph editor nobody would open.
+ */
+export async function reviseStepAction(formData: FormData): Promise<void> {
+  const locale = text(formData, 'locale')
+  const slug = text(formData, 'slug')
+  const stepId = requiredId(formData, 'stepId', 'The step')
+  const viewer = await requireContributor(locale, `/${locale}/routes/${slug}?step=${stepId}`)
+
+  await reviseStep({
+    actor: { id: viewer.id },
+    stepId,
+    basedOnRevisionId: optionalId(formData, 'basedOnRevisionId', 'The version being corrected'),
+    label: requiredText(formData, 'label', { max: LIMITS.stepLabel, label: 'A step name' }),
+    category: requiredEnum(formData, 'category', STEP_CATEGORIES, 'Step category'),
+    earliestStartOffsetDays: optionalWholeNumber(formData, 'earliestStartOffsetDays', {
+      max: MAX_TIMING_DAYS,
+      label: 'The earliest start',
+    }),
+    typicalDurationDays: optionalWholeNumber(formData, 'typicalDurationDays', {
+      max: MAX_TIMING_DAYS,
+      label: 'The typical duration',
+    }),
+    reason: boundedOptionalText(formData, 'reason', { max: LIMITS.note, label: 'The reason' }),
+  })
+
+  revalidatePath(`/${locale}/routes/${slug}`)
+}
+
+/**
+ * FR-57, D-37 — join two stages that already exist.
+ *
+ * The connection carries a KIND, and the four kinds are the whole of how this product
+ * expresses a branching journey (§40.3):
+ *
+ *   sequential       you finish the first before starting the second
+ *   optional_branch  a detour some people take and some skip
+ *   alternative      another way of doing the same thing
+ *   rejoin           where paths that diverged come back together
+ *
+ * The interface names them in a contributor's words, not these. Nobody maintaining a route to
+ * Germany thinks in edge kinds.
+ */
+export async function connectStepsAction(formData: FormData): Promise<void> {
+  const locale = text(formData, 'locale')
+  const slug = text(formData, 'slug')
+  const viewer = await requireContributor(locale, `/${locale}/routes/${slug}`)
+
+  await addEdge({
+    actor: { id: viewer.id },
+    routeId: requiredId(formData, 'routeId', 'The route'),
+    fromStepId: requiredId(formData, 'fromStepId', 'The earlier step'),
+    toStepId: requiredId(formData, 'toStepId', 'The later step'),
+    kind: requiredEnum(formData, 'edgeKind', STEP_EDGE_KINDS, 'Connection kind'),
+    reason: boundedOptionalText(formData, 'reason', { max: LIMITS.note, label: 'The reason' }),
+  })
+
+  revalidatePath(`/${locale}/routes/${slug}`)
+}
+
+/**
+ * FR-16 — change what kind of connection two stages have.
+ *
+ * Only the kind is revisable. Repointing a connection is archiving one and adding another,
+ * which is what keeps a structural diff honest: an edge that changed both ends would be
+ * indistinguishable from a different edge (prisma/schema/route.prisma).
+ */
+export async function reviseConnectionAction(formData: FormData): Promise<void> {
+  const locale = text(formData, 'locale')
+  const slug = text(formData, 'slug')
+  const viewer = await requireContributor(locale, `/${locale}/routes/${slug}`)
+
+  await reviseEdge({
+    actor: { id: viewer.id },
+    edgeId: requiredId(formData, 'edgeId', 'The connection'),
+    basedOnRevisionId: optionalId(formData, 'basedOnRevisionId', 'The version being corrected'),
+    kind: requiredEnum(formData, 'edgeKind', STEP_EDGE_KINDS, 'Connection kind'),
+    reason: boundedOptionalText(formData, 'reason', { max: LIMITS.note, label: 'The reason' }),
+  })
+
+  revalidatePath(`/${locale}/routes/${slug}`)
+}
+
+/**
+ * FR-21, FR-45, BR-15, invariant 4 — take something off the current road, or put it back.
+ *
+ * **These are the only removal this product has, and they are reversible.** Archiving a stage
+ * leaves every field in it, every revision of it, and every follower's progress against it
+ * exactly where they were — the database physically refuses to delete a step somebody is
+ * tracking (`onDelete: Restrict`). It stops appearing on the road and stays in the history.
+ *
+ * Restoring is the counterpart, and it existed for a field and not for a step or a connection
+ * until now, which made archival reversible for the smallest unit and one-way for the shape.
+ * That is the wrong asymmetry: archiving a stage is exactly the edit somebody makes by
+ * mistake, because it takes a stage off the road for every reader at once.
+ */
+export async function setStepArchivedAction(formData: FormData): Promise<void> {
+  const locale = text(formData, 'locale')
+  const slug = text(formData, 'slug')
+  const viewer = await requireContributor(locale, `/${locale}/routes/${slug}`)
+
+  const change = {
+    actor: { id: viewer.id },
+    stepId: requiredId(formData, 'stepId', 'The step'),
+    reason: boundedOptionalText(formData, 'reason', { max: LIMITS.note, label: 'The reason' }),
+  }
+  // `intent`, not `archived`: a bare 'archived' string in application code shadows the
+  // `RouteLifecycleState` value of the same name, and the enum single-source guard is right
+  // to object — a reader cannot tell which one is meant.
+  if (text(formData, 'intent') === ARCHIVE_INTENT) await archiveStep(change)
+  else await restoreStep(change)
+
+  revalidatePath(`/${locale}/routes/${slug}`)
+}
+
+export async function setConnectionArchivedAction(formData: FormData): Promise<void> {
+  const locale = text(formData, 'locale')
+  const slug = text(formData, 'slug')
+  const viewer = await requireContributor(locale, `/${locale}/routes/${slug}`)
+
+  const change = {
+    actor: { id: viewer.id },
+    edgeId: requiredId(formData, 'edgeId', 'The connection'),
+    reason: boundedOptionalText(formData, 'reason', { max: LIMITS.note, label: 'The reason' }),
+  }
+  if (text(formData, 'intent') === ARCHIVE_INTENT) await archiveEdge(change)
+  else await restoreEdge(change)
+
+  revalidatePath(`/${locale}/routes/${slug}`)
+}
+
+/** The same, for one piece of information inside a stage (FR-21). */
+export async function setFieldArchivedAction(formData: FormData): Promise<void> {
+  const locale = text(formData, 'locale')
+  const slug = text(formData, 'slug')
+  const stepId = requiredId(formData, 'stepId', 'The step')
+  const viewer = await requireContributor(locale, `/${locale}/routes/${slug}?step=${stepId}`)
+
+  const change = {
+    actor: { id: viewer.id },
+    fieldId: requiredId(formData, 'fieldId', 'The field'),
+    reason: boundedOptionalText(formData, 'reason', { max: LIMITS.note, label: 'The reason' }),
+  }
+  if (text(formData, 'intent') === ARCHIVE_INTENT) await archiveField(change)
+  else await restoreField(change)
 
   revalidatePath(`/${locale}/routes/${slug}`)
 }

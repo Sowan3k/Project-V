@@ -319,7 +319,14 @@ export function ShadowCompare({
             subheading={t.changes.asOf(t.changes.today)}
             dictionary={t}
             // And steps that arrive are outlined and labelled on the current one.
-            annotations={{ addedStepIds: marked(comparison, 'step_added') }}
+            annotations={{
+              addedStepIds: marked(comparison, 'step_added'),
+              changedStepIds: [
+                ...marked(comparison, 'step_reordered'),
+                ...marked(comparison, 'step_relabelled'),
+                ...marked(comparison, 'step_retimed'),
+              ],
+            }}
           />
         </GridRegion>
       </PageGrid>

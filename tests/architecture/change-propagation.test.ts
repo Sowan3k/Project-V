@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+
 import { describe, expect, it } from 'vitest'
 
 import { COMMUNITY_SIGNAL_MODELS, PRIVATE_USER_STATE_MODELS } from '../../src/domain/models'
@@ -583,5 +586,64 @@ describe('§41.2 — severity is contributor-assigned metadata, and says so to t
     const start = dictionary.indexOf('changes: {')
     const block = dictionary.slice(start, dictionary.indexOf('\n  routeLifecycle', start))
     expect(block).not.toMatch(/calculated|computed|automatically|objectively|score|rating/i)
+  })
+})
+
+/**
+ * An announcement can name every revision the change touched — Phase 12E, audit F8.
+ *
+ * `announceChange` has always taken arrays and `RouteChangeRevision` has always been a
+ * many-to-many link; the *form* supplied one `<select>`, so an announcement could name
+ * exactly one revision. A structural change does not come in ones — a document added to the
+ * visa stage and the APS moved earlier is a field revision and a step revision at least — so
+ * `shadowForChange` reconstructed a before/after true of a fragment and silent about the
+ * rest. FR-77 asks the shadow to show the scale of a change, and a fragment does not.
+ */
+describe('an announcement can describe a change that touched several revisions', () => {
+  const actions = readFileSync(
+    fileURLToPath(new URL('../../src/app/[locale]/routes/[slug]/changes/actions.ts', import.meta.url)),
+    'utf8',
+  )
+  const page = readFileSync(
+    fileURLToPath(new URL('../../src/app/[locale]/routes/[slug]/changes/page.tsx', import.meta.url)),
+    'utf8',
+  )
+
+  it('reads every submitted revision rather than a single value', () => {
+    expect(actions).toContain('describedRevisions')
+    expect(actions).toContain("form.getAll('describesRevision')")
+    // The single-value reader this replaced.
+    expect(actions).not.toMatch(/function describedRevision\(raw: string\)/)
+  })
+
+  it('groups them into the four arrays the service takes', () => {
+    for (const key of [
+      'stepRevisionIds',
+      'stepEdgeRevisionIds',
+      'fieldRevisionIds',
+      'routeRevisionIds',
+    ]) {
+      expect(actions).toContain(key)
+    }
+  })
+
+  it('offers checkboxes rather than a multi-select', () => {
+    // A `<select multiple>` needs ctrl-click, which is undiscoverable and unusable on a
+    // phone — and this surface has to work with JavaScript disabled.
+    expect(page).toMatch(/type="checkbox"[\s\S]{0,120}name="describesRevision"/)
+    expect(page).not.toMatch(/<select[^>]*name="describesRevision"/)
+  })
+
+  it('does not count one revision twice', () => {
+    // A duplicate would write two RouteChangeRevision rows for one edit and double it in the
+    // shadow.
+    expect(actions).toContain('if (!list.includes(id)) list.push(id)')
+  })
+
+  it('still derives no severity from how many revisions were named', () => {
+    // The whole point of Phase 10's severity rule: it is contributor-assigned, and "this
+    // change touched six revisions" must never promote it (CLAUDE.md §5, FR-71).
+    const body = actions.slice(actions.indexOf('describedRevisions'))
+    expect(body).not.toMatch(/severity[\s\S]{0,200}length/)
   })
 })

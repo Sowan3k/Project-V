@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { ContentColumn } from '@/components/layout'
 import { LifecycleHistory, MergedFromList } from '@/components/lifecycle'
 import { RouteContext } from '@/components/route-context'
+import { ContributorLink } from '@/components/ui'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { lifecycleHistory, mergedIntoThis } from '@/server/lifecycle/read'
@@ -93,7 +94,9 @@ export default async function RouteHistoryPage({
                   <p className="mt-1 text-xs text-ink-700">“{entry.reason}”</p>
                 )}
                 {entry.authorHandle === null ? null : (
-                  <p className="mt-1 text-xs text-ink-500">{entry.authorHandle}</p>
+                  <p className="mt-1 text-xs text-ink-500">
+                    <ContributorLink handle={entry.authorHandle} locale={locale} />
+                  </p>
                 )}
               </li>
             ))}
@@ -101,7 +104,7 @@ export default async function RouteHistoryPage({
         )}
 
         <MergedFromList routes={mergedFrom} locale={locale} dictionary={t} />
-        <LifecycleHistory events={standing} dictionary={t} />
+        <LifecycleHistory events={standing} locale={locale} dictionary={t} />
       </ContentColumn>
     </RouteContext>
   )

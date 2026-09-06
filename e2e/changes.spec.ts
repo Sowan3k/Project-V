@@ -360,7 +360,7 @@ test.describe('change propagation', () => {
     // Invariant 19 — the road itself is untouched. Same three steps, same labels, read from
     // the rendered road's accessible titles rather than by visible-text matching.
     await page.goto(`/en/routes/${route.slug}`)
-    const roadTitles = await page.getByRole('img').locator('title').allTextContents()
+    const roadTitles = await page.locator('svg[data-route-visual="road"]:visible').locator('title').allTextContents()
     for (const label of ['Documents', 'Language test', 'Visa application']) {
       expect(roadTitles.some((title) => title.includes(label)), label).toBe(true)
     }

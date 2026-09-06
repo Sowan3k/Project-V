@@ -5,9 +5,16 @@ import type { GraphEdge, GraphStep, RouteGraph } from './types'
 /**
  * Graph validators — Phase 2.
  *
- * Postgres cannot express "this edge set forms a DAG", so these rules live here and are the
- * gate every write must pass. Phase 3 makes that gate the only door: no route handler, seed
- * script or UI writes edges without going through a service that validates first.
+ * Postgres cannot express "this edge set forms a DAG", so these rules live here.
+ *
+ * **Phase 12E note.** This file used to claim that Phase 3 made it "the gate every write must
+ * pass" and "the only door". That was aspirational: nothing outside the tests ever called it,
+ * and a structural write could produce a cycle unopposed. It did not bite, because the only
+ * way to create an edge was "connect this new step after that existing one" — which cannot
+ * form a cycle. Phase 12E lets a contributor connect two steps that already exist, and that
+ * makes the gate load-bearing, so `assertNoGraphCorruption` is now called inside the revision
+ * service's transaction on every structural write. See the note further down on why it is
+ * corruption that is refused and incompleteness that is merely shown.
  *
  * They operate on the ACTIVE graph. Archived steps and edges are excluded, because archived
  * is not deleted (invariant 4) and history is allowed to contain shapes that current views
@@ -188,8 +195,89 @@ export function validateGraph(graph: RouteGraph): readonly GraphViolation[] {
   return violations
 }
 
-/** Throws unless the graph is valid. The form Phase 3's write service will call. */
+/** Throws unless the graph is valid in every respect. Used by tests and by seed tooling. */
 export function assertValidGraph(graph: RouteGraph): void {
   const violations = validateGraph(graph)
+  if (violations.length > 0) throw new GraphValidationError(violations)
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   Corruption versus incompleteness — Phase 12E
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * **Not every violation means the same thing, and treating them alike would make the route
+ * graph un-editable.**
+ *
+ * This distinction did not matter while the only way to create an edge was "connect this new
+ * step after that existing one". Phase 12E lets a contributor connect two steps that already
+ * exist, mark a branch optional or alternative, archive a connection and restore it — and at
+ * that point the difference between "this graph is malformed" and "this road is not finished
+ * yet" becomes the difference between a validator that protects the data and one that stops
+ * people contributing.
+ *
+ * The test that separates them: **can a later ADDITION fix it, without touching what is
+ * already there?**
+ *
+ *   No  → corruption. A cycle, a self-loop, a duplicated connection or an edge pointing at a
+ *         step that does not exist are all wrong in a way nothing added later repairs. The
+ *         offending edge itself has to go. These must never commit, because the renderer, the
+ *         ordering pass and the shadow diff all assume a DAG — `rankSteps` and `buildTimeline`
+ *         would not terminate sensibly on a cycle — and because an append-only ledger means a
+ *         bad edge is archived rather than deleted, leaving the wrong shape in the history.
+ *
+ *   Yes → incompleteness. A step connected to nothing, a step unreachable from the start, a
+ *         route with no starting step, and a `rejoin` edge into a step nothing else has
+ *         diverged into — every one of these is repaired by adding the missing connection,
+ *         and every one is the ordinary state of a road halfway through being built.
+ *         Somebody adding three stages before wiring them together passes through all four.
+ *
+ * So corruption is refused at the write boundary and incompleteness is *shown to the
+ * contributor*, which is the §7.3 treatment: a caution where a reader would otherwise draw a
+ * wrong conclusion, never a silent block and never a silent pass. Blocking incompleteness
+ * would force a contributor to build a road in one exact order, which is not how anybody
+ * knows a route.
+ */
+export const CORRUPTING_VIOLATIONS = [
+  'unknown_step',
+  'self_loop',
+  'duplicate_edge',
+  'cycle',
+] as const satisfies readonly GraphViolationCode[]
+
+export const INCOMPLETENESS_VIOLATIONS = [
+  'orphan_step',
+  'unreachable_step',
+  'no_start',
+  'dangling_rejoin',
+] as const satisfies readonly GraphViolationCode[]
+
+export type CorruptingViolationCode = (typeof CORRUPTING_VIOLATIONS)[number]
+export type IncompletenessViolationCode = (typeof INCOMPLETENESS_VIOLATIONS)[number]
+
+export function isCorrupting(code: GraphViolationCode): code is CorruptingViolationCode {
+  return (CORRUPTING_VIOLATIONS as readonly string[]).includes(code)
+}
+
+/** Only the violations that no later addition can repair. */
+export function corruptingViolations(graph: RouteGraph): readonly GraphViolation[] {
+  return validateGraph(graph).filter((violation) => isCorrupting(violation.code))
+}
+
+/** Only the violations a contributor fixes by connecting something. Shown, never enforced. */
+export function incompletenessViolations(graph: RouteGraph): readonly GraphViolation[] {
+  return validateGraph(graph).filter((violation) => !isCorrupting(violation.code))
+}
+
+/**
+ * The gate every structural write passes — Phase 12E.
+ *
+ * Called inside the revision service's own transaction, against the graph *as it would be
+ * after the write*, so a refusal rolls the write back. Validating the outcome rather than the
+ * intent is what makes it complete: there is no combination of arguments that produces a
+ * malformed graph without this seeing it.
+ */
+export function assertNoGraphCorruption(graph: RouteGraph): void {
+  const violations = corruptingViolations(graph)
   if (violations.length > 0) throw new GraphValidationError(violations)
 }

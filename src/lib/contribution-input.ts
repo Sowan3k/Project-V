@@ -40,6 +40,21 @@ import { text } from './form-fields'
  * form rather than to this file.
  */
 
+/**
+ * Which way an archive control is pointing — Phase 12E.
+ *
+ * Lives here rather than beside the actions because a `'use server'` module may export only
+ * async functions, and here rather than inline because a form and the action reading it must
+ * agree on the word.
+ *
+ * The field is called `intent` and not `archived`: a bare `'archived'` string in application
+ * code shadows the `RouteLifecycleState` value of the same name, which is a real ambiguity —
+ * a reader cannot tell whether a route's standing or a step's visibility is meant — and the
+ * enum single-source guard was right to object to it.
+ */
+export const ARCHIVE_INTENT = 'archive'
+export const RESTORE_INTENT = 'restore'
+
 export class ContributionInputError extends Error {
   constructor(
     readonly field: string,

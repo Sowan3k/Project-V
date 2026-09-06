@@ -275,6 +275,17 @@ body {
   border-radius: 2px;
 }
 
+/* Native SVG links preserve no-JavaScript step navigation. The ring follows the station,
+   rather than relying on a browser's inconsistent SVG anchor outline. */
+.route-station-link:hover .route-station-focus,
+.route-station-link:focus-visible .route-station-focus {
+  opacity: 1;
+}
+
+.route-station-link {
+  cursor: pointer;
+}
+
 /* Meaning must never depend on colour, hover or fine visual detail (CLAUDE.md §7, §10.4). */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -75,12 +75,12 @@ export const CATEGORY_STYLE: Record<StepCategory, CategoryStyle> = {
     line: 'var(--color-cat-funding-line)',
     icon: 'M2 6h20v12H2zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6M5 9h.01M19 15h.01',
   },
-  // A shield: permission to enter, checked by someone else.
+  // A passport and globe: immigration paperwork, without a verification/checkmark motif.
   immigration_visa: {
     fill: 'var(--color-cat-immigration-fill)',
     ink: 'var(--color-cat-immigration-ink)',
     line: 'var(--color-cat-immigration-line)',
-    icon: 'M12 3 5 6v6c0 4.2 3 7.4 7 9 4-1.6 7-4.8 7-9V6zM9 12l2 2 4-4',
+    icon: 'M5 3h14v18H5zM12 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8M8 10h8M12 6c-2 2-2 6 0 8 2-2 2-6 0-8M9 17h6',
   },
   // The paper plane, which is also the brand mark. Departure closes the road.
   travel_departure: {
@@ -146,16 +146,26 @@ function truncate(value: string, max: number): string {
   return value.length <= max ? value : `${value.slice(0, max - 1)}…`
 }
 
-/** Two bounded lines, including long unbroken names; the full label stays in SVG title. */
-function labelLines(value: string, max: number): readonly string[] {
-  const clean = value.trim().replace(/\s+/g, ' ')
-  if (clean.length <= max) return [clean]
-  const wordBreak = clean.lastIndexOf(' ', max)
-  if (wordBreak > 0) return [clean.slice(0, wordBreak), truncate(clean.slice(wordBreak).trim(), max)]
-  const nextSpace = clean.indexOf(' ')
-  return nextSpace === -1
-    ? [truncate(clean, max)]
-    : [truncate(clean.slice(0, nextSpace), max), truncate(clean.slice(nextSpace + 1), max)]
+/** Bounded word wrapping; the full label is always retained in the accessible name. */
+function labelLines(value: string, max: number, count = 3): readonly string[] {
+  let rest = value.trim().replace(/\s+/g, ' ')
+  const lines: string[] = []
+  while (rest && lines.length < count) {
+    if (rest.length <= max || lines.length === count - 1) {
+      lines.push(truncate(rest, max))
+      break
+    }
+    const at = rest.lastIndexOf(' ', max)
+    if (at > 0) {
+      lines.push(rest.slice(0, at))
+      rest = rest.slice(at + 1)
+    } else {
+      const next = rest.indexOf(' ')
+      lines.push(truncate(next < 0 ? rest : rest.slice(0, next), max))
+      rest = next < 0 ? '' : rest.slice(next + 1)
+    }
+  }
+  return lines
 }
 
 // ── Connectors ───────────────────────────────────────────────────────────────
@@ -246,6 +256,7 @@ export function RibbonSegment({
   added,
   addedLabel,
   archivedLabel,
+  relationship,
 }: {
   node: PlacedNode
   categoryLabel: string
@@ -253,6 +264,7 @@ export function RibbonSegment({
   added: boolean
   addedLabel: string
   archivedLabel: string
+  relationship?: string
 }) {
   const style = CATEGORY_STYLE[node.step.category]
   const w = node.width
@@ -267,50 +279,50 @@ export function RibbonSegment({
    * to width, a two-step route gets a point deeper than the segment is tall and the band
    * turns into a row of arrowheads.
    */
-  const notch = Math.min(h * 0.5, w * 0.13)
-  const labelled = h >= 50 && w >= 70
-  const centreX = node.x + notch * 0.3
-  const captions = labelLines(node.step.label, Math.max(5, Math.floor((w - notch - 12) / 7)))
+  const notch = Math.min(h * 0.16, w * 0.07)
+  const textX = x + notch + 10
+  const captions = labelLines(node.step.label, Math.max(8, Math.floor((w - notch * 2 - 20) / 6.4)))
 
   const state = archived ? archivedLabel : added ? addedLabel : null
   const description = `${node.ordinal}. ${node.step.label} — ${categoryLabel}${state ? ` (${state})` : ''}`
 
   return (
-    <g opacity={archived ? 0.4 : 1}>
+    <g data-step-id={node.step.id} opacity={archived ? 0.6 : 1}>
       <title>{description}</title>
+      {relationship ? <text x={node.x} y={y - 9} textAnchor="middle" fontSize={10} fill="var(--color-ink-700)">{relationship}</text> : null}
       <path
         d={`M ${x} ${y} L ${x + w - notch} ${y} L ${x + w} ${y + h / 2} L ${x + w - notch} ${y + h} L ${x} ${y + h} L ${x + notch} ${y + h / 2} Z`}
         fill={style.fill}
         stroke={added || archived ? style.ink : style.line}
-        strokeWidth={added ? 2.5 : 1.25}
+        strokeWidth={added ? 2.5 : 1}
         {...(archived ? { strokeDasharray: '4 3' } : {})}
       />
       <path
-        d={`M ${x + notch + 3} ${y + 3} H ${x + w - notch - 3}`}
+        d={`M ${x + notch + 3} ${y + 2} H ${x + w - notch - 3}`}
         stroke={style.line}
         strokeWidth={3}
         strokeLinecap="round"
       />
       <CategoryIcon
         category={node.step.category}
-        cx={centreX}
-        cy={node.y - (labelled ? 19 : 0)}
-        size={labelled ? 24 : Math.min(23, h * 0.58)}
+        cx={textX + 8}
+        cy={y + 18}
+        size={18}
       />
-      {labelled ? (
+      <text x={x + w - notch - 10} y={y + 22} textAnchor="end" fontSize={10} fill={style.ink}>
+        {String(node.ordinal).padStart(2, '0')}
+      </text>
         <text
-          x={centreX}
-          y={node.y + 7}
-          fontSize={13}
+          x={textX}
+          y={y + 43}
+          fontSize={12.5}
           fontWeight={600}
-          textAnchor="middle"
           fill={style.ink}
         >
           {captions.map((line, index) => (
-            <tspan key={index} x={centreX} dy={index === 0 ? 0 : 15}>{line}</tspan>
+            <tspan key={index} x={textX} dy={index === 0 ? 0 : 15}>{line}</tspan>
           ))}
         </text>
-      ) : null}
     </g>
   )
 }
@@ -360,6 +372,15 @@ export interface StepMarkerProps {
   /** Passed in, never defaulted: a default would be English living in the renderer. */
   readonly addedLabel: string
   readonly archivedLabel: string
+  readonly changedLabel: string
+  readonly changed?: boolean
+  readonly selected?: boolean
+  readonly relationship?: string
+  readonly progressLabel?: string
+  readonly completed?: boolean
+  readonly timingUnknown: string
+  readonly actionLabel?: string
+  readonly startOffset?: string
 }
 
 /**
@@ -370,39 +391,46 @@ export interface StepMarkerProps {
  */
 export function StepMarker({
   node,
-  density,
   categoryLabel,
   duration,
   added = false,
   addedLabel,
   archivedLabel,
+  changedLabel,
+  changed = false,
+  selected = false,
+  relationship,
+  progressLabel,
+  completed = false,
+  timingUnknown,
+  actionLabel,
+  startOffset,
 }: StepMarkerProps) {
   const category = CATEGORY_STYLE[node.step.category]
   const archived = node.step.archived
   const x = node.x - node.width / 2
   const y = node.y - node.height / 2
 
-  const state = archived ? archivedLabel : added ? addedLabel : null
-  const description = `${node.ordinal}. ${node.step.label} — ${categoryLabel}${duration ? ` — ${duration}` : ''}${state ? ` (${state})` : ''}`
+  const state = archived ? archivedLabel : added ? addedLabel : changed ? changedLabel : null
+  const description = `${node.ordinal}. ${node.step.label} — ${categoryLabel}${duration ? ` — ${duration}` : ''}${startOffset ? ` — ${startOffset}` : ''}${state ? ` (${state})` : ''}`
 
   // A wayfinding block: category and stage number above a readable name, with timing kept
   // subordinate. The geometry is shared by every route and every category (FR-05, FR-57).
-  const inset = 12
-  const fontSize = node.width < 150 ? 13.5 : 15.5
-  const lines = labelLines(node.step.label, Math.floor((node.width - inset * 2) / (fontSize * 0.64)))
-  const reverse = Math.floor(node.rank / density.columnsPerRow) % 2 === 1
-  const arrowX = x + node.width - 20
-  const arrowY = y + node.height - 15
+  const inset = node.width < 150 ? 12 : 18
+  const fontSize = node.width < 150 ? 13 : 17
+  const lineHeight = node.width < 150 ? 18 : 22
+  const lines = labelLines(node.step.label, Math.floor((node.width - inset * 2) / (fontSize * 0.56)))
 
   return (
-    <g opacity={archived ? 0.42 : 1}>
+    <g data-step-id={node.step.id} data-selected={selected || undefined} opacity={archived ? 0.6 : 1}>
       <title>{description}</title>
+      <rect className="route-station-focus" x={x - 5} y={y - 5} width={node.width + 10} height={node.height + 10} rx={15} fill="none" stroke="var(--color-brand-700)" strokeWidth={2} opacity={0} />
       <rect
         x={x}
         y={y + 3}
         width={node.width}
         height={node.height}
-        rx={12}
+        rx={10}
         fill="var(--color-ink-900, #0f172a)"
         opacity={0.045}
       />
@@ -411,70 +439,66 @@ export function StepMarker({
         y={y}
         width={node.width}
         height={node.height}
-        rx={12}
+        rx={10}
         fill="var(--color-surface, #fff)"
-        stroke={added || archived ? category.ink : category.line}
-        strokeOpacity={added || archived ? 1 : 0.5}
-        strokeWidth={added ? 2.5 : 1.25}
+        stroke={selected ? 'var(--color-brand-700)' : category.line}
+        strokeOpacity={selected || added || archived ? 1 : 0.65}
+        strokeWidth={selected ? 2.5 : added ? 2 : 1}
         {...(archived ? { strokeDasharray: '4 3' } : {})}
       />
-      {/* Rounded upper corners without shared SVG ids: multiple Roads coexist safely. */}
+      {/* Category edge and station header share the Ribbon's visual vocabulary. */}
       <path
-        d={`M ${x + 12} ${y + 1} H ${x + node.width - 12} Q ${x + node.width - 1} ${y + 1} ${x + node.width - 1} ${y + 12} V ${y + 42} H ${x + 1} V ${y + 12} Q ${x + 1} ${y + 1} ${x + 12} ${y + 1} Z`}
+        d={`M ${x + 10} ${y + 1} H ${x + node.width - 10} Q ${x + node.width - 1} ${y + 1} ${x + node.width - 1} ${y + 10} V ${y + 39} H ${x + 1} V ${y + 10} Q ${x + 1} ${y + 1} ${x + 10} ${y + 1} Z`}
         fill={category.fill}
       />
+      <path d={`M ${x + 10} ${y + 1} H ${x + node.width - 10}`} stroke={category.line} strokeWidth={3} />
       <CategoryIcon
         category={node.step.category}
-        cx={x + inset + 12}
-        cy={y + 22}
-        size={25}
+        cx={x + node.width - inset - 11}
+        cy={y + 21}
+        size={23}
       />
       <text
-        x={x + node.width - inset}
-        y={y + 29}
-        fontSize={22}
+        x={x + inset}
+        y={y + 27}
+        fontSize={16}
         fontWeight={600}
-        textAnchor="end"
         fill={category.ink}
         style={{ fontVariantNumeric: 'tabular-nums' }}
       >
         {String(node.ordinal).padStart(2, '0')}
       </text>
-      <path d={`M ${x + inset} ${y + 42} h 24`} stroke={category.line} strokeWidth={2.5} />
-      <text x={x + inset} y={y + 63} fontSize={fontSize} fontWeight={600} fill="var(--color-ink-900, #0f172a)">
+      <text x={x + inset} y={y + 62} fontSize={fontSize} fontWeight={600} fill="var(--color-ink-900, #0f172a)">
         {lines.map((line, index) => (
-          <tspan key={index} x={x + inset} dy={index === 0 ? 0 : 18}>{line}</tspan>
+          <tspan key={index} x={x + inset} dy={index === 0 ? 0 : lineHeight}>{line}</tspan>
         ))}
       </text>
-      {duration === null ? null : (
+      <path d={`M ${x + inset} ${y + node.height - 39} H ${x + node.width - inset}`} stroke="var(--color-hairline)" />
         <text
           x={x + inset}
-          y={y + node.height - 12}
+          y={y + node.height - 22}
           fontSize={11}
-          fill="var(--color-ink-500, #64748b)"
+          fill="var(--color-ink-700, #334155)"
         >
-          {truncate(duration, Math.floor((node.width - inset * 2) / 5.5))}
+          {duration ?? timingUnknown}
         </text>
+      {progressLabel ? (
+        <g fill="var(--color-brand-700)">
+          {completed ? <path d={`M ${x + inset} ${y + node.height - 9} l 3 3 6 -7`} fill="none" stroke="currentColor" strokeWidth={1.5} /> : null}
+          <text x={x + inset + (completed ? 14 : 0)} y={y + node.height - 7} fontSize={9.5} fontWeight={600}>{progressLabel}</text>
+        </g>
+      ) : (
+        <text x={x + inset} y={y + node.height - 7} fontSize={9.5} fill="var(--color-ink-700)">{startOffset ?? actionLabel}</text>
       )}
-      {duration === null ? (
-        <path
-          d={reverse ? `M ${arrowX + 6} ${arrowY} h -12 m 4 -4 -4 4 4 4` : `M ${arrowX - 6} ${arrowY} h 12 m -4 -4 4 4 -4 4`}
-          fill="none"
-          stroke={category.ink}
-          strokeWidth={1.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        />
-      ) : null}
+
+      {relationship ? <text x={node.x} y={y - 10} textAnchor="middle" fontSize={node.width < 150 ? 10 : 11} fill="var(--color-ink-700)">{relationship}</text> : null}
 
       {state === null ? null : (
         <text
-          x={x + node.width - 8}
-          y={y - 6}
-          fontSize={9.5}
-          textAnchor="end"
-          fill="var(--color-ink-500, #64748b)"
+          x={x + inset + 30}
+          y={y + 26}
+          fontSize={10}
+          fill={category.ink}
         >
           {state}
         </text>

@@ -364,12 +364,12 @@ describe('the hard shapes produce the structure they claim', () => {
   })
 
   /**
-   * **The ribbon comes out the same width whatever the route's shape** — Phase 12E.
+   * **Short ribbons fill their row; long ribbons retain readable stage widths.**
    *
    * `fitWidth` exists so a ribbon fills its row in a list of search results. If a one-step
-   * route drew narrower than a ten-step one, the list would look ragged and each ribbon would
-   * be claiming a different amount of the reader's attention for no reason connected to the
-   * route.
+   * route drew narrower than its row, the list would look ragged. Once the stage-label floor
+   * exceeds that target, the Ribbon must grow into its local scroller instead of squeezing
+   * labels into unreadable symbols. The original one-rank normalisation proof remains.
    *
    * This is a regression test for a real defect: `gaps` was clamped to a minimum of 1 while
    * the width formula still added `0 · columnWidth` for a single-rank route, so the two
@@ -377,7 +377,7 @@ describe('the hard shapes produce the structure they claim', () => {
    * Every fixture with two or more ranks was correct, which is exactly why it survived, and
    * whether the browser test caught it depended on which route happened to be newest.
    */
-  it('normalises the ribbon to one width whatever the rank count', () => {
+  it('fills the target width without violating the readable stage-label floor', () => {
     const make = (ranks: number): RouteGraph => {
       const steps = Array.from({ length: ranks }, (_, i) => ({
         id: `s${i}`,
@@ -399,8 +399,18 @@ describe('the hard shapes produce the structure they claim', () => {
       }
     }
 
-    for (const ranks of [1, 2, 3, 5, 12]) {
-      expect(Math.round(layout(make(ranks), RIBBON).width), `${ranks} ranks`).toBe(RIBBON.fitWidth)
+    for (const density of [RIBBON, RIBBON_NARROW]) {
+      for (const ranks of [1, 2, 3, 5, 12, 20]) {
+        const graph = make(ranks)
+        const frame = layout(graph, density)
+        const minimumShape = layout(graph, { ...density, fitWidth: undefined })
+        expect(Math.round(frame.width), `${ranks} ranks, ${density.fitWidth}px target`).toBe(
+          Math.round(Math.max(density.fitWidth ?? 0, minimumShape.width)),
+        )
+        // A readable station has room for the three-line labels asserted in route-visual
+        // tests. This floor must not silently shrink to make the width test pass.
+        for (const node of frame.nodes) expect(node.width).toBeGreaterThanOrEqual(132)
+      }
     }
 
     // Concurrent steps are one rank with two lanes, and must normalise the same way.
@@ -414,6 +424,31 @@ describe('the hard shapes produce the structure they claim', () => {
       ),
       'one rank, two lanes',
     ).toBe(RIBBON.fitWidth)
+  })
+
+  it.each([ROAD, ROAD_NARROW])('expands only the row containing a branch fan', (density) => {
+    const branchIds = Array.from({ length: 5 }, (_, i) => `branch-${i}`)
+    const tailIds = Array.from({ length: 9 }, (_, i) => `tail-${i}`)
+    const graph: RouteGraph = {
+      steps: ['start', ...branchIds, 'join', ...tailIds].map((id) => step(id)),
+      edges: [
+        ...branchIds.map((id) => edge(`entry-${id}`, 'start', id)),
+        ...branchIds.map((id) => edge(`exit-${id}`, id, 'join', { kind: StepEdgeKind.rejoin })),
+        edge('start-tail', 'join', 'tail-0'),
+        ...tailIds.slice(1).map((id, i) => edge(`tail-edge-${i}`, `tail-${i}`, id)),
+      ],
+    }
+    const frame = layout(graph, density)
+    const laterRowCenters = [1, 2, 3].map((row) =>
+      frame.nodes.find((node) => node.rank === row * density.columnsPerRow)?.y,
+    )
+    expect(laterRowCenters.every((value) => value !== undefined)).toBe(true)
+    expect(laterRowCenters[1]! - laterRowCenters[0]!).toBe(density.rowHeight)
+    expect(laterRowCenters[2]! - laterRowCenters[1]!).toBe(density.rowHeight)
+    const fan = frame.nodes.filter((node) => branchIds.includes(node.step.id))
+    expect(new Set(fan.map((node) => node.y)).size).toBe(5)
+    expect(Math.max(...fan.map((node) => node.y)) - Math.min(...fan.map((node) => node.y)))
+      .toBe(4 * density.laneGap)
   })
 
   it('fits a 15-step route inside 360px at the narrow density', () => {

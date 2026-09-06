@@ -8,6 +8,52 @@ Read alongside [CLAUDE.md](CLAUDE.md) §6 (the 25 invariants) and [Phases.md](Ph
 
 ---
 
+## Living-route refinement verification — 2026-09-06
+
+| Check | Result |
+|---|---|
+| Pre-change full unit/architecture suite and lint | 813 passed; lint passed |
+| Final full suite | 846 passed across 32 files, repeated successfully |
+| Final typecheck and lint | Passed |
+| Isolated production build | Passed; shared first-load JavaScript 102 kB; no new dependencies/client components |
+| Renderer gallery / screenshot runner | Seven illustrative fixtures, 360/768/1280/1440, no page-wide overflow |
+| Real application, isolated production preview | Search, 13-stage existing fixture Road and keyboard-selected fields at all four widths, JavaScript disabled, no page-wide overflow |
+| Diff whitespace check | Passed |
+| Database/mutating E2E suite | Not run; no data, migration or seeding changes |
+
+New tests: `tests/unit/route-visual.test.ts` (27) renders the actual components and proves
+visible Ribbon labels, accessible full names, real station hrefs/current selection, private
+progress/category separation, explicit branch semantics (including alternative descendants),
+stored timing versus unknown timing, change annotations and containment of a larger older
+graph. `route-map.test.ts` (4) exercises route endpoints, selected links, private annotations
+and stored route mechanism/intake. Two new layout assertions isolate branch height per row.
+The existing width assertion now preserves both the target width and readable-label floor;
+structural-equivalence/generative/non-overlap tests remain intact.
+
+Browser selectors in presentation/contribution/lifecycle/change/public-journey specs now
+target the actual visible Road: interactive SVGs are groups exposing native station links,
+while passive Ribbon/comparison drawings remain images. Added a Tab/Shift+Tab/Enter selection
+test. These suite changes were typechecked, but the mutating E2E suite was not run. The separate
+`scripts/renderer/check-app.mjs` performs read-only GET/navigation QA against localhost only,
+requires Road and Ribbon output, checks selected station/detail state and captures screenshots.
+
+**Environment findings, not silently counted as successful checks:** first build attempt
+could not fetch the existing Google Fonts under sandbox networking; the permitted network
+retry built successfully. Early shared-dev browser runs returned intermittent HTTP 500s with
+`Unexpected end of JSON input` and missing `.next/build-manifest.json` entries. Three dev
+servers were sharing the same build directory. Only our own server was stopped; the others
+were left untouched. Final checks used a temporary isolated source/build copy, the existing
+test database after its disposable marker was positively verified read-only, and a local
+preview-only Auth.js secret. No env files/secrets were copied into the temporary project.
+
+Unrelated concurrent application edits briefly failed lint/typecheck around a required locale
+prop in the changes page; later full lint/typecheck passed. The isolated build avoids claiming
+to test an externally changing source snapshot. Authenticated private mutations, quarantine
+operations and full community-loop E2E remain outside this presentation verification.
+Owner judgement against the visual references is still required; fixtures are not launch data.
+
+---
+
 ## Legend
 
 | Mark | Meaning |
@@ -1683,3 +1729,82 @@ rest are assigned to Phase 12E, 12F/12G, Phase 13, infrastructure or content.
 - **The working tree was being modified concurrently** by another session during this work
   (renderer redesign, committed as `8fb24f2`). No file was edited by both, but the full-suite
   numbers recorded in §15 during that window reflect this work in progress, not failures in it.
+
+---
+
+## §17 — Phase 12E: the three audit-driven surfaces (2026-09-06)
+
+C1 (contextual graph authoring, F6), C4 (multi-revision announcements, F8) and C5 (admin and
+contributor discoverability, F12). The visual-fidelity remainder of Phase 12E — My Journey
+(VR-06), safety (VR-11), updates (VR-10) and the empty/utility screens (F18) — is untouched.
+
+### What was found while building, that the audit did not report
+
+**`validateGraph` was never called by anything but the tests.** Its own header comment said
+"Phase 3 makes that gate the only door: no route handler, seed script or UI writes edges
+without going through a service that validates first." Nothing outside `tests/unit/graph.test.ts`
+imported it. That was harmless for ten phases because the only way to create an edge was
+"connect this new step after that existing one", and a brand-new step cannot close a cycle —
+and it stopped being harmless the moment C1 let a contributor connect two steps that already
+exist. `rankSteps` and `buildTimeline` both assume a DAG.
+
+The comment has been corrected and the gate is now real, but the shape of the fix matters more
+than the fix. Violations were split in two:
+
+| Class | Codes | Treatment | Why |
+|---|---|---|---|
+| **Corruption** | `unknown_step`, `self_loop`, `duplicate_edge`, `cycle` | Refused inside the write transaction | No later addition repairs them — the offending edge has to go, and in an append-only ledger it cannot be deleted, only archived, leaving the malformed shape in the history |
+| **Incompleteness** | `orphan_step`, `unreachable_step`, `no_start`, `dangling_rejoin` | Shown to the contributor as a caution | Every one is repaired by adding the next connection, and every one is the ordinary state of a road halfway through being built |
+
+The test that separates them is "can a later ADDITION fix it, without touching what is already
+there?" Enforcing the second class would have forced a contributor to build a road in one exact
+order, which is not how anybody knows a route — somebody adding three stages before wiring them
+together passes through all four incompleteness codes.
+
+The gate validates **the outcome, inside the transaction**, not the arguments. Checking intent
+means enumerating every way a write could go wrong and missing one.
+
+**`restoreStep` and `restoreEdge` did not exist.** `restoreField` has since Phase 3, so
+archival was reversible for the smallest unit and one-way for the shape — the wrong asymmetry,
+since archiving a stage is exactly the edit somebody makes by mistake.
+
+**A `'use server'` module may export only async functions.** The `ARCHIVE_INTENT` constant was
+placed beside the actions that read it; typecheck, lint and 897 unit tests all passed and the
+production build failed. Recorded because it is a failure mode the whole test suite is blind to.
+
+**The enum single-source guard caught a real ambiguity.** A form field named `archived` put the
+bare literal `'archived'` in application code, shadowing the `RouteLifecycleState` of the same
+name. Renamed to `intent`/`'archive'`/`'restore'` rather than exempted — a reader genuinely
+could not tell whether a route's standing or a step's visibility was meant.
+
+### Gate
+
+| Check | Result |
+|---|---|
+| `npm run lint` | Passed, zero problems |
+| `npm run typecheck` | Passed |
+| `npm run test` | **902 passed, 0 failed, 34 files** (846 before this work; 813 at the start of the audit remediation) |
+| `npm run build` | Passed. Shared first-load JS unchanged |
+| `npm run test:db` | **Not run** — needs a marked disposable Postgres, unavailable from this workstation |
+| `npm run test:e2e` | **Not run** — same reason |
+
+### New tests
+
+| File | Proves |
+|---|---|
+| `tests/architecture/graph-authoring.test.ts` (33) | The corruption/incompleteness partition is total and disjoint; a half-built road validates and a cycle does not; the gate is called by all seven structural writes and validates inside the transaction; no `orderIndex`, no deletion, no second graph engine, no builder page, no client component; every connection kind has a contributor-facing label and explainer; the words *edge*, *node*, *graph* and *vertex* appear nowhere a reader can see; the timing explainer says overlap is how two stages become parallel; no approval-gate language |
+| `tests/architecture/discoverability.test.ts` (18) | The moderation link exists, is inside the role condition, is called Moderation rather than Admin, and does not become the protection — both admin pages still refuse server-side and stay out of the index; the session reads the role in the query that already fetched the handle and defaults to `member`; one shared `ContributorLink` used at all five handle sites, with no handle left as bare text |
+| `tests/architecture/change-propagation.test.ts` (+5) | An announcement reads every checked revision, groups them into the four arrays, offers checkboxes rather than a multi-select, counts no revision twice, and still derives no severity from how many were named |
+| `tests/db/audit-remediation.db.test.ts` (+8) | **Requires Postgres.** A cycle-closing connection is refused and leaves neither edge nor edge revision; a duplicate is refused; re-adding a connection whose earlier one was archived is permitted; an edge across two routes is refused; a half-built road is permitted and reports incompleteness; restoring an archived connection that would resurrect a cycle is refused and stays archived; archiving and restoring a step touches neither its fields nor its revisions; every structural edit writes a revision carrying its author and reason |
+
+### Still unproved
+
+- **The graph gate has not been executed against Postgres.** All eight F6 database tests are
+  written and unrun for want of a marked disposable database. Until the CI database job is
+  green, the gate is proved by source assertions and unit tests over the pure validator, not
+  by a transaction actually rolling back.
+- **No browser run.** Nothing here has been seen rendered. The controls are asserted to be
+  plain forms with no client component and no `onClick`, which is what makes them work with
+  JavaScript disabled, but that is a source assertion and not a browser one.
+- **No owner visual review.** Phase 12E's exit criteria require screenshots at four viewports
+  accepted by the owner; that is Phase 12G's gate and remains open.

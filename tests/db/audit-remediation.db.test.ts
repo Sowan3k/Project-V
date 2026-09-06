@@ -10,18 +10,26 @@ import {
   StudyLevel,
   UserRole,
 } from '../../src/domain/enums'
+import { GraphValidationError } from '../../src/domain/graph/validate'
 import { generateHandle } from '../../src/server/auth/handle'
 import { prisma } from '../../src/server/db/client'
 import { IncompatibleMergeError, mergeRoutes, setLifecycleState } from '../../src/server/lifecycle/service'
 import {
+  addEdge,
   addField,
   addStep,
   addStepWithConnection,
+  archiveEdge,
   archiveStep,
   createRoute,
   GraphInputError,
+  restoreEdge,
+  restoreStep,
+  reviseEdge,
+  reviseStep,
   setRouteLifecycleState,
 } from '../../src/server/revisions/service'
+import { getRouteStructure } from '../../src/server/routes/read'
 import {
   handleReportsForField,
   reportField,
@@ -393,5 +401,189 @@ describe.skipIf(!url)('F11 — a safety outcome performs what it records', () =>
     expect(field.quarantinedAt).toBeNull()
     const reports = await prisma.report.findMany({ where: { fieldId } })
     expect(reports.every((report) => report.handledAt !== null)).toBe(true)
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   F6 — the graph gate, which was never called until contextual authoring made it load-bearing
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+describe.skipIf(!url)('F6 — a structural write cannot leave the graph malformed', () => {
+  async function threeSteps(): Promise<{ routeId: string; a: string; b: string; c: string }> {
+    const routeId = await makeRoute()
+    const [a, b, c] = await Promise.all([
+      addStep({ actor: system, routeId, label: 'A', category: StepCategory.documents_preparation }),
+      addStep({ actor: system, routeId, label: 'B', category: StepCategory.language_testing }),
+      addStep({ actor: system, routeId, label: 'C', category: StepCategory.immigration_visa }),
+    ])
+    return { routeId, a: a.stepId, b: b.stepId, c: c.stepId }
+  }
+
+  it('refuses a connection that would close a cycle, and leaves no edge behind', async () => {
+    const { routeId, a, b, c } = await threeSteps()
+    await addEdge({ actor: system, routeId, fromStepId: a, toStepId: b, kind: StepEdgeKind.sequential })
+    await addEdge({ actor: system, routeId, fromStepId: b, toStepId: c, kind: StepEdgeKind.sequential })
+
+    const before = await prisma.stepEdge.count({ where: { routeId } })
+
+    // C to A closes the loop. Before Phase 12E nothing refused this, and both `rankSteps` and
+    // `buildTimeline` assume a DAG.
+    await expect(
+      addEdge({ actor: system, routeId, fromStepId: c, toStepId: a, kind: StepEdgeKind.sequential }),
+    ).rejects.toBeInstanceOf(GraphValidationError)
+
+    // The transaction rolled back: no orphan edge, and no orphan edge revision either.
+    expect(await prisma.stepEdge.count({ where: { routeId } })).toBe(before)
+    expect(await prisma.stepEdgeRevision.count({ where: { stepEdge: { routeId } } })).toBe(before)
+  })
+
+  it('refuses a duplicate of a connection that already exists', async () => {
+    const { routeId, a, b } = await threeSteps()
+    await addEdge({ actor: system, routeId, fromStepId: a, toStepId: b, kind: StepEdgeKind.sequential })
+    await expect(
+      addEdge({ actor: system, routeId, fromStepId: a, toStepId: b, kind: StepEdgeKind.sequential }),
+    ).rejects.toBeInstanceOf(GraphValidationError)
+  })
+
+  it('permits re-adding a connection whose earlier one was archived (invariant 4)', async () => {
+    const { routeId, a, b } = await threeSteps()
+    const first = await addEdge({
+      actor: system,
+      routeId,
+      fromStepId: a,
+      toStepId: b,
+      kind: StepEdgeKind.sequential,
+    })
+    await archiveEdge({ actor: system, edgeId: first.edgeId })
+    // The schema deliberately has no unique constraint on (from, to) for exactly this reason.
+    await expect(
+      addEdge({ actor: system, routeId, fromStepId: a, toStepId: b, kind: StepEdgeKind.sequential }),
+    ).resolves.toBeDefined()
+  })
+
+  it('refuses a connection joining two steps of different routes', async () => {
+    const first = await threeSteps()
+    const second = await threeSteps()
+    await expect(
+      addEdge({
+        actor: system,
+        routeId: first.routeId,
+        fromStepId: first.a,
+        toStepId: second.b,
+        kind: StepEdgeKind.sequential,
+      }),
+    ).rejects.toBeInstanceOf(GraphInputError)
+  })
+
+  it('permits a half-built road — incompleteness is shown, never refused', async () => {
+    // Three steps, no connections. Every one is an orphan and there is no start, and all of it
+    // is repaired by connecting them. Refusing this would force one exact build order.
+    const { routeId } = await threeSteps()
+    expect(await prisma.step.count({ where: { routeId } })).toBe(3)
+
+    const structure = await getRouteStructure(routeId)
+    expect(structure.incomplete.map((v) => v.code)).toContain('orphan_step')
+    // And nothing corrupt is ever reported to the contributor, because it cannot commit.
+    expect(structure.incomplete.map((v) => v.code)).not.toContain('cycle')
+  })
+
+  it('restores an archived connection, and refuses a restore that would resurrect a cycle', async () => {
+    const { routeId, a, b, c } = await threeSteps()
+    await addEdge({ actor: system, routeId, fromStepId: a, toStepId: b, kind: StepEdgeKind.sequential })
+    const back = await addEdge({
+      actor: system,
+      routeId,
+      fromStepId: b,
+      toStepId: c,
+      kind: StepEdgeKind.sequential,
+    })
+
+    // Archive B to C, then wire C to B the other way round. Restoring the first closes a loop,
+    // which is invisible from the arguments and obvious from the resulting graph.
+    await archiveEdge({ actor: system, edgeId: back.edgeId })
+    await addEdge({ actor: system, routeId, fromStepId: c, toStepId: b, kind: StepEdgeKind.sequential })
+
+    await expect(restoreEdge({ actor: system, edgeId: back.edgeId })).rejects.toBeInstanceOf(
+      GraphValidationError,
+    )
+
+    // Still archived — the refusal rolled it back.
+    const edge = await prisma.stepEdge.findUniqueOrThrow({
+      where: { id: back.edgeId },
+      select: { archivedAt: true },
+    })
+    expect(edge.archivedAt).not.toBeNull()
+  })
+
+  it('archives and restores a step without touching its fields or its revisions', async () => {
+    const { routeId, a } = await threeSteps()
+    await addField({
+      actor: system,
+      stepId: a,
+      category: FieldCategory.requirement,
+      valueText: 'Something that must survive archival',
+      sourceClass: SourceClass.official,
+    })
+    const fieldsBefore = await prisma.field.count({ where: { stepId: a } })
+    const revisionsBefore = await prisma.stepRevision.count({ where: { stepId: a } })
+
+    await archiveStep({ actor: system, stepId: a })
+    expect(
+      (await prisma.step.findUniqueOrThrow({ where: { id: a }, select: { archivedAt: true } }))
+        .archivedAt,
+    ).not.toBeNull()
+
+    await restoreStep({ actor: system, stepId: a })
+    const restored = await prisma.step.findUniqueOrThrow({
+      where: { id: a },
+      select: { archivedAt: true },
+    })
+    expect(restored.archivedAt).toBeNull()
+
+    // Archiving is not deleting, in either direction (FR-21, FR-45, invariant 4).
+    expect(await prisma.field.count({ where: { stepId: a } })).toBe(fieldsBefore)
+    expect(await prisma.stepRevision.count({ where: { stepId: a } })).toBe(revisionsBefore)
+    expect(await prisma.step.count({ where: { routeId } })).toBe(3)
+  })
+
+  it('records a revision for every structural edit, with its author and reason', async () => {
+    const { routeId, a, b } = await threeSteps()
+    const author = await prisma.user.create({
+      data: { handle: generateHandle(), email: `ga-${unique()}@example.test` },
+    })
+
+    await reviseStep({
+      actor: { id: author.id },
+      reason: 'The stage was named wrongly',
+      stepId: a,
+      label: 'Renamed by a contributor',
+      category: StepCategory.documents_preparation,
+      earliestStartOffsetDays: 0,
+      typicalDurationDays: 14,
+    })
+
+    const newest = await prisma.stepRevision.findFirstOrThrow({
+      where: { stepId: a },
+      orderBy: { createdAt: 'desc' },
+    })
+    expect(newest.label).toBe('Renamed by a contributor')
+    expect(newest.authorId).toBe(author.id)
+    expect(newest.reason).toBe('The stage was named wrongly')
+    // The previous value survives — that is the whole ledger (FR-20, BR-03, invariant 2).
+    expect(await prisma.stepRevision.count({ where: { stepId: a } })).toBeGreaterThan(1)
+
+    const connection = await addEdge({
+      actor: { id: author.id },
+      routeId,
+      fromStepId: a,
+      toStepId: b,
+      kind: StepEdgeKind.optional_branch,
+    })
+    await reviseEdge({
+      actor: { id: author.id },
+      edgeId: connection.edgeId,
+      kind: StepEdgeKind.alternative,
+    })
+    expect(await prisma.stepEdgeRevision.count({ where: { stepEdgeId: connection.edgeId } })).toBe(2)
   })
 })

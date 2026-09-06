@@ -75,7 +75,7 @@ test.describe('anonymous reading journey', () => {
     await expect(page).toHaveURL(/\/en\/routes\/[^/]+$/)
     await expect(page.getByRole('heading', { level: 1, name: routeTitle })).toBeVisible()
     // The visible road only: Phase 12 renders a narrow and a wide density and hides one.
-    await expect(page.getByRole('img').first()).toBeVisible()
+    await expect(page.locator('svg[data-route-visual="road"]:visible')).toBeVisible()
 
     // 5. Step — expands in place, without leaving the road.
     //
@@ -113,7 +113,7 @@ test.describe('anonymous reading journey', () => {
     await page.goto(ROUTE_URL)
 
     // The visible road only: Phase 12 renders a narrow and a wide density and hides one.
-    await expect(page.getByRole('img').first()).toBeVisible()
+    await expect(page.locator('svg[data-route-visual="road"]:visible')).toBeVisible()
     await page.getByRole('link', { name: /open this step/i }).first().click()
     await expect(page.getByText(/information in/i)).toBeVisible()
 

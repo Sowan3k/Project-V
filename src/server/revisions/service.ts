@@ -11,7 +11,8 @@ import type {
   StepEdgeKind as StepEdgeKindT,
   StudyLevel as StudyLevelT,
 } from '@/domain/enums'
-import { StepEdgeKind } from '@/domain/enums'
+import { StepCategory, StepEdgeKind } from '@/domain/enums'
+import { assertNoGraphCorruption } from '@/domain/graph/validate'
 import { prisma } from '@/server/db/client'
 import { runInRevisionWrite } from '@/server/write-guard'
 
@@ -172,6 +173,103 @@ async function lockEdge(tx: Tx, id: string): Promise<void> {
 }
 async function lockRoute(tx: Tx, id: string): Promise<void> {
   await tx.$queryRaw`SELECT id FROM "routes" WHERE id = ${id} FOR UPDATE`
+}
+
+/**
+ * Refuses to leave a route's graph malformed — Phase 12E.
+ *
+ * ═════════════════════════════════════════════════════════════════════════════════════════
+ * **This is the gate `src/domain/graph/validate.ts` always claimed to be and never was.**
+ *
+ * The validator has existed since Phase 2, is thoroughly unit-tested, and its own comment
+ * said Phase 3 made it "the only door". Nothing outside the tests ever called it. That did
+ * not bite for ten phases because the only way to create an edge was "connect this new step
+ * after that existing one", and a brand-new step cannot close a cycle.
+ *
+ * Phase 12E changes that: a contributor can now connect two steps that already exist, so
+ * A→B→C→A is two ordinary clicks apart. A cycle is not a cosmetic problem — `rankSteps` and
+ * `buildTimeline` assume a DAG, the shadow diff assumes one, and the renderer lays out from
+ * ranks. And because this ledger is append-only, a bad edge cannot be deleted afterwards:
+ * it would be archived, leaving the malformed shape permanently in the history.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **It validates the OUTCOME, inside the transaction.**
+ *
+ * Not the arguments. Checking intent means enumerating every way a write could go wrong and
+ * missing one; checking the resulting graph means there is no combination of arguments that
+ * produces a malformed route without this seeing it. It runs inside the same transaction as
+ * the write, so throwing rolls the write back and nothing partial survives.
+ *
+ * **It refuses corruption only.** A step connected to nothing, a step unreachable from the
+ * start, a route with no start, a rejoin that nothing diverged into — all of those are the
+ * ordinary state of a road halfway through being built, and all are repaired by adding the
+ * next connection. Refusing them would force a contributor to build a route in one exact
+ * order. They are surfaced to the contributor instead (see `incompletenessViolations`).
+ *
+ * The cost is one small read per structural write. Field writes — which are the overwhelming
+ * majority — do not touch the graph and do not pay it.
+ */
+async function assertGraphStillSound(tx: Tx, routeId: string): Promise<void> {
+  const [steps, edges] = await Promise.all([
+    tx.step.findMany({
+      where: { routeId },
+      select: {
+        id: true,
+        archivedAt: true,
+        currentRevision: {
+          select: {
+            label: true,
+            category: true,
+            earliestStartOffsetDays: true,
+            typicalDurationDays: true,
+          },
+        },
+      },
+    }),
+    tx.stepEdge.findMany({
+      where: { routeId },
+      select: {
+        id: true,
+        fromStepId: true,
+        toStepId: true,
+        archivedAt: true,
+        currentRevision: { select: { kind: true } },
+      },
+    }),
+  ])
+
+  assertNoGraphCorruption({
+    steps: steps.map((step) => ({
+      id: step.id,
+      label: step.currentRevision?.label ?? '',
+      category: step.currentRevision?.category ?? StepCategory.documents_preparation,
+      archived: step.archivedAt !== null,
+      earliestStartOffsetDays: step.currentRevision?.earliestStartOffsetDays ?? null,
+      typicalDurationDays: step.currentRevision?.typicalDurationDays ?? null,
+    })),
+    edges: edges.map((edge) => ({
+      id: edge.id,
+      fromStepId: edge.fromStepId,
+      toStepId: edge.toStepId,
+      kind: edge.currentRevision?.kind ?? StepEdgeKind.sequential,
+      archived: edge.archivedAt !== null,
+    })),
+  })
+}
+
+/** The route a step belongs to. Needed to validate after a write that names only the step. */
+async function routeIdOfStep(tx: Tx, stepId: string): Promise<string> {
+  const step = await tx.step.findUniqueOrThrow({ where: { id: stepId }, select: { routeId: true } })
+  return step.routeId
+}
+
+/** The route an edge belongs to. */
+async function routeIdOfEdge(tx: Tx, edgeId: string): Promise<string> {
+  const edge = await tx.stepEdge.findUniqueOrThrow({
+    where: { id: edgeId },
+    select: { routeId: true },
+  })
+  return edge.routeId
 }
 
 // ── Route ────────────────────────────────────────────────────────────────────
@@ -370,6 +468,7 @@ export async function addStepWithConnection(
       data: { currentRevisionId: edgeRevision.id },
     })
 
+    await assertGraphStillSound(tx, input.routeId)
     return { stepId: step.id, revisionId: revision.id, edgeId: edge.id }
   })
 }
@@ -419,6 +518,19 @@ export interface AddEdgeInput extends Change {
 
 export async function addEdge(input: AddEdgeInput): Promise<{ edgeId: string; revisionId: string }> {
   return write(input, async (tx) => {
+    // Both ends must belong to this route. `StepEdge`'s foreign keys reference `steps` without
+    // caring which route they are in, so nothing below the application refuses an edge that
+    // spans two routes — and such an edge would appear on neither road correctly.
+    const [from, to] = await Promise.all([
+      tx.step.findUnique({ where: { id: input.fromStepId }, select: { routeId: true } }),
+      tx.step.findUnique({ where: { id: input.toStepId }, select: { routeId: true } }),
+    ])
+    if (from?.routeId !== input.routeId || to?.routeId !== input.routeId) {
+      throw new GraphInputError(
+        'A connection may only join two steps of the same route (FR-57, invariant 22).',
+      )
+    }
+
     const edge = await tx.stepEdge.create({
       data: { routeId: input.routeId, fromStepId: input.fromStepId, toStepId: input.toStepId },
     })
@@ -426,6 +538,10 @@ export async function addEdge(input: AddEdgeInput): Promise<{ edgeId: string; re
       data: { stepEdgeId: edge.id, kind: input.kind, ...attribution(input) },
     })
     await tx.stepEdge.update({ where: { id: edge.id }, data: { currentRevisionId: revision.id } })
+
+    // Throws — and rolls this transaction back — if the connection closed a cycle, duplicated
+    // an existing one, or looped a step to itself.
+    await assertGraphStillSound(tx, input.routeId)
     return { edgeId: edge.id, revisionId: revision.id }
   })
 }
@@ -455,6 +571,7 @@ export async function reviseEdge(input: ReviseEdgeInput): Promise<{ revisionId: 
       },
     })
     await tx.stepEdge.update({ where: { id: input.edgeId }, data: { currentRevisionId: revision.id } })
+    await assertGraphStillSound(tx, await routeIdOfEdge(tx, input.edgeId))
     return { revisionId: revision.id, forked: basedOn !== edge.currentRevisionId }
   })
 }
@@ -754,13 +871,51 @@ export async function archiveField(
 
 export async function archiveStep(input: Change & { stepId: string }): Promise<void> {
   await write(input, async (tx) => {
+    const routeId = await routeIdOfStep(tx, input.stepId)
     await tx.step.update({ where: { id: input.stepId }, data: { archivedAt: new Date() } })
+    // Archiving a step drops the edges touching it out of the active graph too
+    // (`activeGraph`), so this can only ever make the graph *less* connected — never
+    // malformed. Validated anyway: the rule is that no structural write leaves corruption
+    // behind, and an exception is how a rule stops being one.
+    await assertGraphStillSound(tx, routeId)
   })
 }
 
 export async function archiveEdge(input: Change & { edgeId: string }): Promise<void> {
   await write(input, async (tx) => {
+    const routeId = await routeIdOfEdge(tx, input.edgeId)
     await tx.stepEdge.update({ where: { id: input.edgeId }, data: { archivedAt: new Date() } })
+    await assertGraphStillSound(tx, routeId)
+  })
+}
+
+/**
+ * Restore an archived step or connection — Phase 12E, FR-21, FR-45, BR-15, invariant 4.
+ *
+ * `restoreField` has existed since Phase 3 and these two had no counterpart, which made
+ * archival reversible for a field and one-way for structure. That is the wrong asymmetry:
+ * archiving a step is precisely the edit somebody makes by mistake — it takes a stage off the
+ * road for every reader — and "archived is not deleted" is only meaningful if the content can
+ * come back.
+ *
+ * Restoring is where the graph gate genuinely earns its place. Bringing back an archived edge
+ * re-admits it to the active graph, and if the road was rewired in the meantime that edge can
+ * close a cycle or duplicate a connection that now exists by another route. Neither is
+ * detectable from the arguments; both are obvious from the resulting graph.
+ */
+export async function restoreStep(input: Change & { stepId: string }): Promise<void> {
+  await write(input, async (tx) => {
+    const routeId = await routeIdOfStep(tx, input.stepId)
+    await tx.step.update({ where: { id: input.stepId }, data: { archivedAt: null } })
+    await assertGraphStillSound(tx, routeId)
+  })
+}
+
+export async function restoreEdge(input: Change & { edgeId: string }): Promise<void> {
+  await write(input, async (tx) => {
+    const routeId = await routeIdOfEdge(tx, input.edgeId)
+    await tx.stepEdge.update({ where: { id: input.edgeId }, data: { archivedAt: null } })
+    await assertGraphStillSound(tx, routeId)
   })
 }
 

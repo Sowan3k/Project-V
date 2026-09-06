@@ -1,5 +1,8 @@
 import NextAuth from 'next-auth'
 
+import type { UserRole as UserRoleT } from '@/domain/enums'
+import { UserRole } from '@/domain/enums'
+
 import { authConfig } from './config'
 
 /**
@@ -22,6 +25,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth(authConfig)
 export interface Viewer {
   readonly id: string
   readonly handle: string
+  /**
+   * The safety role (§22, §23.3) — Phase 12E, audit F12.
+   *
+   * Here so a surface can decide what to *show*. It never decides what is permitted: every
+   * administrator action re-checks the role server-side in its own service, because a hidden
+   * button is not a permission (CLAUDE.md §9).
+   */
+  readonly role: UserRoleT
 }
 
 /** `null` when nobody is signed in. Never throws — anonymous is a valid state everywhere. */
@@ -29,5 +40,5 @@ export async function currentViewer(): Promise<Viewer | null> {
   const session = await auth()
   const user = session?.user
   if (!user?.id) return null
-  return { id: user.id, handle: user.handle ?? '' }
+  return { id: user.id, handle: user.handle ?? '', role: user.role ?? UserRole.member }
 }

@@ -5,12 +5,12 @@ import { notFound } from 'next/navigation'
 import { ContentColumn } from '@/components/layout'
 import { LinkButton, Panel, buttonClass } from '@/components/ui'
 import { RouteContext } from '@/components/route-context'
-import { rendererStrings } from '@/components/route-shared'
+import { RouteMap } from '@/components/route-map'
 import { JourneyStepStatus, JOURNEY_STEP_STATUSES } from '@/domain/enums'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
 import type { Dictionary } from '@/i18n/dictionaries/en'
-import { ResponsiveRoad } from '@/renderer'
+import { CATEGORY_STYLE } from '@/renderer'
 import { currentViewer } from '@/server/auth'
 import { shadowSince } from '@/server/changes/read'
 import { followerChangeReport } from '@/server/journeys/changes'
@@ -238,8 +238,14 @@ function JourneyBoard({
 
         {/* The same road, from the same renderer. A journey is a view of the route, and it
             must look like the route the follower opened (invariant 25). */}
-        <div className="mt-4 overflow-x-auto rounded-panel border border-hairline bg-surface p-4">
-          <ResponsiveRoad graph={route.graph} strings={rendererStrings(t)} />
+        <div className="mt-4">
+          <RouteMap
+            route={route}
+            dictionary={t}
+            privateJourney
+            stepHrefs={Object.fromEntries(route.steps.map((step) => [step.id, `#journey-step-${step.id}`]))}
+            annotations={{ progressByStep: Object.fromEntries(journey.progress.map((row) => [row.stepId, row.status])) }}
+          />
         </div>
         <p className="mt-2 text-xs text-ink-500">{t.journey.routeChangedNote}</p>
       </section>
@@ -321,13 +327,22 @@ function StepProgressRow({
   const isoDay = (date: Date | null): string => (date === null ? '' : date.toISOString().slice(0, 10))
 
   return (
-    <li className="rounded-panel border border-hairline bg-surface p-4">
-      <div className="flex items-baseline gap-3">
-        <span className="text-xs text-ink-500">{index + 1}</span>
-        <span className="font-medium text-ink-900">{step.label}</span>
-        <span className="text-xs text-ink-500">
-          {t.stepCategory[step.category as keyof typeof t.stepCategory]}
-        </span>
+    <li
+      id={`journey-step-${step.id}`}
+      className="scroll-mt-6 rounded-panel border border-hairline border-l-4 bg-surface p-4"
+      style={{ borderLeftColor: CATEGORY_STYLE[step.category as keyof typeof CATEGORY_STYLE].line }}
+    >
+      <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
+        <span className="pt-1 text-meta font-medium text-ink-500">{String(index + 1).padStart(2, '0')}</span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-panel font-semibold text-ink-900">{step.label}</h3>
+          <p className="mt-0.5 text-xs text-ink-500">
+            {t.stepCategory[step.category as keyof typeof t.stepCategory]}
+          </p>
+        </div>
+        <p className="text-meta font-medium text-brand-900">
+          {t.journeyStepStatus[progress?.status ?? JourneyStepStatus.not_started]}
+        </p>
       </div>
 
       {/* One form per step, posting to a server action. No JavaScript required anywhere. */}

@@ -110,7 +110,7 @@ test.describe('the road reflows rather than shrinking', () => {
   test('a phone gets the narrow road and a desktop gets the wide one', async ({ page }) => {
     await page.goto('/en/routes/e2e-test-route')
 
-    const roads = page.locator('svg[role="img"]')
+    const roads = page.locator('svg[data-route-visual="road"]')
     // Both are rendered — one per density — and exactly one is visible.
     expect(await roads.count()).toBeGreaterThanOrEqual(2)
 
@@ -123,7 +123,7 @@ test.describe('the road reflows rather than shrinking', () => {
      * produced the drawing, which is what this test is actually about.
      */
     const visible = await page.evaluate(() =>
-      [...document.querySelectorAll('svg[role="img"]')]
+      [...document.querySelectorAll('svg[data-route-visual="road"]')]
         .filter((el) => (el as SVGElement).getBoundingClientRect().width > 0)
         .map((el) => Number((el.getAttribute('viewBox') ?? '').split(/\s+/)[2])),
     )
@@ -152,6 +152,37 @@ test.describe('the road reflows rather than shrinking', () => {
         : layout(graph, ROAD).width
 
     expect(visible[0], 'the painted road should match this viewport’s density').toBe(expected)
+  })
+
+  test('a road station opens its detail by keyboard without leaving the route', async ({ page }) => {
+    await page.goto('/en/routes/e2e-test-route')
+
+    // An interactive SVG is a group, not an image: its station links must remain exposed
+    // to keyboards and assistive technology (FR-06). CSS exposes only one density.
+    const road = page.locator('svg[data-route-visual="road"]:visible')
+    await expect(road).toHaveAttribute('role', 'group')
+    const station = road.locator('a[href]').first()
+    const href = await station.getAttribute('href')
+    expect(href).not.toBeNull()
+    const target = new URL(href!, page.url())
+    expect(target.pathname).toBe('/en/routes/e2e-test-route')
+    expect(target.searchParams.get('step')).toBeTruthy()
+
+    await station.focus()
+    await expect(station).toBeFocused()
+    // A programmatic focus alone also succeeds for tabindex=-1. Traverse to the next
+    // station and back so the test proves these are in the actual keyboard tab order.
+    await page.keyboard.press('Tab')
+    await expect(road.locator('a[href]').nth(1)).toBeFocused()
+    await page.keyboard.press('Shift+Tab')
+    await expect(station).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(page).toHaveURL((url) =>
+      url.pathname === target.pathname && url.searchParams.get('step') === target.searchParams.get('step'),
+    )
+    await expect(road).toBeVisible()
+    await expect(road.locator('a[aria-current="step"]')).toHaveCount(1)
+    await expect(page.locator('#route-step-info')).toBeVisible()
   })
 
   /**

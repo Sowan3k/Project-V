@@ -11,7 +11,15 @@ export function rendererStrings(t: Dictionary): RouteVisualStrings {
     added: t.route.stepAdded,
     archived: t.route.stepArchived,
     disrupted: t.route.stepDisrupted,
+    changed: t.route.stepChanged,
+    previous: t.route.previousRoute,
+    selected: t.route.selectedStep,
+    openStep: t.route.openStep,
+    timingUnknown: t.route.timingUnknown,
+    relationships: t.route.routeRelationships,
+    progress: t.journeyStepStatus,
     duration: t.route.durationShort,
+    startsAfter: t.route.startsAfterShort,
     summary: (n) => `${t.route.roadLabel} — ${t.route.stepCount(n)}`,
   }
 }

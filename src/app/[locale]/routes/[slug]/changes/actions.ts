@@ -44,33 +44,55 @@ function oneOf<T extends string>(values: readonly T[], raw: string, fallback: T)
 }
 
 /**
- * Reads the picker value `"<kind>:<revisionId>"` into the shape `announceChange` expects.
+ * Reads the picker into the shape `announceChange` expects — audit F8.
  *
- * Malformed or empty input yields no link rather than a guessed one. An announcement with no
- * revision is a perfectly good announcement — it simply cannot offer a precise before/after,
- * and the page says so instead of inventing one.
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **This used to read one value, and one was not enough.**
+ *
+ * `announceChange` has always accepted *arrays* of revision ids across all four kinds, and
+ * `RouteChangeRevision` has always been a many-to-many link. The form supplied a single
+ * `<select>`, so an announcement could name exactly one revision — and a real structural
+ * change does not come in ones. "Germany added a document to the visa stage and moved the
+ * APS earlier" is a field revision and a step revision at least; a reordering is several edge
+ * revisions. Naming one of them made `shadowForChange` reconstruct a before/after that was
+ * true of a fragment and silently incomplete about the rest, which is worse than admitting
+ * nothing was named (FR-77: the shadow must show the *scale* of a change).
+ *
+ * Now it reads every checked box. Each arrives as `"<kind>:<revisionId>"`, and they are
+ * grouped by kind because that is the shape the service takes.
+ *
+ * **Malformed entries are dropped rather than failing the announcement.** An announcement
+ * with no revisions is a perfectly good announcement — §41.1 allows saying something about a
+ * route without pointing at a specific edit — so a garbled id costs the reader the precise
+ * before/after for that one revision and nothing else. The service independently refuses any
+ * revision belonging to a different route, so nothing unchecked can be smuggled in.
  */
-function describedRevision(raw: string): {
+function describedRevisions(form: FormData): {
   routeRevisionIds?: string[]
   stepRevisionIds?: string[]
   stepEdgeRevisionIds?: string[]
   fieldRevisionIds?: string[]
 } {
-  const separator = raw.indexOf(':')
-  if (separator < 1) return {}
-  const kind = raw.slice(0, separator)
-  const id = raw.slice(separator + 1)
-  if (id === '' || !(REVISION_REF_KINDS as readonly string[]).includes(kind)) return {}
+  const byKind: Record<RevisionRefKind, string[]> = { step: [], edge: [], field: [], route: [] }
 
-  switch (kind as RevisionRefKind) {
-    case 'step':
-      return { stepRevisionIds: [id] }
-    case 'edge':
-      return { stepEdgeRevisionIds: [id] }
-    case 'field':
-      return { fieldRevisionIds: [id] }
-    case 'route':
-      return { routeRevisionIds: [id] }
+  for (const entry of form.getAll('describesRevision')) {
+    if (typeof entry !== 'string') continue
+    const separator = entry.indexOf(':')
+    if (separator < 1) continue
+    const kind = entry.slice(0, separator)
+    const id = entry.slice(separator + 1)
+    if (id === '' || !(REVISION_REF_KINDS as readonly string[]).includes(kind)) continue
+    // One checkbox ticked twice is one revision, not two — a duplicate would produce two
+    // `RouteChangeRevision` rows for the same edit and double it in the shadow.
+    const list = byKind[kind as RevisionRefKind]
+    if (!list.includes(id)) list.push(id)
+  }
+
+  return {
+    stepRevisionIds: byKind.step,
+    stepEdgeRevisionIds: byKind.edge,
+    fieldRevisionIds: byKind.field,
+    routeRevisionIds: byKind.route,
   }
 }
 
@@ -110,7 +132,7 @@ export async function announceChangeAction(formData: FormData): Promise<void> {
     effectiveAt: optionalDate(formData, 'effectiveAt') ?? null,
     stepId: optionalText(formData, 'changeStepId'),
     // The durable link. A revision id, never a date — see `shadowForChange`.
-    describes: describedRevision(text(formData, 'describesRevision')),
+    describes: describedRevisions(formData),
   })
 
   revalidatePath(`/${locale}/routes/${slug}/changes`)

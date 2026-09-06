@@ -5,6 +5,7 @@ import {
   OpenChallenges,
 } from '@/components/contribute'
 import { QuarantineNotice, ReportAction } from '@/components/safety'
+import { FieldArchiveControl } from '@/components/structure'
 import { ExternalSourceLink, FieldContext, FieldSignals } from '@/components/trust'
 import { fieldGroup, FIELD_GROUP_ORDER, type FieldGroupId, type FieldTrustInput } from '@/domain/trust'
 import type { Dictionary } from '@/i18n/dictionaries/en'
@@ -145,7 +146,7 @@ function FieldRow({
       <QuarantineNotice field={field} dictionary={t} />
       {/* The challenges themselves, with their reasons — not just a count. A reader deciding
           whether to rely on this needs to know what somebody objected to (FR-49, FR-70). */}
-      <OpenChallenges field={field} dictionary={t} />
+      <OpenChallenges field={field} locale={locale} dictionary={t} />
       <FieldContext input={trust} dictionary={t} now={now} />
 
       {field.sourceUrl === null ? null : (
@@ -165,6 +166,16 @@ function FieldRow({
           {/* Apart from the other four, and worded to send a reader to the faster action when
               the information is merely wrong rather than dangerous (§23.1). */}
           <ReportAction field={field} step={step} route={route} locale={locale} dictionary={t} />
+          {/* Phase 12E, audit F6 — reachable at last. The right action when a fact stops
+              applying rather than changing: revising it into something else would put a
+              fiction in the history (FR-21, invariant 4). */}
+          <FieldArchiveControl
+            field={field}
+            stepId={step.id}
+            routeSlug={route.slug}
+            locale={locale}
+            dictionary={t}
+          />
         </>
       ) : null}
     </li>

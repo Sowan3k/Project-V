@@ -1,4 +1,4 @@
-import type { StepCategory } from '@/domain/enums'
+import { JourneyStepStatus, StepEdgeKind, type StepCategory } from '@/domain/enums'
 import type { RouteGraph } from '@/domain/graph/types'
 
 import { layout, RIBBON, RIBBON_NARROW, ROAD, ROAD_NARROW, type Density } from './layout'
@@ -36,6 +36,9 @@ import {
  */
 export interface RouteAnnotations {
   readonly addedStepIds?: readonly string[]
+  readonly changedStepIds?: readonly string[]
+  /** Supplied only by the owner-scoped Journey page; never part of the public graph. */
+  readonly progressByStep?: Readonly<Record<string, JourneyStepStatus>>
   /**
    * Steps to draw as departing — dashed, faded, labelled — even though this graph still
    * contains them as live (Phase 12).
@@ -68,12 +71,20 @@ export interface RouteVisualStrings {
   readonly added: string
   readonly archived: string
   readonly disrupted: string
+  readonly changed: string
+  readonly previous: string
+  readonly selected: string
+  readonly openStep: string
+  readonly timingUnknown: string
+  readonly relationships: { readonly alternative: string; readonly optional: string; readonly parallel: string }
+  readonly progress: Readonly<Record<JourneyStepStatus, string>>
   /**
    * Formats a step duration in days as a phrase — "about 3 weeks". Passed in for the same
    * reason as every other string here: "weeks" is English, and English does not live in the
    * renderer.
    */
   readonly duration: (days: number) => string
+  readonly startsAfter: (days: number) => string
   /** Accessible description of the whole visual, e.g. "Route with 8 steps". */
   readonly summary: (stepCount: number) => string
 }
@@ -83,6 +94,8 @@ export interface RouteVisualProps {
   readonly strings: RouteVisualStrings
   readonly annotations?: RouteAnnotations
   readonly className?: string
+  readonly selectedStepId?: string
+  readonly stepHrefs?: Readonly<Record<string, string>>
 }
 
 function RouteVisual({
@@ -91,19 +104,47 @@ function RouteVisual({
   strings,
   annotations = {},
   className,
+  selectedStepId,
+  stepHrefs,
 }: RouteVisualProps & { density: Density }) {
   const frame = layout(graph, density)
   const shadow = annotations.shadow ? layout(annotations.shadow, density) : null
   const added = new Set(annotations.addedStepIds ?? [])
+  const changed = new Set(annotations.changedStepIds ?? [])
   const departing = new Set(annotations.archivedStepIds ?? [])
   const disrupted = new Set(annotations.disruptedStepIds ?? [])
 
   const first = frame.nodes.at(0)
   const last = frame.nodes.at(-1)
+  const interactive = density.showLabels && stepHrefs !== undefined
+  const width = Math.max(frame.width, shadow?.width ?? 0)
+  const height = Math.max(frame.height, shadow?.height ?? 0)
+  // Label the stored branch meaning, not a guess based on the title or destination.
+  const incoming = new Map<string, StepEdgeKind[]>()
+  for (const { edge } of frame.edges) {
+    incoming.set(edge.toStepId, [...(incoming.get(edge.toStepId) ?? []), edge.kind])
+  }
+  const relationship = (node: (typeof frame.nodes)[number]): string | undefined => {
+    const kinds = incoming.get(node.step.id) ?? []
+    if (kinds.includes(StepEdgeKind.alternative)) return strings.relationships.alternative
+    if (kinds.includes(StepEdgeKind.optional_branch)) return strings.relationships.optional
+    // Only a direct sequential fan with a common predecessor is labelled parallel. Equal
+    // ranks alone also occur deeper inside alternative paths and say nothing about choice.
+    const peers = frame.nodes.filter((peer) => peer.rank === node.rank)
+    const commonParent = frame.edges.some(({ edge }) => edge.toStepId === node.step.id &&
+      peers.every((peer) => frame.edges.some(({ edge: other }) =>
+        other.fromStepId === edge.fromStepId && other.toStepId === peer.step.id &&
+        other.kind === StepEdgeKind.sequential,
+      )),
+    )
+    return peers.length > 1 && commonParent && peers.every((peer) =>
+      (incoming.get(peer.step.id) ?? []).every((kind) => kind === StepEdgeKind.sequential),
+    ) ? strings.relationships.parallel : undefined
+  }
 
   return (
     <svg
-      viewBox={`0 0 ${frame.width} ${frame.height}`}
+      viewBox={`0 0 ${width} ${height}`}
       /**
        * **Scales to its container rather than to a pixel size — Phase 12C.**
        *
@@ -114,18 +155,19 @@ function RouteVisual({
        * a four-step ribbon and a twelve-step one now come out at similar heights instead of
        * one being twice as tall as the other.
        */
-      role="img"
-      aria-label={strings.summary(frame.order.length)}
+      role={interactive ? 'group' : 'img'}
+      data-route-visual={density.showLabels ? 'road' : 'ribbon'}
+      aria-label={interactive ? strings.summary(frame.order.length) : `${strings.summary(frame.order.length)}. ${frame.nodes.map((node) => `${node.ordinal}. ${node.step.label} — ${strings.categories[node.step.category]}${relationship(node) ? ` — ${relationship(node)}` : ''}`).join('; ')}`}
       className={`h-auto w-full ${className ?? ''}`}
       /**
        * Road blocks are capped at their natural size; Ribbons fill their row. A minimum
        * width on long bands preserves readable symbols inside the parent's local scroller.
        */
       style={{
-        maxWidth: density.showLabels ? frame.width : undefined,
+        maxWidth: density.showLabels ? width : undefined,
         // Long ribbons scroll within their own container instead of reducing every symbol
         // to a few pixels. Both forms still share the same graph and canonical order.
-        minWidth: density.showLabels ? undefined : Math.min(frame.width, (Math.max(0, ...frame.nodes.map((n) => n.rank)) + 1) * 32 + 44),
+        minWidth: density.showLabels ? undefined : width,
       }}
       // The interface face, so labels on the road match labels beside it. Falls back to the
       // system stack if the variable is unset — a road that renders in the wrong font is a
@@ -133,7 +175,8 @@ function RouteVisual({
       fontFamily="var(--font-sans, system-ui), system-ui, sans-serif"
     >
       {shadow === null ? null : (
-        <g aria-hidden="true">
+        <g aria-hidden="true" data-route-layer="previous">
+          <title>{strings.previous}</title>
           {shadow.edges.map((placed) => (
             <ShadowSegment key={`shadow-edge-${placed.edge.id}`} placed={placed} />
           ))}
@@ -170,8 +213,14 @@ function RouteVisual({
           node.step.typicalDurationDays === null
             ? null
             : strings.duration(node.step.typicalDurationDays)
+        const selected = selectedStepId === node.step.id
+        const progress = annotations.progressByStep?.[node.step.id]
+        const progressLabel = progress === undefined ? undefined : strings.progress[progress]
+        const href = stepHrefs?.[node.step.id]
+        const startOffset = node.step.earliestStartOffsetDays === null
+          ? undefined : strings.startsAfter(node.step.earliestStartOffsetDays)
 
-        return density.showLabels ? (
+        const marker = density.showLabels ? (
           <StepMarker
             key={node.step.id}
             node={drawn}
@@ -181,6 +230,15 @@ function RouteVisual({
             added={added.has(node.step.id)}
             addedLabel={strings.added}
             archivedLabel={strings.archived}
+            changedLabel={strings.changed}
+            changed={changed.has(node.step.id)}
+            selected={selected}
+            relationship={relationship(node)}
+            progressLabel={progressLabel}
+            completed={progress === JourneyStepStatus.completed}
+            timingUnknown={strings.timingUnknown}
+            actionLabel={interactive && href ? selected ? strings.selected : strings.openStep : undefined}
+            startOffset={startOffset}
           />
         ) : (
           <RibbonSegment
@@ -191,8 +249,20 @@ function RouteVisual({
             added={added.has(node.step.id)}
             addedLabel={strings.added}
             archivedLabel={strings.archived}
+            relationship={relationship(node)}
           />
         )
+        return interactive && href ? (
+          <a
+            key={node.step.id}
+            href={href}
+            className="route-station-link"
+            aria-current={selected ? 'step' : undefined}
+            aria-label={`${strings.openStep}: ${node.ordinal}. ${node.step.label} — ${strings.categories[node.step.category]}${duration ? ` — ${duration}` : ''}${startOffset ? ` — ${startOffset}` : ''}${progressLabel ? ` — ${progressLabel}` : ''}${selected ? ` — ${strings.selected}` : ''}`}
+          >
+            {marker}
+          </a>
+        ) : marker
       })}
 
       {frame.nodes

@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 
 import { renderToStaticMarkup } from 'react-dom/server'
 
-import { StepCategory, StepEdgeKind } from '../../src/domain/enums'
+import { JourneyStepStatus, StepCategory, StepEdgeKind } from '../../src/domain/enums'
 import type { GraphEdge, GraphStep, RouteGraph } from '../../src/domain/graph/types'
 import { en } from '../../src/i18n/dictionaries/en'
 import { ROAD, ROAD_NARROW, layout } from '../../src/renderer/layout'
@@ -27,7 +27,15 @@ const strings: RouteVisualStrings = {
   added: en.route.stepAdded,
   archived: en.route.stepArchived,
   disrupted: en.route.stepDisrupted,
+  changed: en.route.stepChanged,
+  previous: en.route.previousRoute,
+  selected: en.route.selectedStep,
+  openStep: en.route.openStep,
+  timingUnknown: en.route.timingUnknown,
+  relationships: en.route.routeRelationships,
+  progress: en.journeyStepStatus,
   duration: en.route.durationShort,
+  startsAfter: en.route.startsAfterShort,
   summary: (n) => `Route with ${n} steps`,
 }
 
@@ -63,6 +71,7 @@ interface Fixture {
   readonly name: string
   readonly graph: RouteGraph
   readonly annotations?: RouteAnnotations
+  readonly selectedStepId?: string
 }
 
 const fixtures: readonly Fixture[] = [
@@ -185,17 +194,36 @@ const fixtures: readonly Fixture[] = [
   },
 ]
 
-const sections = fixtures
-  .map(({ name, graph, annotations }) => {
+const reviewFixtures: readonly Fixture[] = [
+  ...fixtures,
+  {
+    name: 'My Journey — illustrative private, self-reported progress',
+    graph: fixtures[0]!.graph,
+    selectedStepId: 'demo-2',
+    annotations: {
+      progressByStep: {
+        'demo-0': JourneyStepStatus.completed,
+        'demo-1': JourneyStepStatus.in_progress,
+        'demo-2': JourneyStepStatus.in_progress,
+        'demo-3': JourneyStepStatus.not_started,
+        'demo-4': JourneyStepStatus.not_started,
+        'demo-5': JourneyStepStatus.not_started,
+      },
+    },
+  },
+]
+
+const sections = reviewFixtures
+  .map(({ name, graph, annotations, selectedStepId }) => {
     const frame = layout(graph, ROAD)
     const ribbon = renderToStaticMarkup(
       <Ribbon graph={graph} strings={strings} annotations={annotations} />,
     )
     const wide = renderToStaticMarkup(
-      <Road graph={graph} strings={strings} annotations={annotations} />,
+      <Road graph={graph} strings={strings} annotations={annotations} selectedStepId={selectedStepId} />,
     )
     const narrow = renderToStaticMarkup(
-      <Road graph={graph} strings={strings} annotations={annotations} density={ROAD_NARROW} />,
+      <Road graph={graph} strings={strings} annotations={annotations} density={ROAD_NARROW} selectedStepId={selectedStepId} />,
     )
 
     return `<section>

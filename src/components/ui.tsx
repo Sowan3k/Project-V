@@ -421,3 +421,51 @@ export function Rail({
     </Panel>
   )
 }
+
+/**
+ * A contributor's handle, linked to the evidence behind it — Phase 12E, audit F12.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **Why this is a component rather than a link written five times.**
+ *
+ * `src/app/[locale]/contributors/[handle]/page.tsx` has existed since Phase 8 and nothing
+ * linked to it. Handles rendered as flat grey text in five places — a revision in the route
+ * history, a challenge on a field, a change announcement, a lifecycle transition and a
+ * duplicate flag — so the one page that answers "who is this person and what have they
+ * contributed?" was reachable only by typing its URL.
+ *
+ * That matters more here than in most products. A reader deciding how much weight to give a
+ * claim is told who asserted it, and §25's answer to "how do I know if they are any good?" is
+ * deliberately *evidence rather than a score* — no reputation number, no level, no badge. But
+ * evidence a reader cannot reach is not evidence, and the alternative they fall back on is the
+ * handle itself, which carries no information at all by design (§24.3).
+ *
+ * One component so the destination, the wording and the styling cannot drift apart across
+ * five call sites.
+ *
+ * `null` renders the fallback rather than a broken link: an author is genuinely absent on a
+ * seed revision and on an automatic lifecycle transition, and inventing a person for those
+ * would misattribute a system observation as somebody's work.
+ */
+export function ContributorLink({
+  handle,
+  locale,
+  fallback = '—',
+  className = '',
+}: {
+  handle: string | null
+  locale: string
+  /** Shown when there is no author. A seeded revision and an automatic transition have none. */
+  fallback?: ReactNode
+  className?: string
+}) {
+  if (handle === null || handle === '') return <>{fallback}</>
+  return (
+    <Link
+      href={`/${locale}/contributors/${encodeURIComponent(handle)}`}
+      className={`underline decoration-hairline underline-offset-2 hover:text-brand-700 ${className}`}
+    >
+      {handle}
+    </Link>
+  )
+}

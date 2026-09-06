@@ -92,15 +92,14 @@ test.describe('the contribution loop', () => {
     // In the step list, by role. A plain text match also finds the SVG's own <title>, which
     // is hidden — and which is itself the proof for the assertion below: the renderer drew
     // the new step, with no route-specific code anywhere (invariant 24).
-    await expect(page.getByRole('link', { name: /collect and attest documents/i })).toBeVisible()
+    await expect(page.locator('ol').getByRole('link', { name: /collect and attest documents/i })).toBeVisible()
 
     // 5. It draws through the ordinary renderer.
-    // `getByRole` reads the accessibility tree, so it sees only the road the viewport
-    // actually paints. Phase 12 renders both densities and hides one with CSS; a raw
-    // `svg[role="img"]` selector matches the hidden one too.
-    await expect(page.getByRole('img').first()).toBeVisible()
+    // Interactive Roads are groups so station links remain accessible; only one density
+    // is visible at a time. Keep asserting the actual drawing, not a decorative page icon.
+    await expect(page.locator('svg[data-route-visual="road"]:visible')).toBeVisible()
     await expect(
-      page.getByRole('img').locator('title').filter({ hasText: /collect and attest documents/i }),
+      page.locator('svg[data-route-visual="road"]:visible').locator('title').filter({ hasText: /collect and attest documents/i }),
     ).toHaveCount(1)
 
     // 6. Add information to the step (FR-15).
@@ -227,7 +226,7 @@ test.describe('the contribution loop', () => {
     expect(await page.getByText(/^flag a problem$/i).count()).toBe(0)
 
     // Reading is entirely unaffected: the road, the steps and the fields are all there.
-    await expect(page.getByRole('img').first()).toBeVisible()
+    await expect(page.locator('svg[data-route-visual="road"]:visible')).toBeVisible()
     await expect(page.getByText(/information in/i)).toBeVisible()
   })
 

@@ -13,6 +13,7 @@ import type {
   RouteLifecycleState,
   RouteMechanism,
   StepCategory,
+  StepEdgeKind,
   StudyLevel,
 } from '@/domain/enums'
 import type {
@@ -66,6 +67,15 @@ export const en = {
   nav: {
     routes: 'Routes',
     myJourney: 'My Journey',
+    /**
+     * Shown only to an administrator — Phase 12E, audit F12.
+     *
+     * "Moderation", not "Admin": §23.3 confines the role to safety, disputes, abuse and
+     * annual maintenance, and there is deliberately no approval queue for it to sit at the
+     * head of. "Admin" would suggest it runs the platform; it does not, and ordinary
+     * contribution is outside its reach entirely.
+     */
+    moderation: 'Moderation',
   },
 
   /**
@@ -115,6 +125,121 @@ export const en = {
     supportOpensExternal: '(opens gumroad.com in a new tab)',
     supportChangesNothing:
       'Optional, external, and it changes nothing: the platform is free, and supporting it affects no route’s ranking, standing or moderation. We never see your payment details.',
+  },
+
+  /**
+   * The four kinds of connection between stages — Phase 12E, FR-57, D-37, §40.3.
+   *
+   * ═══════════════════════════════════════════════════════════════════════════════════════
+   * **These words are the feature.** The schema calls them `sequential`, `optional_branch`,
+   * `alternative` and `rejoin`, which is exactly right for the schema and useless to the
+   * person maintaining a route. A student who knows the APS certificate must be done before
+   * the visa appointment, and that a blocked account and a scholarship letter are two ways of
+   * proving finance, is describing `sequential` and `alternative` — and would never find them
+   * under those names.
+   *
+   * Each carries an explainer because these are genuinely different claims about the world,
+   * and choosing the wrong one changes what the road tells the next reader. The explainers are
+   * written as the contributor's own test — "is that true of this route?" — not as
+   * definitions of graph terms.
+   *
+   * Note what is absent: there is no "parallel" kind, and there must not be one. Two stages
+   * happen at the same time when their TIMING overlaps, never because an edge says so
+   * (§20.2, §20.3, invariant 22). `timingExplainer` below is where that is said to the person
+   * who needs to know it.
+   */
+  stepEdgeKind: {
+    sequential: {
+      label: 'Must be finished first',
+      explainer: 'You cannot start the later stage until the earlier one is done.',
+    },
+    optional_branch: {
+      label: 'An optional extra',
+      explainer: 'Some people do this and some skip it. The route still works without it.',
+    },
+    alternative: {
+      label: 'Another way of doing it',
+      explainer: 'A different way to achieve the same thing. You do one or the other, not both.',
+    },
+    rejoin: {
+      label: 'Where the paths meet again',
+      explainer: 'Different ways of getting there come back together at this stage.',
+    },
+  } satisfies Record<StepEdgeKind, { label: string; explainer: string }>,
+
+  /**
+   * Maintaining the shape of a road — Phase 12E, audit F6.
+   *
+   * Plain verbs throughout. "Remove this connection", not "archive this edge"; "Take this
+   * stage off the road", not "set archivedAt". The notes beside the destructive-sounding ones
+   * say what actually happens, because "remove" reads as deletion and nothing here deletes
+   * (FR-21, FR-45, BR-15, invariant 4).
+   */
+  structure: {
+    maintainTitle: 'Maintain this road',
+    maintainLede:
+      'Anyone signed in can correct the shape of a route. Every change keeps the earlier version, nothing is deleted, and nothing waits for approval.',
+
+    reviseRoute: 'Rename this route',
+    routeTitle: 'Route name',
+    routeSummary: 'What this route covers',
+
+    reviseStep: 'Correct this stage',
+    stepLabel: 'Stage name',
+    stepCategory: 'Kind of stage',
+    earliestStart: 'Earliest it can start (days from the beginning)',
+    typicalDuration: 'How long it usually takes (days)',
+    /**
+     * The one sentence that makes a parallel road possible.
+     *
+     * There is no "these happen together" control, because overlap is not a flag — it is what
+     * two intersecting time windows mean (§20.2, §20.3). A contributor who does not know that
+     * will describe a genuinely parallel journey as a straight line, and the road will be
+     * wrong in a way nothing flags.
+     */
+    timingExplainer:
+      'Two stages whose times overlap are shown side by side on the road, as work you can do at the same time. That is how a route says two things happen together — leave these empty if you are not sure.',
+
+    connectSteps: 'Connect two stages',
+    connections: 'Connections between stages',
+    connectionKind: 'How are they connected?',
+    fromStep: 'Earlier stage',
+    toStep: 'Later stage',
+    connect: 'Connect them',
+    removeConnection: 'Remove this connection',
+    restoreConnection: 'Put this connection back',
+
+    archiveStep: 'Take this stage off the road',
+    restoreStep: 'Put this stage back',
+    archiveStepNote:
+      'It stops appearing on the road and stays in the history, with everything in it. Anyone following this route keeps their progress, and you can put it back.',
+    restoreStepNote: 'It appears on the road again, with everything it had.',
+    archivedNote: 'not on the road',
+
+    archiveField: 'Take this information off the route',
+    restoreField: 'Put this information back',
+    archiveFieldNote:
+      'It stops appearing on the route and stays in the history. Nothing is deleted, and you can put it back.',
+
+    reason: 'Why (kept with the change)',
+    save: 'Save the change',
+
+    /**
+     * What is unfinished about a road — never what is wrong with it.
+     *
+     * A cycle or a duplicate connection cannot reach here: the revision service refuses to
+     * commit either. Everything below is repaired by adding the next connection, which is the
+     * ordinary state of a road somebody is still building — so it is shown, not blocked
+     * (§7.3: a caution changes what the reader should do; it never forbids).
+     */
+    unfinishedTitle: 'This road is not finished yet',
+    unfinished: {
+      orphan_step: 'Not connected to anything yet',
+      unreachable_step: 'Nothing leads to this stage yet',
+      no_start: 'No stage starts this route yet',
+      dangling_rejoin:
+        'Marked as where paths meet again, but only one path arrives so far',
+    },
   },
 
   studyLevel: {
@@ -230,6 +355,19 @@ export const en = {
     stepAdded: 'New',
     stepArchived: 'Archived',
     stepDisrupted: 'Temporary disruption affects this step',
+    stepChanged: 'Changed',
+    previousRoute: 'Previous route',
+    selectedStep: 'Selected step',
+    mapGuide: 'Open a station to explore its requirements and sources.',
+    ribbonContinue: 'Scroll to follow every stage',
+    routeIndex: 'All route steps',
+    backToMap: 'Back to the road',
+    timingUnknown: 'Timing not recorded',
+    routeRelationships: {
+      alternative: 'Choose one pathway',
+      optional: 'Optional branch',
+      parallel: 'Parallel work',
+    },
     tabOverview: 'Route',
     tabHistory: 'History',
     tabsLabel: 'Route views',
@@ -288,6 +426,7 @@ export const en = {
       return months === 1 ? 'about 1 month' : `about ${months} months`
     },
     startsAfter: (n: number) => `Can start about day ${n}`,
+    startsAfterShort: (n: number) => `Around day ${n}`,
     deadline: 'Deadline',
   },
 
@@ -479,6 +618,7 @@ export const en = {
    * nothing here is checked by anyone.
    */
   journey: {
+    mapGuide: 'Your marks are private and self-reported. Open a station to update your progress.',
     tab: 'My journey',
     title: 'My journey',
     indexTitle: 'My journeys',
@@ -978,9 +1118,18 @@ export const en = {
     fieldStep: 'Which step (optional)',
     fieldEffective: 'When does it start to apply? (optional)',
     fieldDescribes: 'Which edit does this describe? (optional)',
+    /**
+     * Says "every edit", plural — audit F8.
+     *
+     * The control took one revision until Phase 12E, so the hint said "the edit". A real
+     * structural change is several: a document added to the visa stage and the APS moved
+     * earlier is a field revision and a step revision at least. Naming one made the shadow
+     * describe a fragment and stay silent about the rest, which under-states the scale of the
+     * change — and scale is what FR-77 asks the shadow to show.
+     */
     fieldDescribesHint:
-      'Linking the edit lets anyone see exactly what changed, now and years from now. Left blank, the announcement still appears — it just cannot show a before and after.',
-    describesNone: 'Not linked to a specific edit',
+      'Tick every edit this announcement is about. Linking them lets anyone see exactly what changed, now and years from now — and a change that touched several stages needs all of them ticked to show its full scale. Left blank, the announcement still appears; it just cannot show a before and after.',
+    describesNone: 'No recent edits to link to',
     describesKind: {
       step: 'Step',
       edge: 'Connection',

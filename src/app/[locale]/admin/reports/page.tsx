@@ -27,7 +27,13 @@ import { handleReportAction, quarantineFieldAction, releaseFieldAction } from '.
  * minutes reads differently from twelve over a month. Those are the facts that let a person
  * judge; the judgement stays theirs.
  *
- * Not linked from anywhere in the ordinary interface. An administrator knows the address; a
+ * Reachable from the header, and **only by an administrator** — Phase 12E, audit F12. Until
+ * then nothing linked here at all: the queue worked, was tested, and could be reached only by
+ * knowing the address, which is a capability that is complete in code and absent from the
+ * product. FR-46's periodic review is not a review anybody can perform.
+ *
+ * The header link is gated on the session's safety role, and that gate decides only what is
+ * *shown*. This page's own refusal is unchanged and is the actual rule: a
  * reader has no reason to find a moderation queue while trying to understand a visa process.
  *
  * The role is checked in the service, server-side, and this page shows a plain not-found to

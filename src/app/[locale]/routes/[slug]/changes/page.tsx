@@ -142,7 +142,7 @@ export default async function RouteChangesPage({
           </ContentColumn>
 
           {report === null ? (
-            <AnonymousChangeList routeId={route.id} dictionary={t} />
+            <AnonymousChangeList routeId={route.id} locale={locale} dictionary={t} />
           ) : (
             <FollowerChangeList
               entries={report.changes}
@@ -296,9 +296,11 @@ async function FollowerPanel({
 
 async function AnonymousChangeList({
   routeId,
+  locale,
   dictionary: t,
 }: {
   routeId: string
+  locale: string
   dictionary: Dictionary
 }) {
   const changes = await changesForRoute(routeId)
@@ -308,7 +310,7 @@ async function AnonymousChangeList({
   return (
     <ul className="mt-3 space-y-3">
       {changes.map((change) => (
-        <AnnouncedChangeCard key={change.id} change={change} dictionary={t}>
+        <AnnouncedChangeCard key={change.id} change={change} locale={locale} dictionary={t}>
           <ExactChangeFor changeId={change.id} dictionary={t} />
         </AnnouncedChangeCard>
       ))}
@@ -500,19 +502,53 @@ async function RecordSection({
             {/* The durable link. A revision id, chosen by the person who knows which edit
                 they are announcing — never guessed from "whichever revision is newest",
                 which would look identical and be wrong whenever it mattered. */}
-            <label className={`${LABEL} mt-2`}>
-              {t.changes.fieldDescribes}
-              <select name="describesRevision" className={INPUT}>
-                <option value="">{t.changes.describesNone}</option>
-                {recentRevisions.map((option) => (
-                  <option key={option.revisionId} value={`${option.kind}:${option.revisionId}`}>
-                    {t.changes.describesKind[option.kind]}: {option.label} (
-                    {option.createdAt.toISOString().slice(0, 10)})
-                  </option>
-                ))}
-              </select>
-              <span className="mt-0.5 block text-ink-500">{t.changes.fieldDescribesHint}</span>
-            </label>
+            {/*
+              Checkboxes, not a single <select> — audit F8.
+
+              A real structural change is several revisions: a document added to the visa
+              stage and the APS moved earlier is a field revision and a step revision, and a
+              reordering is several edge revisions. The old control could name exactly one, so
+              `shadowForChange` reconstructed a before/after that was true of a fragment and
+              silently incomplete about the rest — which under-describes the *scale* of a
+              change, and scale is what FR-77 asks the shadow to show.
+
+              Checkboxes rather than a multi-select: a `<select multiple>` needs ctrl-click to
+              pick more than one, which is undiscoverable and unusable on a phone, and this
+              whole surface has to work without JavaScript.
+            */}
+            <fieldset className="mt-2">
+              <legend className={LABEL}>{t.changes.fieldDescribes}</legend>
+              {recentRevisions.length === 0 ? (
+                <p className="mt-1 text-xs text-ink-500">{t.changes.describesNone}</p>
+              ) : (
+                <ul className="mt-1 space-y-1">
+                  {recentRevisions.map((option) => (
+                    <li key={option.revisionId}>
+                      <label className="flex items-start gap-2 text-xs leading-5 text-ink-700">
+                        <input
+                          type="checkbox"
+                          name="describesRevision"
+                          value={`${option.kind}:${option.revisionId}`}
+                          className="mt-0.5"
+                        />
+                        <span>
+                          <span className="font-medium text-ink-900">
+                            {t.changes.describesKind[option.kind]}
+                          </span>
+                          : {option.label}{' '}
+                          <span className="text-ink-500">
+                            ({option.createdAt.toISOString().slice(0, 10)})
+                          </span>
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <span className="mt-1 block text-xs text-ink-500">
+                {t.changes.fieldDescribesHint}
+              </span>
+            </fieldset>
 
             <button
               type="submit"

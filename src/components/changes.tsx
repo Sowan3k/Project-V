@@ -1,4 +1,5 @@
 import { ComparisonRows } from '@/components/shadow-compare'
+import { ContributorLink } from '@/components/ui'
 import { Caution } from '@/components/trust'
 import type { ChangeRelevance, DisruptionRelevance } from '@/domain/changes'
 import { daysRemaining } from '@/domain/changes'
@@ -104,10 +105,12 @@ function ChangeDates({ change, dictionary: t }: { change: ChangeView; dictionary
  */
 export function AnnouncedChangeCard({
   change,
+  locale,
   dictionary: t,
   children,
 }: {
   change: ChangeView
+  locale: string
   dictionary: Dictionary
   children?: React.ReactNode
 }) {
@@ -136,7 +139,11 @@ export function AnnouncedChangeCard({
 
       {change.authorHandle === null ? null : (
         <p className="mt-1 text-xs text-ink-500">
-          {t.changes.announcedBy} {change.authorHandle}
+          {/* Linked to the contributor's own evidence page — audit F12. A reader weighing an
+              announcement is told who made it; §25's answer to "are they any good?" is
+              evidence rather than a score, and evidence nothing links to is not evidence. */}
+          {t.changes.announcedBy}{' '}
+          <ContributorLink handle={change.authorHandle} locale={locale} />
         </p>
       )}
 
@@ -284,7 +291,12 @@ export function FollowerChangeList({
   return (
     <ul className="mt-3 space-y-3">
       {entries.map((entry) => (
-        <AnnouncedChangeCard key={entry.change.id} change={entry.change} dictionary={t}>
+        <AnnouncedChangeCard
+          key={entry.change.id}
+          change={entry.change}
+          locale={locale}
+          dictionary={t}
+        >
           {exactChange?.(entry.change.id)}
           <RelevanceNote relevance={entry.relevance} dictionary={t} />
           <StanceControl

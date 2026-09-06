@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { ContributorLink } from '@/components/ui'
 import { RouteLifecycleState } from '@/domain/enums'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 import type { LifecycleEventView } from '@/server/lifecycle/read'
@@ -139,9 +140,11 @@ export function MergedFromList({
  */
 export function LifecycleHistory({
   events,
+  locale,
   dictionary: t,
 }: {
   events: readonly LifecycleEventView[]
+  locale: string
   dictionary: Dictionary
 }) {
   return (
@@ -161,7 +164,14 @@ export function LifecycleHistory({
               <p className="mt-0.5 text-xs text-ink-500">
                 {reasonLabel(event.reason, t)} ·{' '}
                 {event.createdAt.toISOString().slice(0, 10)} ·{' '}
-                {event.actorHandle ?? t.lifecycle.historyAutomatic}
+                {/* An automatic transition has no actor, and says so rather than naming
+                    one — recording a person against the clock's decision would misattribute
+                    it (lifecycle.prisma). */}
+                <ContributorLink
+                  handle={event.actorHandle}
+                  locale={locale}
+                  fallback={t.lifecycle.historyAutomatic}
+                />
               </p>
               {event.note === null ? null : (
                 <p className="mt-1 text-xs leading-5 text-ink-700">{event.note}</p>
