@@ -632,10 +632,10 @@ alone — each needs the checklist walked deliberately.
 
 | Gate | Covers | State |
 |---|---|---|
-| Gate 1 — Visualisation scalability | §7 above + invariant tests 24, 25 | ⬜ |
-| Gate 2 — Real launch content | Germany/Australia/USA/Malaysia sourced routes, zero mockup-derived values | ⬜ |
-| Gate 3 — Complete community loop | Full E2E: search → ribbon → road → step → field → follow → progress → contribute → revision → change → shadow → progress intact | ⬜ |
-| Gate 4 — Visual fidelity | Every screen screenshotted at 360/768/1280/1440 and reviewed against its visual reference; every departure written down | ⬜ |
+| Gate 1 — Visualisation scalability | §7 above + invariant tests 24, 25 | 🟡 mechanism proved 2026-09-06, one item open — §22 |
+| Gate 2 — Real launch content | Germany/Australia/USA/Malaysia sourced routes, zero mockup-derived values | ⬜ waits on the owner's research (CLAUDE.md §10.2) |
+| Gate 3 — Complete community loop | Full E2E: search → ribbon → road → step → field → follow → progress → contribute → revision → change → shadow → progress intact | 🟡 every stage exercised 2026-09-06 — §22 |
+| Gate 4 — Visual fidelity | Every screen screenshotted at 360/768/1280/1440 and reviewed against its visual reference; every departure written down | 🟡 sheet built (§19), departures written (§18, §20), owner review open |
 
 **Gate 4 needs a fidelity checklist per mockup**, added here when Phase 12G builds it: what
 matches, what is deliberately substituted and under which rule, what is genuinely outstanding.
@@ -1894,7 +1894,9 @@ passed. The defect was that `important`, `relevant` and `informational` rendered
 repository can see that two branches of a ternary produce the same class string** without being
 written specifically to look for it.
 
-The same shape as §22's "four bugs that never failed anything". It was found by opening the
+The same shape as numbered section 22, "four bugs that never failed anything" — this file
+carries two numbering schemes, the plain `## N.` ones from Phase 0 and the `## §N` ones added
+from the audit onwards, and that is the plain one. It was found by opening the
 mockup beside the component, which is the only method that finds it, and is the argument for
 Gate 4 rather than for another guard.
 
@@ -2081,7 +2083,7 @@ before believing it.
 
 ---
 
-## §20 — The ribbon was a flowchart, and five things made it one (2026-09-06)
+## §21 — The ribbon was a flowchart, and five things made it one (2026-09-06)
 
 **Found by the owner looking at it**, which is the third time this project has recorded that
 sentence and the third time no assertion in the repository could have produced it. The verdict
@@ -2170,3 +2172,92 @@ full acceptance sheet was regenerated: 40 screenshots, zero horizontal overflow.
 **Not verified:** how the band reads on a real phone rather than an emulated viewport, and how
 it reads to somebody with deuteranopia — the icons carry the category and the palette was fitted
 for this in Phase 12B, but neither claim is measured here.
+
+---
+
+## §22 — Gates 1 and 3 walked against fixtures (2026-09-06)
+
+The owner's revised ordering (Phases.md, 2026-09-06) makes Gates 1, 3 and 4 provable before the
+real content exists. This is the first walk of Gates 1 and 3.
+
+Neither is signed off — a gate is signed off by a person walking the checklist, and Gate 4's
+last line and Gate 2's need a human by construction. What follows is the evidence a person
+would be walking with.
+
+### Gate 1 — Visualisation scalability
+
+| Item | Evidence |
+|---|---|
+| Renders linear, wrapping, optional branch, alternative branch, parallel activities, rejoining branch, added step, archived step, shadow, disruption | F1–F9 in `tests/unit/renderer-layout.test.ts`, the §7 specification implemented against the production renderer. **92 tests pass** |
+| Usable from 3 to 20 primary steps | F1 (`tiny3`) and F9 (`large20`), plus `has no upper limit on step count` |
+| Legible on desktop, tablet and mobile; no page-wide horizontal overflow | Gallery shot at **360 / 768 / 1280 / 1440**: `page-wide horizontal overflow: no` at every width. Separately, `presentation.spec.ts` proves it for the real application at 360, 390, 768 and 1280 |
+| Ribbon and road from one structure and one layout pass | test 25 and 25b — adding a step changes every density with no separate work |
+| Structural equivalence | test 24: F8 and its twin F10 differ in destination, title and every id, and produce identical geometry |
+| Generative coverage | test 24b over randomly generated valid graphs |
+| Renderer imports nothing from seed, content or destination modules | `renderer-import-boundary.test.ts`, 10 tests, lint-enforced |
+| No identity branching in `src/renderer/**` | `renderer-identity.test.ts`, 23 tests |
+| The stress route renders correctly at all three widths | `npm run renderer:gallery && npm run renderer:shoot` — 4 full-page shots, 7 detail crops, no overflow |
+| **A route created through the UI by a non-developer renders with zero code changes** | `contribute.spec.ts` walks exactly this — create through the form, add a step, then assert the road's own `<title>` carries the new step. **Not completed locally**: the test exhausts its 60s budget against the remote Neon branch (below). It is the one Gate 1 item still resting on CI |
+
+**156 renderer tests pass**, all four widths overflow-free.
+
+### Gate 3 — Complete community loop
+
+Every stage of the loop was exercised in a browser against the disposable branch:
+
+| Stage | Spec | Result |
+|---|---|---|
+| Search → ribbons → road → step → fields | `route-journey.spec.ts` | passed, 360 and 1280 |
+| …with JavaScript disabled | `route-journey.spec.ts` | passed |
+| Follow → My Journey → private progress | `journey.spec.ts` | passed |
+| One follower never sees another's notes | `journey.spec.ts` | passed |
+| Unfollowing keeps the notes; following again returns them | `journey.spec.ts` | passed |
+| Completion described as self-reported, never as checked | `journey.spec.ts` | passed |
+| CONFIRM and CHALLENGE behave as different things | `contribute.spec.ts` | passed (after the locator fix below) |
+| Anonymous reader invited, never shown a broken control | `contribute.spec.ts` | passed |
+| Nowhere to attach a document in a contribution | `contribute.spec.ts` | passed |
+| Change announced → follower sees it → shadow comparison → progress intact | `changes.spec.ts` | passed |
+| Create a route through the UI → it renders | `contribute.spec.ts` | **incomplete locally** — 60s budget |
+
+### One real defect, found by walking the gate
+
+**"Last confirmed" now appears three times in a field row**, and two of them are inside
+collapsed `<details>`: the route passport's line, and the VR-08 comparison panel's fact list.
+The `contribute.spec.ts` assertion was already scoped to the row *because* of the passport one
+— and that stopped being enough the moment the third moved into the row. It resolved to the
+hidden `<dt>` and reported it not visible, which reads exactly like the provenance line having
+disappeared.
+
+Named by element instead: the provenance line is a `<p>`, the comparison panel's is a `<dt>`.
+
+**This is what Gate 3 is for.** No unit test could see it: the component renders correctly, the
+dictionary is complete, and the collision only exists once both are on one page.
+
+### The rest of the local failures are the §24 gap, and the database probe proves it
+
+Three tests failed locally at different points on different runs, always at an assertion
+waiting for a server action's effect. A direct probe of the test database showed the writes
+**present and correct every time** — the right status, the right note, at the right second. The
+page simply had not re-rendered within the 15-second assertion timeout, because a server action
+on the journey page is a write plus a full re-render, every query of it a round-trip to a remote
+Neon branch where §14 measured connects at 2.4–8.8 seconds.
+
+The tell is that the failures **move**: the same test failed at the follow step, then at the
+save, then passed, then failed 30 seconds later at a step it had already passed. A deterministic
+defect does not wander.
+
+**A wrong fix was written and reverted, and that is the finding worth keeping.** On the first
+reading — page stale, database presumably not written — `saveStepProgressAction` was given a
+post-redirect-get. It is a defensible pattern and it fixed nothing, because nothing was broken:
+the probe had not been run yet. It would have added a round-trip to the slowest path in the
+product. **Probe the database before concluding a write did not happen**; the evidence is one
+query away and it is the difference between a real defect and a slow render.
+
+### What that leaves
+
+- **Gate 1** rests on CI for its last item.
+- **Gate 3** rests on CI for the create-a-route walk.
+- **Gate 4** needs the owner's eye on the §19 sheet, which is the same acceptance 12C, 12D, 12E
+  and 12F all still share.
+- **Gate 2** is untouched and waits on the owner's research, as intended.
+
