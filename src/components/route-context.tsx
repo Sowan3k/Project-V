@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 import { ContentColumn, GridRegion, PageCanvas, PageGrid } from '@/components/layout'
-import { Breadcrumb, Stat } from '@/components/ui'
+import { Breadcrumb, Panel, Stat } from '@/components/ui'
 import { LifecycleNote, MergedNotice } from '@/components/lifecycle'
 import { FlyWindowValue } from '@/components/route-shared'
 import { RoutePassportPanel } from '@/components/trust'
@@ -129,16 +129,42 @@ export function RouteContext({
                * no maturity arithmetic: the standing lives in the passport beside it, and
                * `routePassport` is the only thing allowed to speak to it (invariant 14).
                */}
-              <div className="mt-6 flex flex-wrap gap-x-10 gap-y-4">
+            </div>
+
+            {/*
+              The facts panel moves to the right of the title — Phase 12H, VR-04.
+
+              ─────────────────────────────────────────────────────────────────────────────
+              It had been a band underneath the summary, inside the left column, which meant
+              the whole right half of a 1440px header was empty above the fold on every route
+              page in the product. VR-04 puts exactly this — the duration and the fly window —
+              in a bordered panel to the *right* of the title, and it is right twice over: the
+              space is there, and a reader deciding whether to open a route wants how long and
+              roughly when beside the name rather than after the description.
+
+              Two by two rather than a row of four, because that is what fits a column, and
+              because the pairs are meaningful: what the route *is* (stages, when it lands)
+              above what the community has *done* with it (contributors, followers).
+
+              Every one of these is a **count or a stored date**. No score, no percentage, no
+              maturity arithmetic: the standing lives in the passport in the rail, and
+              `routePassport` is the only thing allowed to speak to it (invariant 14).
+            */}
+            <Panel tone="sunken" as="section" className="w-full shrink-0 p-4 sm:w-auto lg:min-w-80">
+              <h2 className="sr-only">{t.route.factsLabel}</h2>
+              <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                 <Stat value={route.stepCount} label={t.route.stepsLabel} />
-                <Stat value={<FlyWindowValue window={route.flyWindow} dictionary={t} />} label={t.flyWindow.label} />
+                <Stat
+                  value={<FlyWindowValue window={route.flyWindow} dictionary={t} />}
+                  label={t.flyWindow.label}
+                />
                 <Stat value={route.trust.contributorCount} label={t.route.contributorsLabel} />
                 {/* "users marked this completed", never "verified" — FR-41, §26,
                     invariant 17. The wording lives in the dictionary where it is
                     reviewable as copy. */}
                 <Stat value={route.trust.followerCount} label={t.route.followersLabel} />
               </div>
-            </div>
+            </Panel>
           </div>
 
           {/* §40.4 — a merged route points readers at the survivor rather than vanishing,

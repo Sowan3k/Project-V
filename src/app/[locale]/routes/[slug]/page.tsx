@@ -17,6 +17,7 @@ import { FlagDuplicateForm } from '@/components/lifecycle'
 import { RouteContext } from '@/components/route-context'
 import { RouteMap } from '@/components/route-map'
 import { StepFields } from '@/components/step-fields'
+import { StepIndexRail } from '@/components/step-index'
 import { isLocale } from '@/i18n/config'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 import { getDictionary } from '@/i18n/get-dictionary'
@@ -108,7 +109,30 @@ export default async function RoutePage({
   ).routes.filter((candidate) => candidate.id !== route.id)
 
   return (
-    <RouteContext route={route} dictionary={t} locale={locale} tab="overview">
+    <RouteContext
+      route={route}
+      dictionary={t}
+      locale={locale}
+      tab="overview"
+      /*
+       * The index moves into the rail — Phase 12H, VR-04 and VR-13.
+       *
+       * It had been a full-width list stacked *below* the road, naming the same stages the
+       * road had just drawn: 984px of a 3,439px page, read after scrolling past the thing it
+       * duplicates, while about a thousand pixels of right-hand column sat empty beside it.
+       * Both mockups put it in a column next to the route, and both are right for a reason
+       * beyond tidiness — a reader who has opened stage 4 and wants stage 5 should not have to
+       * scroll back past a wrapping road to find it.
+       */
+      rail={
+        <StepIndexRail
+          route={route}
+          locale={locale}
+          selectedStepId={openStep?.id}
+          dictionary={t}
+        />
+      }
+    >
       <section>
         <h2 className="mb-3 text-section font-semibold text-ink-900">{t.route.roadLabel}</h2>
         <RouteMap
@@ -161,59 +185,6 @@ export default async function RoutePage({
             />
           </div>
         )}
-      </section>
-
-      <section className="mt-8">
-        <details open={openStep === null}>
-          <summary className="cursor-pointer text-panel font-semibold text-ink-900">
-            {t.route.routeIndex}{' '}
-            <span className="text-meta font-normal text-ink-500">({t.route.stepCount(route.stepCount)})</span>
-          </summary>
-
-          {route.steps.length === 0 ? (
-            <p className="mt-3 text-sm text-ink-700">{t.route.noSteps}</p>
-          ) : (
-            <ol className="mt-3 divide-y divide-hairline border-y border-hairline">
-              {route.steps.map((step, index) => {
-                const isOpen = openStep?.id === step.id
-                const href = isOpen
-                  ? `/${locale}/routes/${route.slug}`
-                  : `/${locale}/routes/${route.slug}?step=${encodeURIComponent(step.id)}#route-step-info`
-
-                return (
-                  <li key={step.id}>
-                    <Link
-                      href={href}
-                      scroll={false}
-                      aria-current={isOpen ? 'true' : undefined}
-                      className={`flex items-baseline gap-3 rounded-control px-2 py-4 ${
-                        isOpen
-                          ? 'bg-brand-50'
-                          : 'hover:bg-surface-muted'
-                      }`}
-                    >
-                      <span className="text-xs text-ink-500">{index + 1}</span>
-                      <span className="flex-1">
-                        <span className="block font-medium text-ink-900">{step.label}</span>
-                        <span className="block text-xs text-ink-500">
-                          {t.stepCategory[step.category as keyof typeof t.stepCategory]}
-                          {step.typicalDurationDays === null
-                            ? ''
-                            : ` · ${t.route.duration}: ${t.route.days(step.typicalDurationDays)}`}
-                          {` · ${t.route.fieldCount(step.fieldCount)}`}
-                        </span>
-                      </span>
-                      <span className="text-xs text-brand-700">
-                        {isOpen ? t.route.closeStep : t.route.openStep}
-                      </span>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ol>
-          )}
-        </details>
-
       </section>
 
       {/*

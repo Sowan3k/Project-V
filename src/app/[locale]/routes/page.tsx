@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { ROUTE_MECHANISMS, STUDY_LEVELS } from '@/domain/enums'
 import { buttonClass } from '@/components/ui'
 import type { RouteMechanism, StudyLevel } from '@/domain/enums'
 import { GridRegion, PageCanvas, PageGrid } from '@/components/layout'
-import { Chip, EmptyState, LinkButton } from '@/components/ui'
+import { CategoryLegend } from '@/components/category-legend'
+import { Chip, EmptyState, FormField, inputClass, LinkButton, Panel, Rail } from '@/components/ui'
 import { isLocale } from '@/i18n/config'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 import { getDictionary } from '@/i18n/get-dictionary'
@@ -28,6 +28,9 @@ type SearchParams = Record<string, string | string[] | undefined>
 
 const one = (value: string | string[] | undefined): string | undefined =>
   (Array.isArray(value) ? value[0] : value) || undefined
+
+/** The band's controls, from the one input style the design system owns (Phase 12E). */
+const SELECT = inputClass()
 
 /**
  * A title of this page's own - Phase 12.
@@ -104,90 +107,100 @@ export default async function RouteSearchPage({
         </ul>
       </div>
 
-      <PageGrid className="mt-8">
-        <GridRegion span={4} tablet={2}>
-      <form method="get" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 lg:sticky lg:top-6">
-        <label className="text-sm">
-          <span className="block text-ink-700">{t.search.origin}</span>
-          <select
-            name="from"
-            defaultValue={one(query.from) ?? ''}
-            className="mt-1 w-full rounded-control border border-hairline bg-surface px-3 py-2"
-          >
-            <option value="">{t.search.any}</option>
-            {options.origins.map((code) => (
-              <option key={code} value={code}>
-                {code}
-              </option>
-            ))}
-          </select>
-        </label>
+      {/*
+        VR-12's filter band — Phase 12H.
 
-        <label className="text-sm">
-          <span className="block text-ink-700">{t.search.destination}</span>
-          <select
-            name="to"
-            defaultValue={one(query.to) ?? ''}
-            className="mt-1 w-full rounded-control border border-hairline bg-surface px-3 py-2"
-          >
-            <option value="">{t.search.any}</option>
-            {options.destinations.map((code) => (
-              <option key={code} value={code}>
-                {code}
-              </option>
-            ))}
-          </select>
-        </label>
+        ───────────────────────────────────────────────────────────────────────────────────
+        **The filters were a left column, and it was the single worst use of space in the
+        product.** Four selects and a button occupy about 270 vertical pixels. They sat in a
+        four-of-twelve column beside a results list nearly four thousand pixels tall — so for
+        roughly 3,600 pixels of scrolling, a third of the page width was blank. On a 1440px
+        screen that is a strip of nothing about 220 pixels wide and eleven screens long.
 
-        <label className="text-sm">
-          <span className="block text-ink-700">{t.search.studyLevel}</span>
-          <select
-            name="level"
-            defaultValue={level ?? ''}
-            className="mt-1 w-full rounded-control border border-hairline bg-surface px-3 py-2"
-          >
-            <option value="">{t.search.any}</option>
-            {STUDY_LEVELS.map((value) => (
-              <option key={value} value={value}>
-                {t.studyLevel[value]}
-              </option>
-            ))}
-          </select>
-        </label>
+        VR-12 draws them as a horizontal band above the results: From, Destination, Study
+        Level, Intake, and the button, on one row. That is better on every count. The filters
+        are read once and then scrolled past, which is what a band is for and what a rail is
+        not; the results get the full canvas, so a ribbon has the width it was designed for;
+        and the first screen shows three or four routes instead of one and a half.
+      */}
+      <Panel as="section" tone="sunken" className="mt-6">
+        <h2 className="sr-only">{t.search.filtersLabel}</h2>
+        <form method="get" className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <FormField label={t.search.origin}>
+            <select name="from" defaultValue={one(query.from) ?? ''} className={SELECT}>
+              <option value="">{t.search.any}</option>
+              {options.origins.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </select>
+          </FormField>
 
-        <label className="text-sm">
-          <span className="block text-ink-700">{t.search.mechanism}</span>
-          <select
-            name="mechanism"
-            defaultValue={mechanism ?? ''}
-            className="mt-1 w-full rounded-control border border-hairline bg-surface px-3 py-2"
-          >
-            <option value="">{t.search.any}</option>
-            {ROUTE_MECHANISMS.map((value) => (
-              <option key={value} value={value}>
-                {t.routeMechanism[value]}
-              </option>
-            ))}
-          </select>
-        </label>
+          <FormField label={t.search.destination}>
+            <select name="to" defaultValue={one(query.to) ?? ''} className={SELECT}>
+              <option value="">{t.search.any}</option>
+              {options.destinations.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </select>
+          </FormField>
 
-        <div className="flex items-center gap-3 sm:col-span-2 lg:col-span-1">
-          <button
-            type="submit"
-            className={buttonClass()}
-          >
-            {t.search.submit}
-          </button>
-          {hasFilters ? (
-            <a href={`/${locale}/routes`} className="text-sm text-brand-700 hover:underline">
-              {t.search.reset}
-            </a>
-          ) : null}
-        </div>
-      </form>
+          <FormField label={t.search.studyLevel}>
+            <select name="level" defaultValue={level ?? ''} className={SELECT}>
+              <option value="">{t.search.any}</option>
+              {STUDY_LEVELS.map((value) => (
+                <option key={value} value={value}>
+                  {t.studyLevel[value]}
+                </option>
+              ))}
+            </select>
+          </FormField>
 
-        </GridRegion>
+          <FormField label={t.search.mechanism}>
+            <select name="mechanism" defaultValue={mechanism ?? ''} className={SELECT}>
+              <option value="">{t.search.any}</option>
+              {ROUTE_MECHANISMS.map((value) => (
+                <option key={value} value={value}>
+                  {t.routeMechanism[value]}
+                </option>
+              ))}
+            </select>
+          </FormField>
 
+          <div className="flex items-center gap-3">
+            <button type="submit" className={buttonClass()}>
+              {t.search.submit}
+            </button>
+            {hasFilters ? (
+              <a href={`/${locale}/routes`} className="text-sm text-brand-700 hover:underline">
+                {t.search.reset}
+              </a>
+            ) : null}
+          </div>
+        </form>
+      </Panel>
+
+      {/*
+        Results in a column tuned for a ribbon, and a rail that is not empty — Phase 12H.
+
+        ───────────────────────────────────────────────────────────────────────────────────
+        **Why the results are not full-width now that the filters have left the side.**
+
+        Giving them the whole canvas was tried and measured, and it made the page *taller* —
+        3,917px to 4,364px. A ribbon is an SVG with a viewBox and `w-full`, so it scales to its
+        container in both dimensions: widening the column from 826px to 1,280px scaled every
+        band by 1.55×, and a route with parallel stages, whose ribbon carries lane gaps, grew
+        by two hundred pixels. More width bought more height, which is the opposite of the
+        point. `RIBBON.fitWidth` is 680 and tuned for this column; the honest fix is to keep
+        the column it was tuned for rather than to blow the drawing up and call it density.
+
+        So the width the filters gave back goes to a rail instead, which is what VR-12 does
+        with that side of the page anyway.
+      */}
+      <PageGrid className="mt-6">
         <GridRegion span={8} tablet={4}>
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <p className="text-sm text-ink-500" role="status">
@@ -199,15 +212,6 @@ export default async function RouteSearchPage({
                 </span>
               ) : null}
             </p>
-            {/* FR-13, where a student actually notices the gap: at the moment their own route
-                is not in the results. Outside the boundary, so it is there to click before
-                the results have arrived. */}
-            <Link
-              href={`/${locale}/routes/new`}
-              className="ml-auto text-sm text-brand-700 hover:underline"
-            >
-              {t.contribute.createRoute}
-            </Link>
           </div>
 
           <SearchResults
@@ -217,6 +221,31 @@ export default async function RouteSearchPage({
             dictionary={t}
             query={query}
           />
+        </GridRegion>
+
+        <GridRegion span={4} tablet={2}>
+          <div className="space-y-3 lg:sticky lg:top-6">
+            {/*
+              The key to the thing the reader is looking at. Every ribbon on this page is six
+              categories in journey order, each an icon in its own colour, and nothing said
+              what any of them meant — information present and unreadable.
+            */}
+            <Rail title={t.search.legendTitle} level={2}>
+              <p className="mb-3 text-meta leading-5 text-ink-500">{t.search.legendLede}</p>
+              <CategoryLegend dictionary={t} />
+            </Rail>
+
+            {/* FR-13, where a student actually notices the gap: at the moment their own route
+                is not in the results. */}
+            <Rail title={t.search.missingTitle} level={2}>
+              <p className="text-meta leading-5 text-ink-700">{t.search.missingLede}</p>
+              <div className="mt-3">
+                <LinkButton href={`/${locale}/routes/new`} tone="secondary">
+                  {t.contribute.createRoute}
+                </LinkButton>
+              </div>
+            </Rail>
+          </div>
         </GridRegion>
       </PageGrid>
     </PageCanvas>

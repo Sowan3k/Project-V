@@ -1095,10 +1095,10 @@ wrapping through three rows with curved returns and step cards sitting on it.
 - ✅ Ribbon and road step counts and order still match for every fixture (invariant 25)
 - ✅ A ribbon occupies **at least 85% of its row's width** at every viewport, asserted in E2E —
   this is the defect that must not silently return
-- 🟡 Side-by-side screenshots of a real seeded route against VR-03 (ribbon) and VR-04 (road),
-  reviewed and accepted by the owner — **the screenshots exist** as of 2026-09-06
-  (`npm run review:shoot`, Test.md §19), with ribbon and road crops at all four widths.
-  The acceptance is the owner's and is what remains
+- ✅ Side-by-side screenshots of a real seeded route against VR-03 (ribbon) and VR-04 (road),
+  reviewed and **accepted by the owner on 2026-09-07**. The ribbon direction is accepted in
+  the owner's own words; the road is accepted with it. This closes the criterion that had been
+  open on this phase and on 12D since 2026-09-04, and that 12E and 12F were both building on
 - ✅ Renders with JavaScript disabled; zero client components added
 
 **Visual references:** VR-03 (ribbon band), VR-04 (wrapping road), VR-05/VR-13 (stepper)
@@ -1240,10 +1240,12 @@ become the passport's counted evidence in the same position and at the same weig
 VR-13's "Verified" / "98%" become source and last-confirmed language (BR-20, §8.6).
 
 **Exit criteria**
-- 🟡 Screenshots at 360/768/1280/1440 of landing, search, route and step reviewed side by side
-  against VR-01, VR-12, VR-04, VR-05 and VR-14, and accepted by the owner — **produced**
-  2026-09-06 as a contact sheet pairing each screen with its mockup (Test.md §19). The
-  acceptance is the owner's and is what remains
+- ✅ Screenshots at 360/768/1280/1440 of landing, search, route and step reviewed side by side
+  against VR-01, VR-12, VR-04, VR-05 and VR-14, and **accepted by the owner on 2026-09-07** —
+  produced 2026-09-06 as a contact sheet pairing each screen with its mockup (Test.md §19).
+  Accepted **with a named reservation**, which is the one thing this acceptance does not cover
+  and which became Phase 12H: *"every space was smartly occupied. people have to scroll less.
+  everything easily in one screen"*. The drawing is right; the composition around it is loose
 - ✅ Search results paginate; no page exceeds a reasonable document height
 - ✅ Every page uses `PageCanvas`; one left edge across header, content and footer (guarded)
 - ✅ Breadcrumbs on every route-context page, each segment a real link

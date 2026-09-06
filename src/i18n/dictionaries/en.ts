@@ -339,6 +339,21 @@ export const en = {
   search: {
     title: 'Find a route',
     lede: 'A few filters, not a profile. Nothing here needs an account.',
+    /** The band's own accessible name — it is a landmark a screen reader can skip past. */
+    filtersLabel: 'Narrow the routes',
+    /**
+     * The rail — Phase 12H.
+     *
+     * VR-12 puts "Recently Updated" here, which is a cross-route feed this product does not
+     * have and would not add without a change request (§35). The position is the mockup's;
+     * what fills it is a key to the thing the reader is actually looking at.
+     */
+    legendTitle: 'How to read a ribbon',
+    legendLede:
+      'Each band is one route, compressed — its stages in order, left to right, coloured by what kind of stage each one is. Opening it unfolds the same thing into a road.',
+    missingTitle: 'Not here?',
+    missingLede:
+      'If the way you are going is missing, add it. New routes appear straight away, marked experimental until the community has worked on them.',
     origin: 'From',
     destination: 'To',
     studyLevel: 'Study level',
@@ -400,6 +415,8 @@ export const en = {
      * "students" or "users on this route" keeps both facts in the label — the number is
      * people, and their progress is not ours to describe.
      */
+    /** The header panel is a landmark; it needs a name a screen reader can skip by. */
+    factsLabel: 'About this route',
     stepsLabel: 'Steps',
     contributorsLabel: 'Contributors',
     followersLabel: 'Following privately',
