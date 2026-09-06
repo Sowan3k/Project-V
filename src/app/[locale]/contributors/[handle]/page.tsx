@@ -35,13 +35,13 @@ export default async function ContributorPage({
   return (
     <PageCanvas className="py-8">
       <ContentColumn width="normal">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{history.handle}</h1>
+        <h1 className="text-title font-semibold tracking-tight text-ink-900">{history.handle}</h1>
         <ContentColumn width="reading">
           <p className="mt-2 text-sm leading-6 text-ink-500">{t.auth.handleExplainer}</p>
         </ContentColumn>
 
         {isNew ? (
-          <div className="mt-6 rounded-panel border border-hairline bg-surface p-4">
+          <div className="mt-6 rounded-panel border border-hairline bg-surface p-4 shadow-panel">
             <p className="text-sm font-medium text-ink-900">{t.contribute.newContributor}</p>
             <ContentColumn width="reading">
               <p className="mt-1 text-sm leading-6 text-ink-700">{t.contribute.newContributorNote}</p>

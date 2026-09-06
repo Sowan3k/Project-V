@@ -450,6 +450,38 @@ describe('components build from the scale rather than from ad-hoc values', () =>
     expect([...new Set(offenders)], 'Use buttonClass() from @/components/ui').toEqual([])
   })
 
+  /**
+   * **Headings come from the scale** — Phase 12E.
+   *
+   * The type scale names its steps for the job — `title` is a page's subject, `section` is a
+   * heading within one — precisely so that changing how big a page title is stays one token
+   * edit rather than a search for every file that happened to reach for `text-2xl`. Thirteen
+   * headings across eight files were still picking from Tailwind's default ramp, which is how
+   * two pages end up with subtly different titles for no reason anyone chose.
+   *
+   * Scoped to `h1` and `h2`, which are the structural headings. Smaller headings inside a
+   * panel legitimately use `text-panel` or a body size, and body copy is not in scope here.
+   */
+  it('sizes h1 and h2 from the type scale', () => {
+    const SCALE = new Set(['text-display', 'text-title', 'text-section', 'text-panel'])
+    const offenders: string[] = []
+
+    for (const file of SOURCE_FILES) {
+      const code = stripComments(read(file))
+      for (const match of code.matchAll(/<h([12])\s+className="([^"]*)"/g)) {
+        const classes = (match[2] ?? '').split(/\s+/)
+        const sized = classes.filter((c) => /^text-(?!ink-|brand-|caution-|surface|balance|pretty|left|center|right|nowrap|wrap)/.test(c))
+        // A heading with no size at all inherits, which is a deliberate choice rather than a
+        // drift; only an explicit off-scale size is a finding.
+        if (sized.length > 0 && !sized.some((c) => SCALE.has(c))) {
+          offenders.push(`${file}: <h${match[1]}> ${sized.join(' ')}`)
+        }
+      }
+    }
+
+    expect(offenders, 'Use text-title / text-section from the scale').toEqual([])
+  })
+
   it('keeps every primitive a server component', () => {
     const ui = read('src/components/ui.tsx')
     expect(ui).not.toMatch(/'use client'/)

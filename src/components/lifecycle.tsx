@@ -84,7 +84,7 @@ export function MergedNotice({
 
   return (
     <section className="mt-4 rounded-panel border border-brand-500/40 bg-brand-500/5 p-4">
-      <h2 className="text-sm font-semibold text-brand-900">{t.lifecycle.mergedTitle}</h2>
+      <h2 className="text-panel font-semibold text-brand-900">{t.lifecycle.mergedTitle}</h2>
       <p className="mt-1 text-sm leading-6 text-ink-700">
         {t.lifecycle.mergedBody(route.mergedInto.title)}
       </p>
@@ -114,7 +114,7 @@ export function MergedFromList({
 
   return (
     <section className="mt-6">
-      <h2 className="text-sm font-semibold text-ink-900">{t.lifecycle.mergedFromTitle}</h2>
+      <h2 className="text-panel font-semibold text-ink-900">{t.lifecycle.mergedFromTitle}</h2>
       <ul className="mt-2 space-y-1">
         {routes.map((route) => (
           <li key={route.slug} className="text-sm text-ink-700">
@@ -149,7 +149,7 @@ export function LifecycleHistory({
 }) {
   return (
     <section className="mt-8">
-      <h2 className="text-sm font-semibold text-ink-900">{t.lifecycle.historyTitle}</h2>
+      <h2 className="text-panel font-semibold text-ink-900">{t.lifecycle.historyTitle}</h2>
       <p className="mt-1 text-xs leading-5 text-ink-500">{t.lifecycle.historyLede}</p>
 
       {events.length === 0 ? (

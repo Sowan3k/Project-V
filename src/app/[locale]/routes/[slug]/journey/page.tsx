@@ -226,7 +226,7 @@ function JourneyBoard({
     <>
       <section>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-ink-900">{t.journey.progressTitle}</h2>
+          <h2 className="text-section font-semibold text-ink-900">{t.journey.progressTitle}</h2>
           {/* Visually connected to the public route, unmistakably personal (§8.5). */}
           <span className="rounded-full border border-brand-500/40 bg-brand-500/5 px-3 py-1 text-xs font-medium text-brand-900">
             {t.journey.privateBadge}
@@ -610,7 +610,7 @@ async function ChangesSinceStarted({
   return (
     <section className="mt-8 rounded-panel border border-hairline bg-surface p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-ink-900">{t.changes.yourPositionTitle}</h2>
+        <h2 className="text-panel font-semibold text-ink-900">{t.changes.yourPositionTitle}</h2>
         <Link
           href={`/${locale}/routes/${slug}/changes`}
           className="text-xs text-brand-700 underline"

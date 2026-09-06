@@ -96,7 +96,7 @@ export function ChangeScale({
 
   return (
     <section className="rounded-panel border border-hairline bg-surface p-4">
-      <h2 className="text-sm font-semibold text-ink-900">{t.changes.summaryTitle}</h2>
+      <h2 className="text-panel font-semibold text-ink-900">{t.changes.summaryTitle}</h2>
       {lines.length === 0 ? (
         <p className="mt-2 text-sm text-ink-700">{t.changes.nothingYet}</p>
       ) : (

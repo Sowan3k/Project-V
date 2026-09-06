@@ -81,7 +81,7 @@ export default async function AdminReportsPage({
   return (
     <PageCanvas className="py-8">
       <ContentColumn width="wide">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{t.admin.title}</h1>
+        <h1 className="text-title font-semibold tracking-tight text-ink-900">{t.admin.title}</h1>
         <ContentColumn width="reading">
           <p className="mt-2 text-sm leading-6 text-ink-700">{t.admin.lede}</p>
           <p className="mt-2 text-sm leading-6 text-ink-500">{t.admin.noRecommendation}</p>
@@ -92,10 +92,10 @@ export default async function AdminReportsPage({
         ) : (
           <ul className="mt-6 space-y-4">
             {queue.map((summary) => (
-              <li key={summary.fieldId} className="rounded-panel border border-hairline bg-surface p-4">
+              <li key={summary.fieldId} className="rounded-panel border border-hairline bg-surface p-4 shadow-panel">
                 <PageGrid>
                   <GridRegion span={5}>
-                    <h2 className="text-sm font-semibold text-ink-900">{t.admin.evidence}</h2>
+                    <h2 className="text-panel font-semibold text-ink-900">{t.admin.evidence}</h2>
                     <ul className="mt-2 space-y-0.5 text-sm text-ink-700">
                       <li>{t.admin.openReports(summary.openReports)}</li>
                       {/* The number that resists gaming: people, not reports (invariant 14). */}
@@ -122,7 +122,7 @@ export default async function AdminReportsPage({
                   </GridRegion>
 
                   <GridRegion span={7}>
-                    <h2 className="text-sm font-semibold text-ink-900">{t.admin.actions}</h2>
+                    <h2 className="text-panel font-semibold text-ink-900">{t.admin.actions}</h2>
 
                     <form action={quarantineFieldAction} className="mt-2 grid gap-2">
                       <input type="hidden" name="locale" value={locale} />

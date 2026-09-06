@@ -13,7 +13,7 @@ export default async function NotFound() {
   return (
     <PageCanvas className="py-24">
       <ContentColumn width="reading" centred>
-        <h1 className="text-2xl font-semibold text-ink-900">{t.notFound.title}</h1>
+        <h1 className="text-title font-semibold text-ink-900">{t.notFound.title}</h1>
         <p className="mt-4 text-ink-700">{t.notFound.body}</p>
       </ContentColumn>
     </PageCanvas>

@@ -119,7 +119,7 @@ export default async function RouteChangesPage({
   return (
     <RouteContext route={route} dictionary={t} locale={locale} tab="changes">
       <ContentColumn width="canvas">
-        <h2 className="text-xl font-semibold tracking-tight text-ink-900">{t.changes.title}</h2>
+        <h2 className="text-section font-semibold tracking-tight text-ink-900">{t.changes.title}</h2>
         <ContentColumn width="reading">
           <p className="mt-2 text-sm leading-6 text-ink-700">{t.changes.lede}</p>
         </ContentColumn>
@@ -131,7 +131,7 @@ export default async function RouteChangesPage({
         )}
 
         <section className="mt-10">
-          <h2 className="text-lg font-semibold tracking-tight text-ink-900">
+          <h2 className="text-section font-semibold tracking-tight text-ink-900">
             {t.changes.announcedTitle}
           </h2>
           <ContentColumn width="reading">
@@ -158,7 +158,7 @@ export default async function RouteChangesPage({
         </section>
 
         <section className="mt-10">
-          <h2 className="text-lg font-semibold tracking-tight text-ink-900">
+          <h2 className="text-section font-semibold tracking-tight text-ink-900">
             {t.changes.disruptionsTitle}
           </h2>
           <ContentColumn width="reading">
@@ -266,7 +266,7 @@ async function FollowerPanel({
       <PageGrid>
         <GridRegion span={12}>
           <section className="rounded-panel border border-hairline bg-surface p-4">
-            <h2 className="text-sm font-semibold text-ink-900">{t.changes.yourPositionTitle}</h2>
+            <h2 className="text-panel font-semibold text-ink-900">{t.changes.yourPositionTitle}</h2>
             <p className="mt-1 text-sm text-ink-700">
               {t.changes.needsAttention(report.needsAttention)}
             </p>
@@ -408,7 +408,7 @@ async function RecordSection({
   if (!signedIn) {
     return (
       <section className="mt-10 border-t border-hairline pt-6">
-        <h2 className="text-lg font-semibold tracking-tight text-ink-900">
+        <h2 className="text-section font-semibold tracking-tight text-ink-900">
           {t.changes.recordTitle}
         </h2>
         <p className="mt-2 text-sm text-ink-700">
@@ -441,7 +441,7 @@ async function RecordSection({
 
   return (
     <section className="mt-10 border-t border-hairline pt-6">
-      <h2 className="text-lg font-semibold tracking-tight text-ink-900">
+      <h2 className="text-section font-semibold tracking-tight text-ink-900">
         {t.changes.recordTitle}
       </h2>
       <ContentColumn width="reading">

@@ -38,7 +38,7 @@ export default function ErrorBoundary({
   return (
     <PageCanvas className="py-16">
       <div className="max-w-[68ch]">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
+        <h1 className="text-title font-semibold tracking-tight text-ink-900">
           Something went wrong on this page
         </h1>
         <p className="mt-3 text-base leading-7 text-ink-700">

@@ -70,7 +70,7 @@ export default async function RouteHistoryPage({
   return (
     <RouteContext route={route} dictionary={t} locale={locale} tab="history">
       <ContentColumn width="wide">
-        <h2 className="text-lg font-semibold text-ink-900">{t.route.history}</h2>
+        <h2 className="text-section font-semibold text-ink-900">{t.route.history}</h2>
         <ContentColumn width="reading">
           <p className="mt-2 text-sm leading-6 text-ink-700">{t.route.historyLede}</p>
         </ContentColumn>

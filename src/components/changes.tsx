@@ -115,7 +115,7 @@ export function AnnouncedChangeCard({
   children?: React.ReactNode
 }) {
   return (
-    <li className="rounded-panel border border-hairline bg-surface p-4">
+    <li className="rounded-panel border border-hairline bg-surface p-4 shadow-panel">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <h3 className="text-sm font-semibold text-ink-900">{change.title}</h3>
         <div className="flex flex-wrap gap-1.5">

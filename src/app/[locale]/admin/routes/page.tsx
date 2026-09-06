@@ -89,7 +89,7 @@ export default async function AdminRoutesPage({
   return (
     <PageCanvas className="py-8">
       <ContentColumn width="wide">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{t.admin.routesTitle}</h1>
+        <h1 className="text-title font-semibold tracking-tight text-ink-900">{t.admin.routesTitle}</h1>
         <ContentColumn width="reading">
           <p className="mt-2 text-sm leading-6 text-ink-700">{t.admin.routesLede}</p>
           {/* The direction rule, stated where the person exercising it can read it. */}
@@ -108,7 +108,7 @@ export default async function AdminRoutesPage({
         </form>
 
         <section className="mt-10">
-          <h2 className="text-lg font-semibold tracking-tight text-ink-900">
+          <h2 className="text-section font-semibold tracking-tight text-ink-900">
             {t.admin.duplicatesTitle}
           </h2>
           <ContentColumn width="reading">
@@ -120,7 +120,7 @@ export default async function AdminRoutesPage({
           ) : (
             <ul className="mt-3 space-y-3">
               {flags.map((flag) => (
-                <li key={flag.id} className="rounded-panel border border-hairline bg-surface p-4">
+                <li key={flag.id} className="rounded-panel border border-hairline bg-surface p-4 shadow-panel">
                   <p className="text-sm text-ink-900">
                     <Link
                       href={`/${locale}/routes/${flag.routeSlug}`}
@@ -165,7 +165,7 @@ export default async function AdminRoutesPage({
         </section>
 
         <section className="mt-10">
-          <h2 className="text-lg font-semibold tracking-tight text-ink-900">{t.admin.setState}</h2>
+          <h2 className="text-section font-semibold tracking-tight text-ink-900">{t.admin.setState}</h2>
           <ContentColumn width="reading">
             <p className="mt-1 text-xs leading-5 text-ink-500">{t.admin.mergeExplainer}</p>
           </ContentColumn>
@@ -211,7 +211,7 @@ function RouteMaintenanceRow({
     .filter((candidate) => candidate.compatible)
 
   return (
-    <li className="rounded-panel border border-hairline bg-surface p-4">
+    <li className="rounded-panel border border-hairline bg-surface p-4 shadow-panel">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <Link
           href={`/${locale}/routes/${route.slug}`}
