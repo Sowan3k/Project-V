@@ -635,10 +635,11 @@ alone — each needs the checklist walked deliberately.
 | Gate 1 — Visualisation scalability | §7 above + invariant tests 24, 25 | 🟡 mechanism proved 2026-09-06, one item open — §22 |
 | Gate 2 — Real launch content | Germany/Australia/USA/Malaysia sourced routes, zero mockup-derived values | ⬜ waits on the owner's research (CLAUDE.md §10.2) |
 | Gate 3 — Complete community loop | Full E2E: search → ribbon → road → step → field → follow → progress → contribute → revision → change → shadow → progress intact | 🟡 every stage exercised 2026-09-06 — §22 |
-| Gate 4 — Visual fidelity | Every screen screenshotted at 360/768/1280/1440 and reviewed against its visual reference; every departure written down | 🟡 sheet built (§19), departures written (§18, §20), owner review open |
+| Gate 4 — Visual fidelity | Every screen screenshotted at 360/768/1280/1440 and reviewed against its visual reference; every departure written down | 🟡 sheet built (§19), checklist written (§24), accessibility green — owner review open |
 
-**Gate 4 needs a fidelity checklist per mockup**, added here when Phase 12G builds it: what
-matches, what is deliberately substituted and under which rule, what is genuinely outstanding.
+**Gate 4 has its fidelity checklist per mockup — §24 below**, written 2026-09-07: what matches,
+what is deliberately substituted and under which rule, what is genuinely outstanding. Fourteen
+mockups, and every difference names the rule that forced it.
 An unexplained difference from a mockup is a defect; an explained one is a decision. Gate 1 and
 Gate 4 are not the same test — Gate 1 would pass on a renderer that draws grey boxes.
 
@@ -2347,4 +2348,271 @@ What it guards — that a handle is a link to the evidence behind it — is unch
   automated away. The sheet is re-shot and waiting.
 - **The signed-in surfaces.** Still not captured by the review suite, still listed rather than
   omitted (§19).
+
+
+---
+
+## §24 — The fidelity checklist, per mockup (2026-09-07)
+
+**This is Gate 4's written artifact**, required by Phases.md §12G scope and by Gate 4's third
+line: *"Every deliberate departure from a mockup is written down in the fidelity checklist with
+the rule that forced it — an unexplained difference is a defect, not a decision."*
+
+It is a checklist for a **person**, not a test. Gate 4 is human-judged and cannot be automated
+away; what this does is remove the excuse that a reviewer did not know which differences were
+chosen. Read it beside `scripts/review/out/index.html`.
+
+**Three columns of judgement, and only one of them is a defect:**
+
+| | Meaning |
+|---|---|
+| ✅ **Matches** | The mockup's arrangement is built |
+| ⇄ **Substituted** | Built in a different form, for a stated rule that outranks the mockup |
+| ⬜ **Outstanding** | Neither built nor deliberately refused — genuinely still to do |
+
+CLAUDE.md §8.1 ranks the mockups third, below the baseline and below CLAUDE.md. Every ⇄ below
+names the thing above them that forced it.
+
+---
+
+### VR-01 — Landing
+
+| | Item |
+|---|---|
+| ✅ | Bengali headline over English subhead, one primary call to action, secondary "how it works" |
+| ✅ | Trust badges: free · community maintained · no document upload |
+| ✅ | Road illustration to the right of the hero |
+| ✅ | Popular destinations beneath the call to action (moved there in 12H — they had a band of their own) |
+| ⇄ | **The illustration is the six step *categories*, not a Bangladesh→Germany route.** §45 and Gate 2: a plausible-looking route on the front page of a platform whose value rests on telling researched from invented would be the worst possible place for invented content. The caption says outright it is not a route you can follow |
+| ⇄ | **No destination photographs or landmarks.** Nothing in the product ships route-specific artwork (invariant 24), and a landmark per destination is exactly that |
+
+### VR-03 — Ribbon to road
+
+| | Item |
+|---|---|
+| ✅ | Ribbons as horizontal segmented bands, one per route, filling their row (asserted at ≥85% in E2E) |
+| ✅ | The same stages in the same order as the road — one representation at two densities (invariant 25) |
+| ✅ | Opening a ribbon unfolds the same object rather than navigating to a detail page |
+| ⇄ | **"Community Verified 98%" is not shown.** BR-20, invariant 12: we are not a verification authority, and the i18n guard fails the build on the word |
+| ⇄ | **No confidence percentage.** §7.3: a percentage implies a precision we do not have. Counts and dates instead |
+
+### VR-04 — Full road
+
+| | Item |
+|---|---|
+| ✅ | Road visually dominant, numbered stages, wrapping across rows with curved connectors |
+| ✅ | Expected duration and expected fly window in a panel right of the title (moved there in 12H) |
+| ✅ | Follower and contributor counts |
+| ✅ | "All Steps" as a column beside the road, not a list below it (12H) |
+| ⇄ | **"4.8/5" maturity is not shown.** §21.1, BR-05: maturity is combined signals, not a user rating, and popularity is not correctness |
+| ⇄ | **No "Highly Mature" badge.** §11 closed the maturity-palette decision by deciding there is none: weight, word and icon carry standing, and a green chip on a route is a safety claim (invariant 12) |
+
+### VR-05 — Step and fields
+
+| | Item |
+|---|---|
+| ✅ | Route → Step → Field hierarchy, fields as the smallest maintained unit |
+| ✅ | Source, last updated and status per field |
+| ✅ | "Add new field to this step" |
+| ⇄ | **Fields are grouped by claim type rather than badged with a Confidence column.** FR-54, BR-07, invariant 11: official requirements and community experience are different claim types that must not look alike. Positional separation survives skimming; a badge column does not |
+| ⇄ | **No numeric confidence.** As VR-03 |
+
+### VR-06 — My Journey
+
+| | Item |
+|---|---|
+| ✅ | Private badge, progress, fly window, per-step status with target and completion dates, private notes |
+| ✅ | Upcoming deadlines and recent route changes |
+| ⇄ | **No "Share Progress".** FR-26, BR-16, D-10: progress is private, and there is no sharing surface to add it to |
+| ⇄ | **No evidence upload anywhere.** FR-25, BR-06, invariant 6 — asserted at the action boundary, not merely absent from the markup |
+
+### VR-07 — Shadow comparison
+
+| | Item |
+|---|---|
+| ✅ | Two roads side by side on a shared numbered spine, then/now |
+| ✅ | Added, archived, reordered, renamed and retimed markers |
+| ✅ | Change-summary counts, effective dates, and a "how changes affect you" panel |
+| ✅ | Both roads readable at canvas width (12H — they were 400px each and scaled up) |
+| ⇄ | **The step-by-step table opens only when the structure changed.** §7.1 progressive disclosure: with only a field change every row reads "No change" |
+
+### VR-08 — Update a field
+
+| | Item |
+|---|---|
+| ✅ | Current value beside proposed value, with route/step/field context |
+| ✅ | Applicability, reason and source asked explicitly |
+| ✅ | "Tips for a good update" |
+| ⇄ | **A disclosure on the field, not a dedicated page.** §7.1: Update is a short transient action returning to the same place — and the field stays visible above the form, which is the context the mockup has to restate *because* it navigated away |
+| ⇄ | **No four-stage wizard, and no stages 4 and 5.** "Community reviews" and "goes live when confirmed" are a §8.6 exception; a Phase 8 guard fails the build on approval vocabulary |
+| ⇄ | **"Avoid personal opinions" replaced.** FR-54: a student's own experience *is* community experience and a first-class claim type. The tip asks which kind of claim it is instead |
+
+### VR-09 — Create a route
+
+| | Item |
+|---|---|
+| ✅ | Basics band: from, destination, study level, route type, intake on one row, then title and description |
+| ✅ | Stage bar, and "Build the road" as a real region — on the route, where the road is |
+| ✅ | Tips rail |
+| ⇄ | **Two stages, not five.** Until the route exists there is nothing to add steps to. Naming stage two matters more than the count: a contributor who does not know the road comes next publishes an empty route and thinks they have finished |
+| ⇄ | **No "Save as Draft" / "Draft saved 2 min ago".** Publishing *is* the save — the route is created immediately as experimental (FR-74), which removes the need for a draft |
+| ⇄ | **No live "Route Summary (Draft)".** It mirrors fields as they are typed, which needs JavaScript; that position carries what publishing *does* instead |
+| ⇄ | **Country codes, not a country picker.** A curated list would either restrict where a contributor may say they are going (contrary to FR-13) or require an ISO-3166 table nobody has decided on |
+
+### VR-10 — Updates and disruptions
+
+| | Item |
+|---|---|
+| ✅ | Four severity levels, visibly distinct |
+| ✅ | Permanent change versus temporary disruption, marked on every card |
+| ✅ | Disruption scope: when, where, which part of the process |
+| ✅ | Activity counts and a severity legend in the rail |
+| ⇄ | **Four ink weights, not four colours.** The §11 route-maturity reasoning applied to the other ordered scale: a hue per level badges the ordinary case, a red chip dresses a contributor's *judgement* as a measurement, and `--color-caution-*` means "read this" and nothing else |
+| ⇄ | **No second "Impact: High/Medium/Low" axis.** Two scales for one judgement, and the second is not in the baseline (§41.2) |
+| ⇄ | **No "Subscribe to Alerts" / "Manage Alert Settings".** §35, §8.6: proactive external notification is deferred. The page says so at its foot |
+| ⇄ | **Severity legend, not a severity filter.** Filtering one route's handful of announcements is machinery for a problem this page does not have |
+| ⬜ | **A cross-route updates feed does not exist.** Explicitly outside Phase 10's scope; adding one is a change request, not an omission to fix |
+
+### VR-11 — Report and safety
+
+| | Item |
+|---|---|
+| ✅ | Category grid with a description per category |
+| ✅ | Detail form, "what happens next", quarantine explanation |
+| ⇄ | **A disclosure on the field, not a Report & Safety Center.** §7.1, and a report is *about a specific field* — a centre has to ask "where did you find this?", which reporting in place already knows |
+| ⇄ | **No screenshot upload.** §8.6, decided 2026-09-02. Said out loud rather than silently missing: "there is nowhere on this platform to upload a file" is a fact worth knowing (invariant 6) |
+| ⇄ | **No "Recently Quarantined Items".** §23.1, §23.3: reports are not a public accusation board, and a public list of withheld items with their domains is a directory of what it is protecting people from |
+| ⇄ | **No Safety Leaderboard.** §25 |
+| ⇄ | **No "12,842+ resolved / 98% reviewed" band.** Illustrative (§8.6), and a percentage of reports reviewed is a claim about our own performance |
+| ⇄ | **"We review all reports and take action" is not written.** A promise with a volume in it; replaced by the sequence, including that a person decides and no count decides anything (FR-71, invariant 14) |
+
+### VR-12 — Responsive search
+
+| | Item |
+|---|---|
+| ✅ | Filter band across the top: from, destination, study level, route type (12H) |
+| ✅ | Trust promises beside the heading |
+| ✅ | Results with a rail beside them |
+| ✅ | Phone: bottom tab bar, stacked filters, compact ribbons |
+| ⇄ | **Three bottom tabs, not four.** There is no cross-route updates feed to point a fourth at, and a tab leading nowhere is worse than an absent one — the same argument the header already made about VR-01's five desktop items |
+| ⇄ | **"Account", not "Profile".** There is no profile: the tab goes to the reader's own contributor page, the same page everybody else sees (§24.3) |
+| ⇄ | **The rail is a key to the ribbon, not "Recently Updated".** The position is the mockup's; the feed that would fill it is out of scope |
+| ⇄ | **No swipeable destination row with landmarks.** Illustrative content plus route-specific artwork (§8.6, invariant 24) |
+
+### VR-13 — Responsive road and step
+
+| | Item |
+|---|---|
+| ✅ | Desktop: step index in a column, step detail in the main column, standing in the rail |
+| ✅ | Phone: bottom tabs, compact road, expandable steps |
+| ⇄ | **The phone route keeps the narrow road; no separate step-chip strip.** `ROAD_NARROW` already *is* the phone composition, and a second hand-built strip would be a third maintained view of one graph (invariants 24, 25) |
+| ⇄ | **Step detail expands in place, not as its own phone view.** §7.1: a route is one coherent scrollable journey, and a step selection that visually replaces the route is wrong even when the URL is correct |
+| ⇄ | **No "Verified Route" badge.** BR-20 |
+| ⇄ | **Route tabs wrap rather than scroll sideways at 360px.** The alternative is a row a reader must drag to discover History exists — and wrapping is what fixed the standing 4px overflow |
+
+### VR-14 — Experimental / disputed route
+
+| | Item |
+|---|---|
+| ✅ | Experimental standing stated, contributor and follower counts, open challenges, fields needing review |
+| ✅ | "Use with caution" as an explained caution rather than a badge |
+| ⇄ | **No "28% confidence" ring and no "20% freshness".** §8.6 names both as illustrative; §7.3 refuses invented percentages. The route passport's counted evidence occupies the same position at the same weight, which is the substitution rule this project follows |
+| ⇄ | **No lifecycle colour legend.** §11: there is deliberately no maturity palette, and a test fails if a `--color-lifecycle-*` token appears |
+
+### VR-02
+
+Never supplied — 13 files for 14 canonical names (CLAUDE.md §8.4). Its described content is
+covered by the desktop half of VR-12. **Not invented.**
+
+---
+
+### What is genuinely outstanding
+
+Two things, and neither is a mockup difference:
+
+1. **The owner's review of the contact sheet.** Gate 4's own last line — *would a Bangladeshi
+   student landing on this believe it was built for them?* — needs a person.
+2. **A cross-route updates feed** (VR-10's page as a whole, VR-12's fourth tab). Out of scope by
+   decision, listed here so it is not mistaken for something missed.
+
+### What this checklist is not
+
+It does not say the screens look good. It says every difference from a mockup is a decision with
+a rule behind it, so that a reviewer comparing the sheet to `Visual References/` can tell a
+choice from a defect — and can overrule any of these choices, since they are ours and the
+mockups are theirs.
+
+
+---
+
+## §25 — The accessibility pass, and the two defects it found (2026-09-07)
+
+Phase 12G scopes "a full keyboard pass and an automated accessibility pass over every screen".
+Only the keyboard half existed — the checks somebody thought to write, scattered through
+`presentation.spec.ts` as assertions about the skip link, tab order and station links. This is
+the complement.
+
+### What it is
+
+`e2e/accessibility.spec.ts`, axe-core through `@axe-core/playwright`, WCAG 2.1 AA
+(`wcag2a wcag2aa wcag21a wcag21aa`), **zero violations rather than a budget** — a threshold is a
+licence to add one more. Every public screen, every route tab, and the step opened in place,
+which is where most of the interactive markup lives: four contribution disclosures, the report
+category grid, field rows and their cautions.
+
+**26 assertions green at 360 and 1280.** It runs in CI already, across all four viewport
+projects, because the E2E job runs `npx playwright test` unfiltered.
+
+### What it is not
+
+Automated tooling catches somewhere under half of real barriers. It can tell that an input has
+no label; it cannot tell that a label is wrong. The things this product actually depends on and
+axe cannot see stay guarded where they are, and the spec's docstring says so:
+
+- **colour never the only carrier** (§10.4) — the category-icon guard, and `SeverityChip`'s icon
+  on the one loud level;
+- **contrast** — computed from the tokens in `globals.css`, which is *stricter* than a rendered
+  sample because it covers every token pair rather than the ones that happen to be on screen;
+- **the read path with JavaScript disabled** — `route-journey.spec.ts`.
+
+The two overlap on contrast deliberately, and that overlap is what found the defect below: the
+guard covers pairs nobody uses, and axe covers uses nobody predicted.
+
+### The finding: `brand-50` had two faults at once, and neither guard could see them
+
+axe reported one violation, on the selected row of the step index: `ink-500` on `bg-brand-50`.
+
+**Fault one — it was outside sRGB.** `oklch(0.972 0.014 254)` converts to a blue channel of
+**1.0014**. The browser clamps that, so the colour being painted was never the colour anybody
+measured. This is precisely the Phase 12B defect — three of eighteen category tones written a
+fraction outside gamut because the chroma fit had been rounded up — recurring in a token the
+gamut guard did not cover, because that guard was scoped to `cat-*`, the family where the last
+one was found.
+
+**Fault two — it failed AA by a hair.** `ink-500` came out at **4.48:1** on it and `brand-500` at
+**4.49**. Both under 4.5, on the selected row of the step index and the checked card of the
+report category grid — which is to say, exactly where a reader is being told *which one is
+chosen*.
+
+**Why neither guard caught it.** The contrast guard tests every text token against every
+background "in use", and its list was `surface`, `surface-muted`, `caution-50`. `brand-50` was a
+*tint* when that list was written and had since become a **selection colour** without anyone
+adding it. The gamut guard was scoped to the family where the previous defect had appeared.
+
+Both are now widened: the gamut check covers **every** colour token, and `brand-50` is in the
+backgrounds list.
+
+**The token is fitted, not nudged.** At hue 254, `oklch(0.978 0.01 254)` is the most chroma sRGB
+can hold while clearing 4.55:1 for every text token in the palette — searched, not guessed. A
+hue shift to 235–240 buys 0.002 more chroma and costs hue consistency with `brand-500`/`700`/
+`900`; not worth it. The wash is fainter than before, which is acceptable because colour was
+never the only carrier in either place: the step-index row is also bold and `aria-current`, and
+the choice card also gains a brand border.
+
+### The rule worth carrying
+
+**A guard scoped to where a defect was last found will not catch it where it goes next.** Both
+of these were narrowings that looked reasonable when written — "check the category tones",
+"check the backgrounds in use" — and both were overtaken by a token changing job. When a token
+acquires a new role, the guards that mention it are part of the change.
 
