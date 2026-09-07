@@ -2815,3 +2815,29 @@ ignores the column, so migration-before-deploy is the safe order.
   successful write is unexercised, deliberately, because the only accounts available are real.
 - **Neither legal page has been read by a lawyer or adopted by the owner.** That is B1, and the
   draft banner says so on the page.
+
+---
+
+## 28. Phase 13B — error reporting, 2026-09-07
+
+| What | How | Result |
+|---|---|---|
+| The hook fires on a real server error | Temporary throwing route, production build, `next start` | one structured JSON line on stderr |
+| The digest reaches the log | Read back from the server log | `digest: 2753659978` |
+| **The reader is shown the same digest** | Playwright read the rendered error boundary | `2753659978` — they match |
+| Nothing identifying is logged | Guard over the hook's source: no `userId`, `handle`, `email`, `sessionToken`, `cookie`, `headers`, `body`, `ip`, `currentViewer` | pass |
+| Nothing is sent anywhere | No `fetch`, no SDK in the source; no `sentry`/`bugsnag`/`rollbar`/`datadog`/`newrelic` in `package.json` | pass |
+| Both boundaries display the digest | Guard over `[locale]/error.tsx` and `global-error.tsx` | pass |
+
+The matching pair is the assertion that matters. Everything else is a component of it: a digest
+in a log that a user is never shown is a number nobody can quote, and a digest shown to a user
+that is not in any log is a number nobody can look up.
+
+### Not tested
+
+- **No log ever leaves this machine.** Whether Vercel's runtime-log retention keeps these long
+  enough to be useful is an operational question against the real deployment.
+- **The hook has never seen a *server action* fail**, only a render. `routeType` would differ.
+- **No alerting.** These are logs somebody has to go and read; nothing pages anybody. That is
+  the right size for a platform with no traffic yet, and it is a decision to revisit rather than
+  an oversight.

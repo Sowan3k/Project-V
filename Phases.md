@@ -2251,6 +2251,43 @@ branch before it writes, requires a typed `yes`, and retries through Neon's cold
 
 ---
 
+## Phase 13B — a production failure stops being invisible — ✅ 2026-09-07
+
+There was no error monitoring at all. Next writes *something* to stderr when a server render
+throws, but nothing connected the digest a reader is shown to the request that produced it — so
+*"I got an error, it said 2164382234"* was unanswerable, and a failure nobody reported did not
+exist.
+
+`src/instrumentation.ts` exports Next's own `onRequestError`: one JSON object per line on
+stderr, which Vercel captures as searchable runtime logs.
+
+**No Sentry, and that is not a compromise.** Three reasons in increasing order of weight: §28.1's
+free-tier philosophy; no client JavaScript, on a read path that has had none since Phase 5; and
+**the privacy page says "no third-party scripts" and means it** — adding one would make that page
+false, and `legal-pages.test.ts` would fail the build for exactly that reason. A promise the
+build enforces is worth more than a dashboard.
+
+**What it will not log**: no user id, no handle, no email, no session token, no cookie, no
+request body, no IP. §24.1 and §24.2 have no exception for error paths, and an error log is
+precisely where personal data ends up sitting for years without anybody deciding it should.
+`tests/architecture/error-reporting.test.ts` asserts each absence, plus that the digest *is*
+logged and that nothing is sent anywhere.
+
+**Verified end to end**, because a monitoring hook nobody has watched work is decoration. A
+temporary throwing route in a production build produced:
+
+```
+{"at":"…","event":"request_error","digest":"2753659978",
+ "routePath":"/[locale]/boomtest","path":"/en/boomtest","method":"GET",
+ "routerKind":"App Router","routeType":"render","renderSource":"react-server-components",
+ "message":"instrumentation smoke test","stack":"…"}
+```
+
+and the browser showed the reader **the same digest, `2753659978`**, which is the entire point.
+The route was removed afterwards.
+
+---
+
 ## Things you need to do
 
 **Added 2026-09-07 at the owner's request.** Everything below is blocked on the owner and cannot
@@ -2311,7 +2348,7 @@ the whole of what remains:
 - ✅ ~~draft the privacy policy and terms pages~~ — done 2026-09-07, both carry a draft banner. **B1 and B2 are still yours: adopt them, and set a contact address.**
 - ✅ ~~the administrator-grant tool for A3~~ — `npm run admin:list` / `admin:grant` / `admin:revoke`, done 2026-09-07. **Running it against production is still yours (A3).**
 - rate limiting, once B3 gives it numbers
-- error monitoring — today there is none at all, so a production failure is invisible
+- ✅ ~~error monitoring~~ — done 2026-09-07 (Phase 13B). Next's `onRequestError`, structured JSON on stderr, no third party and no client script. Verified end to end: the digest the reader is shown is the digest in the log.
 - ✅ ~~an account-deletion path~~ — done 2026-09-07. Closing erases the email, the Google link, every session and every journey; contributions stay attributed to a handle that names nobody.
 - ✅ ~~`metadataBase`~~ — done 2026-09-07 (Phase 12G).
 - ✅ ~~pressed states on controls~~ — done 2026-09-07 (Phase 12M): the button surface collapses into its own shadow on `:active`.

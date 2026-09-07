@@ -2679,3 +2679,37 @@ the closure test wrote a progress row with a null note and every "it is gone" as
 
 **A Next server holding `.next` while you rebuild produces phantom module errors**, and one
 holding the Prisma engine blocks `prisma generate` with `EPERM`. Kill servers before either.
+
+---
+
+## 2026-09-07 (later still) — Phase 13B: error monitoring, without a third party
+
+### Done
+
+- **`src/instrumentation.ts`** — Next's `onRequestError`, one structured JSON line per failure on
+  stderr, which Vercel captures. Zero dependencies, server only.
+
+- **Verified end to end.** A temporary throwing route in a production build logged
+  `digest: 2753659978`, and the browser showed the reader the same digest. That pairing is the
+  whole feature: a digest in a log nobody is shown cannot be quoted, and a digest shown to a
+  reader that is in no log cannot be looked up.
+
+### Decisions taken
+
+- **No Sentry, and it was not a close call.** The privacy page promises "no third-party scripts"
+  and `legal-pages.test.ts` enforces it — adding an SDK would have failed the build on the
+  privacy page's own guarantee. That is the design working: a promise the build enforces is
+  worth more than a dashboard, and the read path keeps its zero client JavaScript.
+
+- **The error log carries nothing about who hit the error.** Asserted rather than intended.
+  Error logs are where privacy rules quietly stop applying, and §24 has no error-path exception.
+
+### Blockers
+
+Unchanged.
+
+### Next step
+
+Rate limiting is the last agent-doable item, and it is half-blocked: the mechanism is
+buildable, the numbers are B3 and belong to the owner. Everything else remaining is A1–A5,
+B1–B4 and C1–C3.
