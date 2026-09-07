@@ -53,7 +53,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 12H | Density: the composition around the drawing | Every space occupied; less scrolling | 🟡 owner review |
 | 12I | Motion | Page transitions, hover, press feedback — all CSS | ✅ |
 | 12J | Onboarding and guidance | The site explains itself | ✅ |
-| 12K | Visual depth, and the hero | Presence, not only composition | ⬜ **needs an owner decision** |
+| 12K | Visual depth, and the hero | Presence, not only composition | 🟡 built; owner review |
 | 13 | Pre-launch gates and release | Gates 1–4 pass | 🟡 Gates 1 and 3 ✅; Gate 4 awaits owner review; Gate 2 awaits content |
 | — | **Things you need to do** (owner-only tasks) | Launch readiness: access, legal, content | ⬜ see the section before the gates |
 | — | **Content track** (parallel, from Phase 1) | Real seeded routes | 🟡 |
@@ -1981,9 +1981,9 @@ dependency, a GPU or a single byte of bundle.**
 ### Exit criteria
 - ⬜ The landing page reads as *designed* rather than *assembled*, in the owner's judgement
 - ⬜ First paint is not slower — measured, on a throttled connection
-- ⬜ The client-component count is still exactly one; the read path still works without JavaScript
-- ⬜ Contrast, the category palette and every §6 invariant hold unchanged
-- ⬜ Whatever §8.5.5 bends to is **written into CLAUDE.md**, not left as a deviation
+- ✅ The client-component count is still exactly one; the read path still works without JavaScript
+- ✅ Contrast, the category palette and every §6 invariant hold unchanged — 904 tests, no guard edited
+- ✅ Whatever §8.5.5 bends to is **written into CLAUDE.md** — the amendment is in §8.5.5 itself
 
 **Decision needed from the owner before this can close:** how far §8.5.5 bends. Everything in the
 table above is defensible under a slightly looser reading; a shader hero is not, and needs its own

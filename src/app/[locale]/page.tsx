@@ -46,14 +46,29 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
   return (
     <>
-      {/* ── Hero ─────────────────────────────────────────────────────────────────────── */}
-      <PageCanvas className="pt-12 pb-14 sm:pt-16">
+      {/* ── Hero — Phase 12K ─────────────────────────────────────────────────────────
+        `vx-ground` replaces flat white with two very wide, very low-chroma washes at the brand
+        hue. Chroma is about a tenth of what a category fill carries: a reader should not be
+        able to name the colour, only notice that the corner is not the same white as the
+        middle. Nothing is read against the extremes, so it costs nothing in contrast.
+      */}
+      <section className="vx-ground border-b border-hairline">
+      <PageCanvas className="pt-14 pb-16 sm:pt-20">
         <PageGrid>
           <GridRegion span={5}>
-            <p lang="bn" className="font-bengali text-section font-semibold text-brand-900">
+            {/*
+              §8.5.6 asks for "Bengali identity, English interface", and the identity half was
+              one line of 20px text above a 40px heading — outweighed by the thing it is meant
+              to introduce. At display size with a rule beneath it, the first thing a
+              Bangladeshi visitor sees is their own script (Phase 12K).
+            */}
+            <p
+              lang="bn"
+              className="vx-wordmark font-bengali text-title font-semibold text-brand-900 lg:text-display"
+            >
               {t.landing.headlineBn}
             </p>
-            <h1 className="mt-3 text-title font-semibold tracking-tight text-balance text-ink-900 lg:text-display">
+            <h1 className="mt-5 text-title font-semibold tracking-tight text-balance text-ink-900 sm:text-display">
               {t.landing.headline}
             </h1>
             <ContentColumn width="reading">
@@ -133,7 +148,16 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </GridRegion>
 
           <GridRegion span={7}>
-            <Panel className="h-full">
+            {/*
+              The one element on this page entitled to say *look here* — so it carries the
+              third elevation and nothing else on the page changes weight (Phase 12K).
+
+              `vx-draw` animates the road building and the stages landing on it in order. It is
+              presentation, not renderer logic: the renderer emits the same SVG it emits
+              everywhere, this stylesheet animates it from outside, and the same component on
+              any other page draws statically (invariant 24). Off under reduced motion.
+            */}
+            <Panel className="vx-hero-panel vx-draw">
               <CategoryRoad dictionary={t} />
               <p className="mt-4 text-panel font-medium text-ink-900">
                 {t.landing.illustrationCaption}
@@ -147,6 +171,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </GridRegion>
         </PageGrid>
       </PageCanvas>
+      </section>
 
       {/* ── How it works ─────────────────────────────────────────────────────────────── */}
       <section id="how-it-works" className="scroll-mt-6 border-y border-hairline bg-surface">
