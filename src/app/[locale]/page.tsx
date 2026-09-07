@@ -1,12 +1,14 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { ActivityBand } from '@/components/activity-band'
 import { ContentColumn, GridRegion, PageCanvas, PageGrid } from '@/components/layout'
 import { CategoryRoad } from '@/components/category-road'
 import { HowItWorksTiles } from '@/components/how-it-works'
 import { Chip, LinkButton, Panel } from '@/components/ui'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
+import { platformActivity } from '@/server/activity/read'
 import { destinationSummaries } from '@/server/routes/read'
 
 /**
@@ -35,7 +37,12 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const { locale } = await params
   if (!isLocale(locale)) notFound()
   const t = await getDictionary(locale)
-  const destinations = await destinationSummaries()
+  /*
+   * Both in one round trip. This is the first page a cold visitor loads and Neon's wake-up is
+   * already the slow part, so two sequential queries would be two chances to make the worst
+   * case worse.
+   */
+  const [destinations, activity] = await Promise.all([destinationSummaries(), platformActivity()])
 
   const principles = [
     t.principles.free,
@@ -181,22 +188,20 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       </section>
 
       {/*
-        Only the empty case keeps a band of its own — Phase 12H.
+        Where the record stands — Phase 13C, from VR-12's "Built by Students" band.
 
-        When destinations exist they are in the hero, where VR-01 puts them. When none do,
-        that is a fact about a young platform which deserves a sentence rather than a silently
-        missing block: §45's cold start is answered by saying so, never by decoration.
+        This replaces the empty-destinations sentence Phase 12H put here rather than sitting
+        beside it. Both answer §45's cold start by saying plainly that the platform is young;
+        this one also has something to say once it is not, so keeping both would have been two
+        overlapping empty states with one of them going stale.
+
+        When destinations exist they stay in the hero, where VR-01 puts them. This band is
+        about the record as a whole — how much of it there is, how many people wrote it, and
+        when it last moved.
       */}
-      {destinations.length > 0 ? null : (
-        <PageCanvas className="py-12">
-          <h2 className="text-section font-semibold text-ink-900">
-            {t.landing.destinationsTitle}
-          </h2>
-          <ContentColumn width="reading">
-            <p className="mt-3 text-sm leading-6 text-ink-700">{t.landing.destinationsEmpty}</p>
-          </ContentColumn>
-        </PageCanvas>
-      )}
+      <PageCanvas className="py-12">
+        <ActivityBand activity={activity} dictionary={t} locale={locale} />
+      </PageCanvas>
     </>
   )
 }

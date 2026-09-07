@@ -969,6 +969,53 @@ export const en = {
    *
    * If `closeAccount` changes, this changes with it. They are one statement in two places.
    */
+  /**
+   * The activity band — Phase 13C, from VR-12's "Built by Students. For Students." footer.
+   *
+   * ═══════════════════════════════════════════════════════════════════════════════════════
+   * **The mockup's version says four things and this says none of them**, which is worth
+   * spelling out because the wording is where the whole difference lives:
+   *
+   *   VR-12                                    here
+   *   ─────────────────────────────────────    ──────────────────────────────────────────
+   *   "the largest community platform"         nothing — an unfalsifiable superlative
+   *   "50K+ Active Students"                   contributors, exact, and only people who
+   *                                            actually wrote something
+   *   "1.2M+ Steps Followed"                   corrections, exact
+   *   "98% Community Verified"                 nothing — §8.6 lists it by name (BR-20)
+   *   "All information is community verified"  the opposite: every route names its own
+   *                                            sources and dates, and we check nothing
+   *
+   * **The zero state is the one that matters**, because it is what ships. Production holds no
+   * routes, so this band reads four zeros on day one. §45 names the cold start as a real risk,
+   * and the answer is the same one every empty state in this product already uses: say the
+   * record is new and say why that is the honest thing to show. A visitor who reads a truthful
+   * zero and one who reads an invented "50K+" learn opposite things about whether the rest of
+   * the page can be believed.
+   */
+  activity: {
+    title: 'Where this record stands',
+    lede: 'Counted exactly, from the routes themselves. Nothing here is rounded up, and none of it decides how a route ranks or how much to trust it.',
+
+    routes: 'routes',
+    destinations: 'destinations',
+    contributors: 'people have contributed',
+    contributions: 'corrections recorded',
+    updates: 'changes announced',
+
+    lastActivity: (when: string) => `Last correction ${when}.`,
+
+    /*
+     * The zero state. Not an apology and not a promise — a description of what an empty
+     * community-maintained record is, and an invitation, since the only thing that changes it
+     * is somebody writing the first route.
+     */
+    emptyTitle: 'Nothing here yet, and that is the truth rather than a loading state',
+    emptyBody:
+      'No routes have been published. This platform has no content of its own — every route is researched and written by somebody who has travelled it, so the record starts empty and grows only as people add to it.',
+    emptyAction: 'Add the first route',
+  },
+
   legal: {
     draftBannerTitle: 'Draft — not yet adopted',
     draftBannerBody:

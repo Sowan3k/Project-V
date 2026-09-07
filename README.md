@@ -39,9 +39,10 @@ them writes a revision and keeps the previous value.
 
 ## What it looks like
 
-Every route below is a **development fixture**, not published content. It exists to exercise the
-software, and it says so on its own face. Real route content is researched separately and has not
-been written yet.
+Every route below is **research content on a disposable database, not published content**. These
+are five real Bangladesh-origin Master's routes — Malaysia, the UK, Japan, Germany, Austria —
+written from official sources to exercise the software against the kind of content it is actually
+for. The production database holds zero routes and always has; see *Where the project stands*.
 
 ### The landing page
 
@@ -52,27 +53,53 @@ signed out; signing in only unlocks contributing and private tracking.
 
 ### The road
 
-A route is a graph, not a list, so it draws as one. This one runs thirteen stages, wraps across
-rows, and splits where stages genuinely happen at the same time. To the right is what the route's
-standing actually is: experimental, nobody has confirmed anything, one contributor, and a plain
-statement that an absence of warnings is not evidence of anything.
+A route is a graph, not a list, so it draws as one. Germany runs eighteen stages, wraps across
+five rows, marks the stages that genuinely happen in parallel, and forks three ways where a
+student chooses between applying direct, through uni-assist, or via a VPD. Stage 14 is a
+twenty-seven-month wait for a consular appointment — the kind of fact that decides whether a route
+is viable at all, and exactly what is hard to find written down.
 
-![A route page showing the title "Bangladesh to Germany, Master's by direct university application", a development fixture notice, thirteen steps, an expected fly window of October 2029 to September 2030, and a wrapping road of numbered coloured stages beside a panel headed "Read this route with care"](docs/screenshots/route-road.png)
+To the right is the route's standing, stated plainly: experimental, nobody has confirmed anything,
+no named contributors, and a note that an absence of warnings is not evidence of anything.
+
+![A route page titled "Study a Master's in Germany from Bangladesh". A header strip reads 18 steps, expected fly window September 2029 to July 2030, 0 contributors, 0 following privately. Tabs for Route, My journey, Changes and History. Below, a road of eighteen numbered coloured stages wrapping across five rows, with sections marked "Parallel work" and three branches marked "Choose one pathway". Beside it a panel headed "Read this route with care" lists three cautions, and a step index lists all eighteen stages with their categories and durations](docs/screenshots/route-road.png)
 
 ### A ribbon
 
-The ribbon is not a card and not a thumbnail. It is the same route, compressed: same stages, same
-order, same branches, small enough to compare several at once.
+The ribbon is not a card and not a thumbnail. It is the same route, compressed: the same eighteen
+stages in the same order, with the same branches, small enough to compare several at once. Count
+the chevrons against the road above and they match, because both come from one layout pass over
+the same graph.
 
-![A ribbon: one continuous band of interlocking coloured chevrons, each carrying a category icon, with two points where the band splits into parallel stages](docs/screenshots/ribbon.png)
+![A search result for "Study a Master's in Germany from Bangladesh", marked Experimental with a "Read with care (2)" warning and an expected fly window of roughly September 2029 to July 2030, described as an estimate rather than a guarantee. Beneath it a ribbon: one continuous band of interlocking coloured chevrons, each carrying a category icon, with stages branching above and below the band where work happens in parallel or a pathway is chosen](docs/screenshots/ribbon.png)
 
 ### A field, and where it came from
 
-This is the part most of the design effort went into. Read what this field says: the topic has
-not been researched, and rather than filling the space with something plausible, the route
-records the gap and says so.
+This is the part most of the design effort went into, and this one step shows why. Opening *Wait
+for appointment eligibility* keeps the whole road on screen and unfolds the step underneath it.
 
-![A step detail panel. Under a heading "From the community", a field states that several topics have not been researched and that the route is a development fixture, deliberately incomplete rather than filled in with plausible guesses. Below it a caution reads "Community submission, not corroborated by anyone else"](docs/screenshots/step-fields.png)
+Inside, the information is grouped by **who is making the claim**, and the grouping is the point:
+an official rule and somebody's experience can never merge into one field or overwrite each other.
+The Embassy's own warning that the queue exceeds 27 months sits under *From official and
+institutional sources*, with its source and the date it was checked. The report that applicants
+are confused about the transition sits under *From the community*, marked as not corroborated by
+anyone else. Both are useful. They are not the same kind of thing, and the page never lets them
+look like one.
+
+![A route page with the step "Wait for appointment eligibility" opened beneath the road. Under a heading "From official and institutional sources" are two entries: a duration warning that the queue currently exceeds 27 months, and a dependency warning from the German Embassy Dhaka, each carrying its source, an applicability chip and a checked date. Under a separate heading "From the community" is a community experience about applicant confusion, marked "Community submission, not corroborated by anyone else"](docs/screenshots/step-fields.png)
+
+### How much of the record exists
+
+A community-maintained record should say how much community there is. Counted exactly from the
+routes themselves and never rounded up — and it decides nothing: no count here feeds ranking,
+standing, or how much to trust a route.
+
+Note what it is honest about. These five routes were loaded by a script rather than written by
+people, so *people have contributed* reads **0** while *corrections recorded* reads 180. That is
+the truth, and a number that flattered the platform here would tell you how to read every other
+number on the site.
+
+![A panel headed "Where this record stands", with the note that everything is counted exactly and none of it decides how a route ranks. Five figures follow: 5 routes, 5 destinations, 0 people have contributed, 180 corrections recorded, 0 changes announced. Below, a line reading "Last correction 2026-09-07"](docs/screenshots/activity.png)
 
 ### On a phone
 
@@ -80,7 +107,7 @@ Most students arrive on a phone browser, so the phone gets its own information a
 rather than a squeezed copy of the desktop one: bottom tab navigation, and a road recomposed into
 two columns instead of five.
 
-<img src="docs/screenshots/phone-route.png" alt="The same route on a 390 pixel phone: a bottom tab bar with Explore, My Journey and Sign in; the route title, its development fixture notice, its standing and its tabs; and the road recomposed into two columns" width="360">
+<img src="docs/screenshots/phone-route.png" alt="The same Germany route on a 390 pixel phone: a bottom tab bar with Explore, My Journey and Sign in; the route title, its standing, and its Route, My journey, Changes and History tabs; and the eighteen-stage road recomposed into two columns instead of five" width="360">
 
 ---
 
@@ -117,6 +144,16 @@ that was a decision rather than an omission.
 - **Not a scholarship finder, a ranking site, a social feed, or a booking service.**
 - **Not built on AI.** The dependency list is six packages long and none of them is a model.
 
+It also stores very little, says exactly what, and lets you leave. The privacy and terms pages
+in the application are written from what the code actually does, and a test re-checks each claim against the
+source on every commit — no OAuth tokens are kept, the email never reaches your session, there is
+no name or photo column, and there is no upload path anywhere.
+
+Closing your account erases your email, the link to your Google account, every session, and every
+followed route with all of its progress, dates and notes. Your contributions stay, signed with a
+handle that was generated and is not your name — because taking authorship out of a public record
+other people depend on would damage the record without protecting you.
+
 ---
 
 ## The rules the code actually obeys
@@ -149,9 +186,18 @@ The route visuals are a data-driven SVG renderer built from hand-authored primit
 chart library. A road segment, a junction, a step marker, a branch and a shadow segment are drawn
 once each; every route in existence is assembled from those.
 
-The read path ships **one client component** and works with JavaScript switched off. That is not
-a boast, it is the requirement: a student in Dhaka on a slow connection is the person this is
-for.
+**The read path works with JavaScript switched off.** That is not a boast, it is the requirement:
+a student in Dhaka on a slow connection is the person this is for. Search, ribbons, roads, steps,
+fields, sources and history all render on the server and need no script to be read.
+
+Three client components exist, and the list is asserted by a test so that a fourth is a decision
+rather than a drift: the two error boundaries, which Next requires to be client components and
+which ship only after something has already failed, and a pointer glow that renders nothing on
+the server, nothing on first paint, and that nothing depends on.
+
+The same rule is why there is no analytics, no tracking and no error-reporting SDK. Server errors
+are logged through Next's own `onRequestError` hook as structured JSON — the digest a reader is
+shown is the digest in the log — and nothing is sent to anybody.
 
 ---
 
@@ -174,7 +220,16 @@ npm run build                  # production build
 npm run db:status              # is the linked branch up to date with prisma/migrations?
 npm run db:objects             # tables, enum types and row counts
 npm run db:studio              # inspect data
+
+npm run admin:list             # who holds the safety role
+npm run admin:grant -- --handle <handle>
+npm run admin:revoke -- --handle <handle>
 ```
+
+The safety role is granted from a workstation rather than from a page in the product. It gates
+quarantine and report handling and nothing else — ordinary contribution is outside its reach, and
+no role can delete shared knowledge. A page that could grant it would be a page that can grant it
+to anybody, for ever, reachable by whoever holds it that year.
 
 One warning worth reading before you run anything that writes. Test writes are refused unless the
 target database positively identifies itself as disposable, and the check fails closed: an
