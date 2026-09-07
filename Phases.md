@@ -51,7 +51,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 12F | Mobile and tablet as their own product | Phone IA, not a narrower desktop | ✅ |
 | 12G | Visual acceptance | Gate 4 green, screenshots reviewed | 🟡 |
 | 12H | Density: the composition around the drawing | Every space occupied; less scrolling | 🟡 owner review |
-| 13 | Pre-launch gates and release | Gates 1–4 pass | ⬜ |
+| 13 | Pre-launch gates and release | Gates 1–4 pass | 🟡 Gates 1 and 3 ✅; Gate 4 awaits owner review; Gate 2 awaits content |
 | — | **Content track** (parallel, from Phase 1) | Real seeded routes | 🟡 |
 
 **Phase 12 closed on 2026-09-04.** Its one outstanding E2E failure — 4px of horizontal overflow
@@ -1902,23 +1902,23 @@ visual dimension go missing: **Gate 1 is renderer *correctness*** — every grap
 with no route-specific code and no overflow. It would pass on a renderer that draws grey boxes.
 **Gate 4 is whether the product looks like the product.** Neither substitutes for the other.
 
-### Gate 1 — Visualisation scalability
+### Gate 1 — Visualisation scalability — ✅ 2026-09-07 (Test.md §22, §26)
 
 The ribbon/road renderer handles seeded and community-created routes **with no route-specific
 code**.
 
-- [ ] Renders: linear, wrapping, optional branch, alternative branch, parallel activities,
+- [x] Renders: linear, wrapping, optional branch, alternative branch, parallel activities,
       rejoining branch, newly added step, archived step, shadow/previous version, temporary
       disruption indicator
-- [ ] Usable from 3 to 20 primary steps
-- [ ] Legible on desktop, tablet and mobile; no page-wide horizontal overflow
-- [ ] Ribbon and road derive from one structure and one layout pass; step count and order match
-- [ ] **Structural equivalence holds** — same graph shape, different destination, identical geometry
-- [ ] **Generative coverage passes** — randomly generated valid graphs all render validly
-- [ ] **Renderer imports nothing from seed, content or destination modules** (lint-enforced)
-- [ ] **No identity branching** in `src/renderer/**` (scoped check, not a repo-wide grep)
-- [ ] The development-only stress route (Test.md §7) renders correctly at all three widths
-- [ ] A route created through the UI by a non-developer renders with zero code changes
+- [x] Usable from 3 to 20 primary steps
+- [x] Legible on desktop, tablet and mobile; no page-wide horizontal overflow
+- [x] Ribbon and road derive from one structure and one layout pass; step count and order match
+- [x] **Structural equivalence holds** — same graph shape, different destination, identical geometry
+- [x] **Generative coverage passes** — randomly generated valid graphs all render validly
+- [x] **Renderer imports nothing from seed, content or destination modules** (lint-enforced)
+- [x] **No identity branching** in `src/renderer/**` (scoped check, not a repo-wide grep)
+- [x] The development-only stress route (Test.md §7) renders correctly at all three widths
+- [x] A route created through the UI by a non-developer renders with zero code changes
 
 ### Gate 2 — Real launch content
 
@@ -1931,17 +1931,17 @@ code**.
 - [ ] A Bangladeshi reader who has never used the site says the route explains something they
       were actually trying to understand — this is the gate's real test, and it needs a human
 
-### Gate 3 — Complete community loop
+### Gate 3 — Complete community loop — ✅ 2026-09-07 (Test.md §22, §26)
 
 One test user completes the entire cycle end to end:
 
-- [ ] Search a destination → see ribbons → open a ribbon → see the road → open a step →
+- [x] Search a destination → see ribbons → open a ribbon → see the road → open a step →
       inspect fields
-- [ ] Follow the route → it appears in My Journey → update private progress
-- [ ] Contribute a correction to a public field → a revision is created → prior value preserved
-- [ ] The live route changes → the follower sees that something changed
-- [ ] Shadow comparison shows what changed, where and whether it affects them
-- [ ] **Private progress remains intact throughout**
+- [x] Follow the route → it appears in My Journey → update private progress
+- [x] Contribute a correction to a public field → a revision is created → prior value preserved
+- [x] The live route changes → the follower sees that something changed
+- [x] Shadow comparison shows what changed, where and whether it affects them
+- [x] **Private progress remains intact throughout**
 
 If this loop works, the product concept is implemented — not merely screened.
 

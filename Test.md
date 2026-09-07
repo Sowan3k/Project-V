@@ -632,9 +632,9 @@ alone — each needs the checklist walked deliberately.
 
 | Gate | Covers | State |
 |---|---|---|
-| Gate 1 — Visualisation scalability | §7 above + invariant tests 24, 25 | 🟡 mechanism proved 2026-09-06, one item open — §22 |
+| Gate 1 — Visualisation scalability | §7 above + invariant tests 24, 25 | ✅ every line walked and verified 2026-09-07 — §22, §26 |
 | Gate 2 — Real launch content | Germany/Australia/USA/Malaysia sourced routes, zero mockup-derived values | ⬜ waits on the owner's research (CLAUDE.md §10.2) |
-| Gate 3 — Complete community loop | Full E2E: search → ribbon → road → step → field → follow → progress → contribute → revision → change → shadow → progress intact | 🟡 every stage exercised 2026-09-06 — §22 |
+| Gate 3 — Complete community loop | Full E2E: search → ribbon → road → step → field → follow → progress → contribute → revision → change → shadow → progress intact | ✅ the whole loop walked end to end 2026-09-07 — §22, §26 |
 | Gate 4 — Visual fidelity | Every screen screenshotted at 360/768/1280/1440 and reviewed against its visual reference; every departure written down | 🟡 sheet built (§19), checklist written (§24), accessibility green — owner review open |
 
 **Gate 4 has its fidelity checklist per mockup — §24 below**, written 2026-09-07: what matches,
@@ -2616,3 +2616,52 @@ of these were narrowings that looked reasonable when written — "check the cate
 "check the backgrounds in use" — and both were overtaken by a token changing job. When a token
 acquires a new role, the guards that mention it are part of the change.
 
+
+---
+
+## §26 — Gates 1 and 3 close (2026-09-07)
+
+§22 walked both and left each resting on **one** item, the same one: *"a route created through
+the UI by a non-developer renders with zero code changes"*, which is Gate 1's last line and the
+first stage of Gate 3's loop. It could not be completed on this workstation.
+
+### It was a budget, not a defect
+
+`contribute.spec.ts`'s create-a-route walk is the longest test in the suite: two signed-in
+contexts and nine sequential server actions — create, add a step, open it, add a field, then a
+second person correcting it. Nine round trips to a database against the remote Neon branch a
+workstation uses, where §14 measured connects at 2.4–8.8 seconds.
+
+It runs in **1.6–1.7 minutes**. The default budget is sixty seconds, so it timed out — and a
+Playwright timeout reads exactly like a broken product, which is why §22 could not tell the two
+apart and left the item open rather than guessing.
+
+`test.slow()` triples the budget and changes no assertion. The test is slow because the journey
+is long. **8 passed** in `contribute.spec.ts` at 1280, including the walk.
+
+**The rule:** a gate item that cannot be run locally is a gate item nobody checks. Where a test
+is genuinely long, say so in the test rather than leaving a gate open on a number.
+
+### Both gates now stand on evidence
+
+**Gate 1 — visualisation scalability.** Fixtures F1–F9 render, structural equivalence holds
+between F8 and its twin, generative coverage passes, the import boundary and identity checks
+hold, the gallery shows no overflow at 360/768/1280/1440, and a route created through the UI
+draws through the ordinary renderer with the new step's own `<title>` in the SVG — 156 renderer
+tests plus the walk.
+
+**Gate 3 — complete community loop.** Every stage in a browser: read, follow, private progress,
+one follower never seeing another's notes, unfollow keeping them, confirm and challenge
+behaving as different things, a change announced and shadow-compared with progress intact, the
+whole read path with JavaScript disabled, and now creation.
+
+### What is left, across all four gates
+
+| Gate | State |
+|---|---|
+| 1 — Visualisation scalability | ✅ |
+| 2 — Real launch content | ⬜ the owner's research, as designed (CLAUDE.md §10.2) |
+| 3 — Complete community loop | ✅ |
+| 4 — Visual fidelity | 🟡 every machine-checkable line green (§24, §25); **the owner's review of the sheet is what remains** |
+
+Neither of the two open items is engineering.

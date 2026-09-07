@@ -60,6 +60,23 @@ test.describe('the contribution loop', () => {
   test('a new user creates a route, it renders as experimental, and another user improves it', async ({
     browser,
   }) => {
+    /*
+     * The longest walk in the suite, and the budget is about the walk rather than the product.
+     *
+     * This is Gate 1's last line and Gate 3's — a route created through the UI by somebody who
+     * is not a developer, rendering with zero code changes. Getting there is two signed-in
+     * contexts and nine sequential server actions: create, add a step, open it, add a field,
+     * then a second person correcting it. Nine round trips to a database is a long test at the
+     * best of times, and against the remote Neon branch a workstation uses it exceeds the
+     * default sixty seconds and reports a timeout that reads exactly like a broken product
+     * (Test.md §22).
+     *
+     * `test.slow()` triples the budget and changes no assertion. It is the honest fix: the test
+     * is slow because the journey is long, not because anything is wrong — and a gate item that
+     * cannot be run locally is a gate item nobody checks.
+     */
+    test.slow()
+
     const author = await signedIn(browser)
     const page = await author.context.newPage()
 
