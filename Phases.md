@@ -2356,6 +2356,80 @@ publicly reachable.
 
 ---
 
+## Mockup coverage audit — what the visual references show that the product does not — 2026-09-07
+
+**Owner:** *"study the visual reference folder mockups and figure out the features that we have
+not implemented yet, I think we have missed a lot."*
+
+Read all thirteen mockups against the running product. The honest answer is: **less than it looks
+like, but two of the gaps are large and one of them is a whole screen.**
+
+Three categories, and keeping them apart is the point — otherwise a deliberate departure gets
+re-litigated as an oversight every time somebody opens the folder.
+
+---
+
+### A. Real gaps. These are missing, and a reader would notice
+
+| # | What | Where in the mockups | Traceable to |
+|---|---|---|---|
+| **G1** | **A cross-route Updates screen.** The single biggest gap: `Updates` is a top-level nav item in VR-03, VR-06, VR-10, VR-12 and VR-14, and VR-10 is a whole page for it — every change and disruption across every route, with tabs for *All / Affecting my journey / Routes I follow*, type filters, severity filters, and an "Impact on my journey" panel counting critical/important/relevant/information. **The product has none of it.** Every change is visible only from inside the one route it belongs to, so a person following four routes has to visit four pages to find out whether anything moved. | VR-10 (entire screen), nav in VR-03/06/12/14 | **FR-76** (distinguish routine from action-relevant), FR-28, FR-29, FR-61. The data all exists — `RouteChange`, `TemporaryDisruption`, severity, effective dates. What is missing is the view. |
+| **G2** | **A deadlines view.** VR-06's rail shows *Deadlines (Next 3)* with a countdown, and its sidebar has *Calendar & Deadlines*. `deadline` is a field category (FR-07, FR-51) so the data is already being written — but **nothing anywhere aggregates deadline fields**, not per journey and not per route. A student following a route with four dated deadlines has no view that says which one is next. | VR-06 | **Change request.** The field category is FR-07/FR-51; a *calendar* is not in the baseline. §529 supports the data, not the screen. Needs owner approval (BR-35). |
+| **G3** | **Nothing lists what needs help.** VR-14 has *Fields Need Review (3)* and *Open Challenges (2)* as navigable panels — each item linking to the field it concerns. We compute both counts (they are in the route passport) but **there is no way to get from the count to the fields.** A contributor who wants to help has to open every step and look. This is the cheapest large win in the list: the query exists, only the list and the links are missing. | VR-14 | **FR-70** (conflict is shown), FR-50 (low-friction contribution). Buildable now. |
+| **G4** | **No safety or quarantine explainer, and no "my reports".** VR-11 is a *Report & Safety Center*: what happens after you report (five steps), how quarantine works, what has recently been quarantined, and a *My Reports* tab. We have the report form on each field and the explanatory copy exists in `safety.tsx` — but only inside a disclosure on the thing being reported. **Somebody who wants to understand the safety system before trusting the site cannot.** And a person who files a report can never see what happened to it. | VR-11 | **FR-33/FR-34** (reporting), §22–23. The *My Reports* half is arguably FR-79 transparency; the public quarantine list needs a decision (it also advertises what was caught). |
+| **G5** | **The ribbon omits two signals FR-10 names.** VR-03's ribbon row carries duration, intake window, **followers**, and **"2 changes"**. Ours carries level, mechanism, intake, step count, maturity, cautions and the fly window — but not follower count and not recent-change count. FR-10 asks for "followers, recent changes and last confirmation"; those are on the route page's passport, so the requirement is met somewhere, but the comparison surface is where they are most useful. | VR-03 | **FR-10.** Small. |
+| **G6** | **No version picker on the changes tab.** VR-07 has *View other versions* — pick a past date, view the route as it stood. `loadRouteGraphAt` already does exactly this and is already used for "what did this look like when I started". Only the picker is missing. | VR-07 | **FR-31** (inspect what changed and when). Small — the hard half is built. |
+
+---
+
+### B. In the mockups, and deliberately not built. Do not "fix" these
+
+Each is already recorded in CLAUDE.md §8.6 or forced by an invariant. Listed again because they
+are the things most likely to be read as omissions.
+
+| What the mockup shows | Why it is absent |
+|---|---|
+| `98% Community Verified`, `Community Confidence 28%`, `20% Freshness`, a 4.8/5 star rating | We are not an admission or immigration authority (BR-20, invariant 12), and a percentage implies precision this data has not got (§7.3). |
+| `Verified Route` badge | Same. §8.6 lists it by name. |
+| `Share Progress` on My Journey | Progress is private (FR-26, BR-16, D-10). Sharing a *route* would be fine; sharing progress is out of scope. |
+| `Subscribe to Alerts`, `Manage Alert Settings`, the notification bell with an unread count | Proactive external notification is deferred (§35). In-app change visibility is the first-release mechanism — which is exactly what G1 above would deliver. |
+| `Safety Leaderboard`, `5,213 Active Reporters` | §25: contribution is not a competitive points game. |
+| Screenshot upload on the report form | Deferred from V1 (2026-09-02). No upload path exists anywhere, deliberately (invariant 6, §24.1). |
+| `50K+ Active Students`, `1.2M+ Steps Followed`, `12,842+ Reports Resolved` | Invented numbers. The activity band (Phase 13C) shows the honest version. |
+| `Updates are added by students like you and verified by the community` | An approval-gate framing the revision model does not have (§8.6, FR-16, FR-69). |
+| Contributor avatars beside confirmations | There is no photo column and never will be (§24.1). Handles, not faces. |
+| `Community ⌄` and `Resources ⌄` nav menus | Neither exists as a section. A nav item pointing at nothing is worse than an absent one. |
+
+---
+
+### C. Built, but shaped differently. A decision, not a gap
+
+| Mockup | What we do instead, and why |
+|---|---|
+| VR-14's six-figure stats strip (contributors, following, confirmations, fields needing review, open challenges, freshness) | Every one of those figures **exists**, in the route passport — but inside a disclosure rather than across the top. §7.3: a badge on everything is a badge on nothing, and the loud slot is reserved for what changes what a reader should do. *Note this is exactly why G3 still matters: the counts being quiet is fine, having no way to reach the items is not.* |
+| VR-06's `23%` overall progress ring | We say "2 of 9 steps marked done". A percentage of your **own** steps is a fact rather than a confidence claim, so this one is a judgement call rather than a rule — worth revisiting if the ring reads better. |
+| VR-03's `Sorted by: Relevance ⌄` | Search orders by recency and nothing else, and a test asserts there is no rank, score, weight or boost anywhere in the ordering (invariant 13/14). A *neutral* sort — duration, alphabetical — would be permissible; "relevance" as drawn is not. |
+| VR-11's report categories as a grid of nine tiles | Same categories, rendered as a form inside a disclosure on the thing being reported, so the report always knows its subject. The tiles would be a page that then has to ask "which thing?". |
+| VR-01's illustrated Bangladesh→Germany road with landmarks | Route visuals are data-driven and route-agnostic (invariant 24). The landing illustration is the six *categories*, not a named route, and it says so on its face. |
+
+---
+
+### What this adds up to
+
+**G1 is the one to build.** It is a whole screen, it is named in the navigation of five separate
+mockups, the data behind it is already written, and its absence is felt by exactly the person
+this product is for — somebody following more than one route.
+
+**G3 and G6 are cheap.** Both are a list and some links over queries that already exist.
+
+**G2 and G4 need an owner decision before any code**: a deadline calendar is not in the frozen
+baseline (BR-35 says raise it, do not silently implement it), and a public quarantine list is a
+judgement about whether transparency or discretion serves safety better.
+
+**G5 is a small addition to the ribbon**, and the only item here that is a plain FR gap.
+
+---
+
 ## Things you need to do
 
 **Added 2026-09-07 at the owner's request.** Everything below is blocked on the owner and cannot
