@@ -216,7 +216,7 @@ export const en = {
      * wrong in a way nothing flags.
      */
     timingExplainer:
-      'Two stages whose times overlap are shown side by side on the road, as work you can do at the same time. That is how a route says two things happen together — leave these empty if you are not sure.',
+      'Two stages whose times overlap are shown side by side on the road, as work you can do at the same time. That is how a route says two things happen together. Leave these empty if you are not sure.',
 
     connectSteps: 'Connect two stages',
     connections: 'Connections between stages',
@@ -317,7 +317,7 @@ export const en = {
   howItWorks: {
     title: 'How this works',
     lede:
-      'This platform describes the ways people actually get from Bangladesh to studying abroad — every stage, in order, with the requirements inside it. It is written and corrected by the people who have been through it. Here is what the words on it mean.',
+      'This platform describes the ways people actually get from Bangladesh to studying abroad: every stage, in order, with the requirements inside it. It is written and corrected by the people who have been through it. Here is what the words on it mean.',
     /** Beside the 'How it works' heading, so it must not repeat it. */
     readMore: 'The full explanation',
     stepOf: (n: number, total: number) => `Step ${n} of ${total}`,
@@ -329,7 +329,7 @@ export const en = {
       {
         label: 'Route',
         value:
-          'One recognisable way of reaching a study destination — for example applying directly to a German university, as opposed to going through a scholarship. Two genuinely different processes are two routes, not one route with notes.',
+          'One recognisable way of reaching a study destination. Applying directly to a German university, say, as opposed to going through a scholarship. Two genuinely different processes are two routes, not one route with notes.',
       },
       {
         label: 'Ribbon',
@@ -339,7 +339,7 @@ export const en = {
       {
         label: 'Road',
         value:
-          'The ribbon opened out: every stage in order, with how long each one takes and which ones happen at the same time. Where a route genuinely branches — two ways of proving English, say — the road shows the branch rather than pretending there is one path.',
+          'The ribbon opened out: every stage in order, with how long each one takes and which ones happen at the same time. Where a route genuinely branches, say two ways of proving English, the road shows the branch rather than pretending there is one path.',
       },
       {
         label: 'Step',
@@ -349,7 +349,7 @@ export const en = {
       {
         label: 'Field',
         value:
-          'One piece of information inside a step — a requirement, a cost, a deadline, an address, a warning, or somebody’s experience. Each one carries where it came from and when it was last checked, and each one can be corrected on its own.',
+          'One piece of information inside a step: a requirement, a cost, a deadline, an address, a warning, or somebody’s experience. Each one carries where it came from and when it was last checked, and each one can be corrected on its own.',
       },
     ],
 
@@ -361,7 +361,7 @@ export const en = {
       },
       {
         title: 'Compare the ribbons',
-        body: 'Each band is one route. The colours are the kind of stage — documents, language, admission, funding, visa, travel — in the order you meet them. The key is beside the results.',
+        body: 'Each band is one route. The colours are the kind of stage (documents, language, admission, funding, visa, travel) in the order you meet them. The key is beside the results.',
       },
       {
         title: 'Open one into a road',
@@ -373,7 +373,7 @@ export const en = {
       },
       {
         title: 'Follow it, if you want to',
-        body: 'Signing in lets you keep private progress against a route — what you have finished, target dates, your own notes. Nobody else can see any of it, and you are never asked to upload a document to prove anything.',
+        body: 'Signing in lets you keep private progress against a route: what you have finished, target dates, your own notes. Nobody else can see any of it, and you are never asked to upload a document to prove anything.',
       },
     ],
 
@@ -389,7 +389,7 @@ export const en = {
       {
         label: 'Correct this',
         value:
-          'You know what the right answer is now. Your correction goes live immediately — there is no queue and nobody approves it. The previous value is kept, with your name on the change, and anyone can correct it again.',
+          'You know what the right answer is now. Your correction goes live immediately. There is no queue and nobody approves it. The previous value is kept, with your name on the change, and anyone can correct it again.',
       },
       {
         label: 'Flag a problem',
@@ -405,14 +405,14 @@ export const en = {
 
     limitsTitle: 'What this platform does not do',
     limits: [
-      'It does not check anything. Nothing here has been through an authority, and the absence of a warning is not evidence that a fact is right — always confirm anything that matters against the official source.',
+      'It does not check anything. Nothing here has been through an authority, and the absence of a warning is not evidence that a fact is right. Always confirm anything that matters against the official source.',
       'It is not an agency or a consultancy. Nobody here submits an application for you, and there is nothing to buy.',
-      'It never asks for a document. No passport, no transcript, no certificate, no bank statement — there is nowhere on this platform to upload a file, for anything.',
+      'It never asks for a document. No passport, no transcript, no certificate, no bank statement. There is nowhere on this platform to upload a file, for anything.',
       'It cannot promise a date. Timings are built from what a route says about itself, and are planning aids rather than commitments.',
       // Worded around the invariant-13 guard, which forbids that vocabulary anywhere in
       // src/ and is right to: it is the thing standing between this product and a paid
       // ranking. The claim is unchanged; only the words it cannot use are.
-      'It does not rank routes by anything anybody paid for. Nobody can buy a better position, a badge, or standing of any kind — there is nothing on this platform that money changes.',
+      'It does not rank routes by anything anybody paid for. Nobody can buy a better position, a badge, or standing of any kind. There is nothing on this platform that money changes.',
     ],
 
     newHereTitle: 'New here?',
@@ -438,9 +438,9 @@ export const en = {
      */
     steps: [
       { title: 'Search', body: 'Say where you are going and what you are studying. No account needed.' },
-      { title: 'Compare', body: 'Each way of getting there appears as a ribbon — the whole route, compressed into one band.' },
+      { title: 'Compare', body: 'Each way of getting there appears as a ribbon: the whole route, compressed into one band.' },
       { title: 'Open', body: 'A ribbon unfolds into a road: every stage in order, with the requirements, costs and deadlines inside it.' },
-      { title: 'Follow', body: 'Sign in to keep your own private progress against a route — and to correct anything you find is out of date.' },
+      { title: 'Follow', body: 'Sign in to keep your own private progress against a route, and to correct anything you find is out of date.' },
     ],
 
     /**
@@ -480,7 +480,7 @@ export const en = {
      */
     legendTitle: 'How to read a ribbon',
     legendLede:
-      'Each band is one route, compressed — its stages in order, left to right, coloured by what kind of stage each one is. Opening it unfolds the same thing into a road.',
+      'Each band is one route, compressed: its stages in order, left to right, coloured by what kind of stage each one is. Opening it unfolds the same thing into a road.',
     missingTitle: 'Not here?',
     missingLede:
       'If the way you are going is missing, add it. New routes appear straight away, marked experimental until the community has worked on them.',
@@ -495,7 +495,7 @@ export const en = {
     resultCount: (n: number) => (n === 1 ? '1 route' : `${n} routes`),
     emptyTitle: 'No routes yet',
     emptyBody:
-      'Nothing has been published for these filters. This platform is new and its routes are researched and seeded carefully rather than generated — an empty result is honest, not an error.',
+      'Nothing has been published for these filters. This platform is new, and its routes are researched and seeded carefully rather than generated, so an empty result is honest rather than an error.',
     emptyBodyNoFilters:
       'No routes have been published yet. Routes are researched from official sources and reviewed before they appear here.',
 
@@ -532,6 +532,20 @@ export const en = {
     tabsLabel: 'Route views',
     selectAStep: 'Select a step to see the information inside it.',
     ribbonLabel: 'Route overview',
+    /*
+     * Where to begin, 2026-09-07.
+     *
+     * The owner noticed that every page described the system and none of them told a reader
+     * what to do. The only instruction near the road was "Select a step to see the information
+     * inside it", which describes a control rather than guiding anybody.
+     *
+     * "Start here" is deliberately plain. It names a stage rather than an interaction, and it
+     * promises nothing about the route: the duration beside it is the route's own stored
+     * estimate, shown the same way it is shown everywhere else.
+     */
+    startHereTitle: 'Start here',
+    startHereAction: 'Open this stage',
+    startHereThen: 'Then:',
     roadLabel: 'The full road',
     steps: 'Steps',
     stepCount: (n: number) => (n === 1 ? '1 step' : `${n} steps`),
@@ -672,11 +686,11 @@ export const en = {
   trust: {
     /** Field-level signals. Order of appearance is decided by src/domain/trust.ts. */
     fieldSignal: {
-      source_disputed: 'Disputed — under review',
-      history_forked: 'Contested — two contributors corrected this from the same starting point',
-      open_challenge: 'Challenged — somebody says this needs review, and no correction has been made yet',
-      withheld: 'Withheld — this was reported and an administrator has hidden it while it is reviewed',
-      unverified_submission: 'Community submission — not corroborated by anyone else',
+      source_disputed: 'Disputed, under review',
+      history_forked: 'Contested: two contributors corrected this from the same starting point',
+      open_challenge: 'Challenged: somebody says this needs review, and no correction has been made yet',
+      withheld: 'Withheld: reported, and hidden by an administrator while it is reviewed',
+      unverified_submission: 'Community submission, not corroborated by anyone else',
       past_expiry: 'Past the expiry date given for it',
       not_yet_effective: 'Not in effect yet',
       review_due: 'Due for review',
@@ -697,7 +711,7 @@ export const en = {
       },
       group_official: {
         title: 'From official and institutional sources',
-        note: 'Stated by an authority or an institution. Check the source and the date — rules change.',
+        note: 'Stated by an authority or an institution. Check the source and the date, because rules change.',
       },
       group_community: {
         title: 'From the community',
@@ -717,14 +731,14 @@ export const en = {
     } satisfies Record<RouteCautionId, string>,
 
     linkCaution: {
-      link_quarantined: 'Quarantined — this link is not opened from here',
+      link_quarantined: 'Quarantined. This link is not opened from here',
       unparseable: 'This address cannot be read, so we cannot tell you where it goes',
-      unsupported_scheme: 'Not an ordinary web address — not opened from here',
+      unsupported_scheme: 'Not an ordinary web address, so it is not opened from here',
       insecure_scheme: 'Not a secure (https) address',
       embedded_credentials: 'This address is written to look like one site and goes to another',
       ip_address_host: 'Goes to a numeric address rather than a named site',
       punycode_host: 'This domain name may be imitating another one',
-      known_shortener: 'A shortened link — the real destination is hidden',
+      known_shortener: 'A shortened link. The real destination is hidden',
       not_corroborated: 'Submitted by a community member and not corroborated',
     } satisfies Record<LinkCautionId, string>,
 
@@ -778,7 +792,7 @@ export const en = {
        * page is "nothing is flagged, so this is fine". This paragraph exists to deny it.
        */
       noVerificationClaim:
-        'Vindeshi Express does not verify routes. Nothing here has been checked by an authority, and the absence of a warning is not evidence that there is nothing wrong. Confirm anything that matters against the official source before you rely on it.',
+        'Nothing here has been checked by an authority. Confirm anything that matters against its official source.',
     },
   },
 
@@ -797,7 +811,7 @@ export const en = {
     indexLede: 'Routes you are following, and the progress you have recorded on each. Only you can see this.',
     indexEmpty: 'You are not following any routes yet. Open a route and choose “Follow this route” to start one.',
     indexEmptyBody:
-      'Open any route and choose “Follow this route”. Your progress, dates and notes then live here — private to you, and never shown to anyone else.',
+      'Open any route and choose “Follow this route”. Your progress, dates and notes then live here, private to you and never shown to anyone else.',
     privateBadge: 'Private to you',
     privateExplainer:
       'Your progress, dates and notes are visible only to you. No other user can see them, and the platform never asks you to upload a document to prove anything.',
@@ -821,7 +835,7 @@ export const en = {
     saved: 'Saved',
     markCompleted: 'Mark this journey completed',
     unmarkCompleted: 'Not completed after all',
-    completedNote: 'You marked this journey completed. This is your own record — the platform does not verify it.',
+    completedNote: 'You marked this journey completed. This is your own record.',
     tasksTitle: 'Your own tasks',
     tasksLede: 'Things that matter to you and do not belong in the public route.',
     taskPlaceholder: 'Something to remember',
@@ -926,7 +940,7 @@ export const en = {
     duplicate_information: 'Duplicate information',
     unsafe_or_scam: 'Unsafe, scam or phishing concern',
     personal_information_or_harassment: 'Personal information or harassment concern',
-    other: 'Something else — explained below',
+    other: 'Something else, explained below',
   } satisfies Record<ChallengeReason, string>,
 
   /**
@@ -995,7 +1009,7 @@ export const en = {
    */
   activity: {
     title: 'Where this record stands',
-    lede: 'Counted exactly, from the routes themselves. Nothing here is rounded up, and none of it decides how a route ranks or how much to trust it.',
+    lede: 'Counted from the routes themselves, and never rounded up.',
 
     routes: 'routes',
     destinations: 'destinations',
@@ -1012,12 +1026,12 @@ export const en = {
      */
     emptyTitle: 'Nothing here yet, and that is the truth rather than a loading state',
     emptyBody:
-      'No routes have been published. This platform has no content of its own — every route is researched and written by somebody who has travelled it, so the record starts empty and grows only as people add to it.',
+      'No routes have been published. This platform has no content of its own. Every route is researched and written by somebody who has travelled it, so the record starts empty and grows only as people add to it.',
     emptyAction: 'Add the first route',
   },
 
   legal: {
-    draftBannerTitle: 'Draft — not yet adopted',
+    draftBannerTitle: 'Draft, not yet adopted',
     draftBannerBody:
       'This page describes exactly what the software does today, but it has not been reviewed or adopted by whoever runs this service, and no contact address has been set. Read it as a description of the system, not as a legal document.',
 
@@ -1031,24 +1045,24 @@ export const en = {
 
     collectTitle: 'What is stored when you sign in',
     collectEmail:
-      'Your email address, from Google, used only to recognise you when you return. It is never displayed, never appears in any web address, and is never put on your session — so no page on this site can render it even by mistake.',
+      'Your email address, from Google, used only to recognise you when you return. It is never displayed, never appears in any web address, and is never put on your session, so no page on this site can render it even by mistake.',
     collectHandle:
       'A handle, generated at random. It is not your name and is not taken from your Google profile. It is what your contributions are signed with.',
     collectLink:
-      'A link to your Google account: the provider name and Google’s account identifier. No access token, no ID token and no refresh token is stored — this software never calls Google on your behalf, so it holds no credential that would let it.',
+      'A link to your Google account: the provider name and Google’s account identifier. No access token, no ID token and no refresh token is stored. This software never calls Google on your behalf, so it holds no credential that would let it.',
     collectSession: 'A session, so your browser stays signed in. Signing out deletes it.',
     collectNotName:
       'Your name and profile photo are not stored. There are no columns for them.',
 
     privateTitle: 'What you write, and who can see it',
     privateBody:
-      'When you follow a route you can record a status against each step, target and completion dates, private notes, and your own tasks. None of it is visible to any other user, ever. Every query for it requires your own user id — there is no version of the function that could fetch somebody else’s.',
+      'When you follow a route you can record a status against each step, target and completion dates, private notes, and your own tasks. None of it is visible to any other user, ever. Every query for it requires your own user id, and there is no version of the function that could fetch somebody else’s.',
     privateNoProof:
-      'You are never asked to prove any of it. There is no upload anywhere in this product — no passport, transcript, certificate, bank statement, admission letter or visa document — and nowhere to put one.',
+      'You are never asked to prove any of it. There is no upload anywhere in this product: no passport, transcript, certificate, bank statement, admission letter or visa document, and nowhere to put one.',
 
     publicTitle: 'What is public',
     publicBody:
-      'Your contributions are public and signed with your handle: the revisions you write, the routes you create, and your confirmations and challenges. That is the point of the platform — the record has to say who wrote what, or nobody can weigh it. Reports you file are not public.',
+      'Your contributions are public and signed with your handle: the revisions you write, the routes you create, and your confirmations and challenges. That is the point of the platform, because the record has to say who wrote what or nobody can weigh it. Reports you file are not public.',
 
     trackingTitle: 'What is not done at all',
     trackingBody:
@@ -1058,7 +1072,7 @@ export const en = {
     leavingBody:
       'You can close your account from your account page. It erases your email, the link to your Google account, every session, and every followed route with all of its progress, dates, notes and tasks. It cannot be undone, and signing in again creates a new account with a new handle and no history.',
     leavingKeeps:
-      'Your contributions stay, signed with your handle. The handle was generated and is not your name, so what remains identifies nobody — and taking authorship out of a public record other people depend on would damage the record without protecting you.',
+      'Your contributions stay, signed with your handle. The handle was generated and is not your name, so what remains identifies nobody, and taking authorship out of a public record other people depend on would damage the record without protecting you.',
 
     processorsTitle: 'Who else is involved',
     processorsBody:
@@ -1074,15 +1088,15 @@ export const en = {
 
     notAdviceTitle: 'This is not advice, and not an authority',
     notAdviceBody:
-      'Vindeshi Express is a community-maintained record of how people have reached study destinations. It is not an education agency, a consultancy, an application service or an immigration adviser, and it is not affiliated with any university or government. We do not verify any of it. Check a requirement against its official source before you act on it — every field shows where it came from and when it was last confirmed, precisely so that you can.',
+      'Vindeshi Express is a community-maintained record of how people have reached study destinations. It is not an education agency, a consultancy, an application service or an immigration adviser, and it is not affiliated with any university or government. We do not verify any of it. Check a requirement against its official source before you act on it. Every field shows where it came from and when it was last confirmed, precisely so that you can.',
 
     noGuaranteeTitle: 'No guarantees',
     noGuaranteeBody:
-      'Requirements, fees, timelines and procedures change, sometimes without notice. Durations and expected departure windows are planning estimates, never promises. A route being established means people have used and confirmed it — not that it will work for you.',
+      'Requirements, fees, timelines and procedures change, sometimes without notice. Durations and expected departure windows are planning estimates, never promises. A route being established means people have used and confirmed it, not that it will work for you.',
 
     contributingTitle: 'Contributing',
     contributingBody:
-      'Anyone signed in may add, update, confirm or challenge. Nothing written here is deleted — a correction is a new revision and the old value stays in the history — so contribute on the understanding that your edits are permanent and public. Creating a route does not make it yours: anybody may revise it, and that is deliberate.',
+      'Anyone signed in may add, update, confirm or challenge. Nothing written here is deleted, because a correction is a new revision and the old value stays in the history. Contribute on the understanding that your edits are permanent and public. Creating a route does not make it yours: anybody may revise it, and that is deliberate.',
     contributingRules:
       'Do not post anything you have no right to post, anything designed to mislead, or anything unsafe: phishing links, scams, impersonation, harassment. Report those rather than editing around them.',
 
@@ -1105,7 +1119,7 @@ export const en = {
 
     whatWeKeepTitle: 'What is stored',
     whatWeKeepLede:
-      'Less than you might expect. This list is complete — there is nothing kept that is not named here.',
+      'Less than you might expect. This list is complete, and there is nothing kept that is not named here.',
     keepsHandle: 'A generated handle. It is not your name and was never taken from your Google profile.',
     keepsEmail:
       'Your email address, used only to recognise you when you sign in again. It is never displayed and never appears in any address on this site.',
@@ -1113,13 +1127,13 @@ export const en = {
       'The routes you follow, and against each step: a status, the dates you set, your private notes and your own tasks. Nobody else can see any of it.',
     keepsContributionsLabel: 'Contributions',
     keepsContributions:
-      'Your contributions — the revisions, confirmations, challenges and reports you have made — attributed to your handle.',
+      'Your contributions, attributed to your handle: the revisions, confirmations, challenges and reports you have made.',
     keepsNothingElse:
       'No documents, no passport, no transcript, no certificate, no bank statement. There is no upload anywhere in this product, so there is nothing of that kind to store.',
 
     publicPageTitle: 'Your public page',
     publicPageLede:
-      'Your contributions are public and attributed to your handle. This is the same page anyone else sees — there is no separate private profile, because there is nothing private on it.',
+      'Your contributions are public and attributed to your handle. This is the same page anyone else sees. There is no separate private profile, because there is nothing private on it.',
     viewPublicPage: 'View your public page',
 
     closeTitle: 'Close your account',
@@ -1132,7 +1146,7 @@ export const en = {
       'Every route you follow, and all of your private progress: statuses, target dates, completion dates, notes and tasks.',
     closeKeepsTitle: 'Kept, and why',
     closeKeepsContributions:
-      'Your contributions stay, attributed to your handle. The handle was generated and is not your name, so what remains identifies nobody — and removing it would take the authorship out of a public record other people are relying on.',
+      'Your contributions stay, attributed to your handle. The handle was generated and is not your name, so what remains identifies nobody, and removing it would take the authorship out of a public record other people are relying on.',
     closeConfirmationLabel: 'To confirm, type CLOSE below.',
     closeConfirmationPhrase: 'CLOSE',
     closeConfirmationMismatch: 'That did not match. Nothing has been changed. Type CLOSE exactly.',
@@ -1162,7 +1176,7 @@ export const en = {
     update: 'Correct this',
     challenge: 'Flag a problem',
     updateExplainer:
-      'Your correction goes live immediately. The previous value is kept, and anyone can correct it again — including you.',
+      'Your correction goes live immediately. The previous value is kept, and anyone can correct it again, including you.',
     challengeExplainer:
       'This leaves the information as it is and marks it as needing review. Use it when you know something is wrong but not what the right answer is.',
     value: 'Information',
@@ -1202,7 +1216,7 @@ export const en = {
     updateTips: [
       'Be specific about what changed, and about whom it changed for.',
       'Link the page you found it on, where there is one.',
-      'Say who says so honestly. Your own experience is community experience, and it is worth recording as exactly that — it is not a lesser kind of information, it is a different one.',
+      'Say who says so honestly. Your own experience is community experience, and it is worth recording as exactly that. It is not a lesser kind of information, it is a different one.',
       'Say why you are changing it. The next reader is deciding between your value and the one before it, and the reason is most of what they have to go on.',
     ],
     updateAttribution:
@@ -1245,7 +1259,7 @@ export const en = {
     routeSummaryHint: 'What kind of student is this route for, and what makes it different from the other ways of getting there?',
     from: 'From',
     to: 'To',
-    countryHint: 'Two-letter country code — BD for Bangladesh, DE for Germany.',
+    countryHint: 'Two-letter country code. BD for Bangladesh, DE for Germany.',
     mechanismHint: 'Leave it unset if the route does not depend on one.',
     intakeHint: 'The intake this route describes, if it is specific to one.',
     publish: 'Create this route',
@@ -1270,21 +1284,21 @@ export const en = {
     routeTipsTitle: 'What makes a route useful',
     routeTips: [
       'Group the stages the way a student lives them. “Documents” is one stage, not seven.',
-      'Give each stage a realistic length. Two stages whose windows overlap are how this product says they happen at the same time — there is no separate control for it.',
+      'Give each stage a realistic length. Two stages whose windows overlap are how this product says they happen at the same time. There is no separate control for it.',
       'Link an official page for anything an authority publishes, and say plainly when something is your own experience instead.',
       'Describe one way of getting there. If your route and an existing one are genuinely different journeys, they should stay two routes.',
     ],
     publishMeansTitle: 'What publishing does',
     publishMeans: [
       'The route appears immediately, marked experimental, so readers can see it is new and has not been worked on yet.',
-      'It is not yours. Anyone signed in can add to it, correct it or reorganise it — including changing what you wrote.',
+      'It is not yours. Anyone signed in can add to it, correct it or reorganise it, including changing what you wrote.',
       'Nothing you write here is checked by Vindeshi Express before or after it appears. What the route says is what the community has put into it, and readers are told that.',
       'Nothing is ever deleted. Every correction keeps the value before it, with your name against what you wrote.',
     ],
     stillAccurate: 'Was this step still accurate?',
     stillAccurateLede:
       'You have just been through it, so you know better than anyone. This is the most useful moment to say.',
-    yesAccurate: 'Yes — everything here was still accurate',
+    yesAccurate: 'Yes, everything here was still accurate',
     somethingChanged: 'Something changed',
     somethingChangedHint: 'Opens the step so you can correct or flag the part that is wrong.',
     contributorSince: 'First contributed',
@@ -1307,10 +1321,10 @@ export const en = {
       'These are counts, not a rating. A high number means somebody has been active, not that they are right; a low one often just means they are new. Read what they actually contributed on the routes themselves.',
     whatThisPageIsTitle: 'Why this page exists',
     whatThisPageIs:
-      'Every claim on a route says who made it, and a reader deciding how much weight to give one should be able to see what else that person has done. This platform deliberately has no reputation score to show instead — so what it shows is the record, and you judge it.',
+      'Every claim on a route says who made it, and a reader deciding how much weight to give one should be able to see what else that person has done. This platform deliberately has no reputation score to show instead, so what it shows is the record, and you judge it.',
     newContributor: 'New contributor',
     newContributorNote:
-      'This account is new here. That is not a mark against it — everyone starts here — but it means the community has not had a chance to check its work yet.',
+      'This account is new here. That is not a mark against it, since everyone starts here, but it means the community has not had a chance to check its work yet.',
   },
 
 
@@ -1328,12 +1342,12 @@ export const en = {
   safety: {
     report: 'Report as unsafe',
     reportExplainer:
-      'Use this if something here looks dangerous rather than merely wrong — a phishing link, someone impersonating an office, a private person’s number, adult content or a scam. A person will look at it.',
+      'Use this if something here looks dangerous rather than merely wrong: a phishing link, someone impersonating an office, a private person’s number, adult content or a scam. A person will look at it.',
     reportVsChallenge:
-      'If the information is simply out of date or incorrect, use “Flag a problem” instead — it reaches the community faster than a report reaches an administrator.',
+      'If the information is simply out of date or incorrect, use “Flag a problem” instead. It reaches the community faster than a report reaches an administrator.',
     reportReason: 'What is the concern?',
     reportDetail: 'What did you see?',
-    reportDetailHint: 'Optional. Text only — please do not paste anything private.',
+    reportDetailHint: 'Optional. Text only, and please do not paste anything private.',
     submitReport: 'Send this report',
 
     // ── VR-11's category grid, "what happens next" and quarantine explanation ────
@@ -1370,7 +1384,7 @@ export const en = {
      * platform to upload a file" is a fact about the product worth knowing (invariant 6).
      */
     reportTextOnly:
-      'Text only. There is nowhere to attach a file here, and nowhere on this platform to upload one — not for a report, and not for your own journey either.',
+      'Text only. There is nowhere to attach a file here, and nowhere on this platform to upload one, not for a report and not for your own journey either.',
     /**
      * VR-11's "What happens next?", written as what happens rather than as a promise.
      *
@@ -1396,7 +1410,7 @@ export const en = {
       },
       {
         title: 'They record what they decided',
-        body: 'What appears on the route is the state of the content — withheld, restored, or archived and kept in history. The report itself stays private.',
+        body: 'What appears on the route is the state of the content: withheld, restored, or archived and kept in history. The report itself stays private.',
       },
     ],
     quarantineHowTitle: 'How withholding works',
@@ -1408,7 +1422,7 @@ export const en = {
     ],
     reportSent: 'Reported. An administrator will look at this.',
     reportPrivate:
-      'Reports are not shown publicly. What appears on the route is only the outcome — whether the content is withheld.',
+      'Reports are not shown publicly. What appears on the route is only the outcome: whether the content is withheld.',
     quarantinedTitle: 'Withheld pending review',
     quarantinedBody:
       'This information was reported and an administrator has hidden it while it is checked. It has not been deleted: it is still in this route’s history, and it can be restored.',
@@ -1421,9 +1435,9 @@ export const en = {
 
 
   reportOutcome: {
-    no_action_needed: 'Looked at — nothing needed changing',
+    no_action_needed: 'Looked at, nothing needed changing',
     content_corrected: 'Corrected',
-    content_archived: 'Archived — removed from view, kept in history',
+    content_archived: 'Archived: removed from view, kept in history',
     content_removed: 'Removed permanently',
     quarantine_upheld: 'Left withheld',
   } satisfies Record<ReportOutcome, string>,
@@ -1444,14 +1458,14 @@ export const en = {
     title: 'Reported content',
     lede: 'Content that people have reported as unsafe, and what is known about each report.',
     noRecommendation:
-      'This list is not ranked and suggests nothing. It shows what was reported, by how many different people, and when — the judgement is yours.',
+      'This list is not ranked and suggests nothing. It shows what was reported, by how many different people, and when. The judgement is yours.',
     empty: 'Nothing has been reported.',
     /**
      * An empty queue is the ordinary state, and it must not read as an all-clear. Invariant
      * 12 and BR-04: an absence of reports is an absence of reports, and nothing more.
      */
     emptyNote:
-      'That is the usual state of this page. It means nobody has reported anything — not that anything here has been checked and found sound.',
+      'That is the usual state of this page. It means nobody has reported anything, not that anything here has been checked and found sound.',
     roleScopeTitle: 'What this role is for',
     evidence: 'What is known',
     actions: 'What you can do',
@@ -1466,12 +1480,12 @@ export const en = {
       'A reader will see this. Withholding something without saying why reads as censorship.',
     release: 'Restore it',
     quarantineIsNotDeletion:
-      'Withholding hides a value from current views. It deletes nothing — the field, its revisions and its history are untouched, and restoring it is one action.',
+      'Withholding hides a value from current views. It deletes nothing: the field, its revisions and its history are untouched, and restoring it is one action.',
     outcome: 'What did you decide?',
     outcomeNote: 'Why (kept with the decision)',
     recordDecision: 'Record this decision',
     roleScope:
-      'This role exists for safety, disputes, abuse and exceptional cases. Ordinary contributions are not reviewed here and never need approval — they go live when they are made, and the community corrects them.',
+      'This role exists for safety, disputes, abuse and exceptional cases. Ordinary contributions are not reviewed here and never need approval. They go live when they are made, and the community corrects them.',
 
     // ── Phase 11: route maintenance (FR-46, §19.2) ──────────────────────────────
     routesTitle: 'Route maintenance',
@@ -1485,11 +1499,11 @@ export const en = {
      * so beats an empty list that reads as a page that failed to load.
      */
     routesEmptyNote:
-      'Nothing has been published on this platform yet. Once routes exist, every one of them appears here, oldest first — never ordered by how many people follow them.',
+      'Nothing has been published on this platform yet. Once routes exist, every one of them appears here, oldest first, never ordered by how many people follow them.',
     duplicatesTitle: 'Duplicate flags',
     duplicatesEmpty: 'No open duplicate flags.',
     duplicatesOldestFirst:
-      'Oldest first. Nothing here is ranked by how many people flagged it — two routes are the same journey or they are not, and no number of flags settles that.',
+      'Oldest first. Nothing here is ranked by how many people flagged it. Two routes are the same journey or they are not, and no number of flags settles that.',
     mergeInto: 'Merge into',
     mergeSubmit: 'Merge',
     mergeNote: 'Why (kept with the decision)',
@@ -1523,7 +1537,7 @@ export const en = {
     stateNote: 'Why (kept with the decision)',
     runReview: 'Run the periodic review',
     runReviewHint:
-      'Applies what each route’s own record proposes — dormancy for unused new routes, staleness where information is overdue, quiet where nothing has happened lately. It never promotes a route and never archives one.',
+      'Applies what each route’s own record proposes: dormancy for unused new routes, staleness where information is overdue, quiet where nothing has happened lately. It never promotes a route and never archives one.',
     reviewedNone: 'Nothing needed changing.',
     reviewedCount: (n: number) =>
       n === 1 ? '1 route changed standing' : `${n} routes changed standing`,
@@ -1585,7 +1599,7 @@ export const en = {
     effectiveFrom: 'Takes effect',
     effectiveUnknown: 'No start date given',
     effectiveExplainer:
-      'Where a change has a start date, it is the start date that decides whether it affects what you have already done — not the date somebody typed it here.',
+      'Where a change has a start date, it is the start date that decides whether it affects what you have already done, not the date somebody typed it here.',
     concerns: 'Concerns',
     wholeRoute: 'The whole route',
     announcedBy: 'Recorded by',
@@ -1612,7 +1626,7 @@ export const en = {
     // document" and "the Dhaka centre is shut for a fortnight" are different claims about the
     // world — one of which expires by itself (invariant 19).
     typePermanent: 'Permanent change to the route',
-    typeTemporary: 'Temporary — it expires on its own',
+    typeTemporary: 'Temporary. It expires on its own',
 
     // The counts in VR-10's rail, for this route. They decide nothing and nothing reads them
     // (FR-71, invariant 14), which is what the last line says out loud.
@@ -1645,7 +1659,7 @@ export const en = {
     } satisfies Record<ChangeBearing, string>,
 
     note: {
-      not_yet_effective: 'Not in force yet — it starts on the date shown.',
+      not_yet_effective: 'Not in force yet. It starts on the date shown.',
       effective_after_your_date:
         'This took effect after the date you recorded, so what you did still stands.',
       completion_preserved: 'Your record of finishing this step is unchanged.',
@@ -1683,11 +1697,11 @@ export const en = {
     noLinkedEdit: 'This announcement is not linked to a specific edit, so there is no before and after to show.',
     valueBefore: 'Before',
     valueAfter: 'After',
-    valueAdded: 'Added — there was nothing here before',
+    valueAdded: 'Added. There was nothing here before',
 
     disruptionsTitle: 'Temporary disruptions',
     disruptionsLede:
-      'Short-term interruptions — a closure, a strike, a suspended service. These sit on top of the route and expire on their own. They never change the route itself.',
+      'Short-term interruptions: a closure, a strike, a suspended service. These sit on top of the route and expire on their own. They never change the route itself.',
     noDisruptions: 'No temporary disruptions are recorded on this route.',
     activeNow: 'Happening now',
     disruptionEnded: 'Ended',
@@ -1711,13 +1725,13 @@ export const en = {
 
     recordTitle: 'Record a change or a disruption',
     recordLede:
-      'Anyone signed in can do this. There is no approval queue — it goes live when you record it, and the community corrects it afterwards.',
+      'Anyone signed in can do this. There is no approval queue. It goes live when you record it, and the community corrects it afterwards.',
     announceHeading: 'Announce a permanent change',
     announceHint:
-      'Use this when the route itself has changed for good — a new requirement, a corrected fee, a step that no longer applies.',
+      'Use this when the route itself has changed for good: a new requirement, a corrected fee, a step that no longer applies.',
     disruptHeading: 'Record a temporary disruption',
     disruptHint:
-      'Use this for something that will pass — a closure, a flood, a suspended appointment system. It expires on its own and leaves the route alone.',
+      'Use this for something that will pass: a closure, a flood, a suspended appointment system. It expires on its own and leaves the route alone.',
     fieldTitle: 'What happened',
     fieldDetail: 'Anything a follower should understand',
     fieldSeverity: 'What does this mean for someone following this route?',
@@ -1735,7 +1749,7 @@ export const en = {
      * change — and scale is what FR-77 asks the shadow to show.
      */
     fieldDescribesHint:
-      'Tick every edit this announcement is about. Linking them lets anyone see exactly what changed, now and years from now — and a change that touched several stages needs all of them ticked to show its full scale. Left blank, the announcement still appears; it just cannot show a before and after.',
+      'Tick every edit this announcement is about. Linking them lets anyone see exactly what changed, now and years from now, and a change that touched several stages needs all of them ticked to show its full scale. Left blank, the announcement still appears; it just cannot show a before and after.',
     describesNone: 'No recent edits to link to',
     describesKind: {
       step: 'Step',
@@ -1786,7 +1800,7 @@ export const en = {
      * the passport shows outside its disclosure for exactly this state.
      */
     quietExplainer:
-      'No recent changes have been recorded for this route. That describes its activity, not its accuracy — a settled process, a seasonal intake and an overlooked route can all look the same from here. Its last confirmation date is shown with its standing.',
+      'No recent changes have been recorded for this route. That describes its activity, not its accuracy. A settled process, a seasonal intake and an overlooked route can all look the same from here. Its last confirmation date is shown with its standing.',
     dormantExplainer:
       'No followers, confirmations or edits have been recorded for this route since it was created. It has been set aside so it does not crowd routes people are using. Nothing has been deleted, and it returns the moment anyone uses it.',
     staleExplainer:
@@ -1818,7 +1832,7 @@ export const en = {
 
     flagDuplicate: 'Flag as a duplicate',
     flagDuplicateHint:
-      'Use this when another route describes the same journey. Two routes can legitimately look similar and still be different — a different funding route, entrance exam or embassy process makes a genuinely different journey — so an administrator compares them rather than a count deciding.',
+      'Use this when another route describes the same journey. Two routes can legitimately look similar and still be different, because a different funding route, entrance exam or embassy process makes a genuinely different journey, so an administrator compares them rather than a count deciding.',
     flagDuplicateOf: 'Which route does it duplicate?',
     flagDuplicateNote: 'What makes you think they are the same journey?',
     flagDuplicateSubmit: 'Send for comparison',

@@ -16,12 +16,13 @@ import { Panel } from '@/components/ui'
 import { FlagDuplicateForm } from '@/components/lifecycle'
 import { RouteContext } from '@/components/route-context'
 import { RouteMap } from '@/components/route-map'
+import { StartHere } from '@/components/start-here'
 import { StepFields } from '@/components/step-fields'
 import { StepIndexRail } from '@/components/step-index'
 import { isLocale } from '@/i18n/config'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 import { getDictionary } from '@/i18n/get-dictionary'
-import { CATEGORY_STYLE } from '@/renderer'
+import { CATEGORY_STYLE, ROAD, layout } from '@/renderer'
 import { currentViewer } from '@/server/auth'
 import type { RouteDetail } from '@/server/routes/read'
 import {
@@ -92,6 +93,32 @@ export default async function RoutePage({
     step.id, `/${locale}/routes/${route.slug}?step=${encodeURIComponent(step.id)}#route-step-info`,
   ]))
 
+  /*
+   * The first stage, and the two after it, in the road's own order.
+   *
+   * `route.steps` is ordered by id, which is creation order and only coincidentally the order
+   * somebody walks the route. `layout()` computes the canonical ordering the road draws, so
+   * taking it from there is what keeps "start here" and the picture agreeing.
+   */
+  const ordered = layout(route.graph, ROAD)
+    .nodes.slice()
+    .sort((a, b) => a.ordinal - b.ordinal)
+
+  const asStartStep = (node: (typeof ordered)[number]) => ({
+    id: node.step.id,
+    label: node.step.label,
+    href: stepHrefs[node.step.id] ?? `/${locale}/routes/${route.slug}`,
+    durationLabel:
+      node.step.typicalDurationDays == null
+        ? null
+        : t.route.durationShort(node.step.typicalDurationDays),
+  })
+
+  const start =
+    ordered.length === 0
+      ? null
+      : { first: asStartStep(ordered[0]!), next: ordered.slice(1, 3).map(asStartStep) }
+
   // Candidates for a duplicate flag: routes on the same origin/destination/level pair, which
   // is the only pair that could plausibly describe the same journey (§40.1). Excludes this
   // route and anything already merged away, so the list offers no dead ends.
@@ -133,6 +160,20 @@ export default async function RoutePage({
         />
       }
     >
+      {/*
+        Where to begin, before the road rather than after it.
+
+        `orderedSteps` comes from `layout()` — the same pass the road itself uses — so this can
+        never disagree with the drawing above it, and a contributor reordering the route at 2am
+        changes both with no developer involved (invariant 24). Deriving the order here by hand
+        would have been a second ordering rule, free to drift from the first.
+      */}
+      {start === null ? null : (
+        <section className="mb-5">
+          <StartHere first={start.first} next={start.next} dictionary={t} />
+        </section>
+      )}
+
       <section>
         <h2 className="mb-3 text-section font-semibold text-ink-900">{t.route.roadLabel}</h2>
         <RouteMap

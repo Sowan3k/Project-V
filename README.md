@@ -40,7 +40,7 @@ them writes a revision and keeps the previous value.
 ## What it looks like
 
 Every route below is **research content on a disposable database, not published content**. These
-are five real Bangladesh-origin Master's routes — Malaysia, the UK, Japan, Germany, Austria —
+are five real Bangladesh-origin Master's routes (Malaysia, the UK, Japan, Germany, Austria),
 written from official sources to exercise the software against the kind of content it is actually
 for. The production database holds zero routes and always has; see *Where the project stands*.
 
@@ -56,8 +56,8 @@ signed out; signing in only unlocks contributing and private tracking.
 A route is a graph, not a list, so it draws as one. Germany runs eighteen stages, wraps across
 five rows, marks the stages that genuinely happen in parallel, and forks three ways where a
 student chooses between applying direct, through uni-assist, or via a VPD. Stage 14 is a
-twenty-seven-month wait for a consular appointment — the kind of fact that decides whether a route
-is viable at all, and exactly what is hard to find written down.
+twenty-seven-month wait for a consular appointment. That is the kind of fact that decides whether
+a route is viable at all, and exactly what is hard to find written down.
 
 To the right is the route's standing, stated plainly: experimental, nobody has confirmed anything,
 no named contributors, and a note that an absence of warnings is not evidence of anything.
@@ -91,7 +91,7 @@ look like one.
 ### How much of the record exists
 
 A community-maintained record should say how much community there is. Counted exactly from the
-routes themselves and never rounded up — and it decides nothing: no count here feeds ranking,
+routes themselves and never rounded up. It decides nothing: no count here feeds ranking,
 standing, or how much to trust a route.
 
 Note what it is honest about. These five routes were loaded by a script rather than written by
@@ -146,12 +146,12 @@ that was a decision rather than an omission.
 
 It also stores very little, says exactly what, and lets you leave. The privacy and terms pages
 in the application are written from what the code actually does, and a test re-checks each claim against the
-source on every commit — no OAuth tokens are kept, the email never reaches your session, there is
+source on every commit. No OAuth tokens are kept, the email never reaches your session, there is
 no name or photo column, and there is no upload path anywhere.
 
 Closing your account erases your email, the link to your Google account, every session, and every
 followed route with all of its progress, dates and notes. Your contributions stay, signed with a
-handle that was generated and is not your name — because taking authorship out of a public record
+handle that was generated and is not your name, because taking authorship out of a public record
 other people depend on would damage the record without protecting you.
 
 ---
@@ -196,8 +196,8 @@ which ship only after something has already failed, and a pointer glow that rend
 the server, nothing on first paint, and that nothing depends on.
 
 The same rule is why there is no analytics, no tracking and no error-reporting SDK. Server errors
-are logged through Next's own `onRequestError` hook as structured JSON — the digest a reader is
-shown is the digest in the log — and nothing is sent to anybody.
+are logged through Next's own `onRequestError` hook as structured JSON, so the digest a reader is
+shown is the digest in the log, and nothing is sent to anybody.
 
 ---
 
@@ -227,7 +227,7 @@ npm run admin:revoke -- --handle <handle>
 ```
 
 The safety role is granted from a workstation rather than from a page in the product. It gates
-quarantine and report handling and nothing else — ordinary contribution is outside its reach, and
+quarantine and report handling and nothing else. Ordinary contribution is outside its reach, and
 no role can delete shared knowledge. A page that could grant it would be a page that can grant it
 to anybody, for ever, reachable by whoever holds it that year.
 

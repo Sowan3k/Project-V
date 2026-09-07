@@ -171,7 +171,7 @@ describe('the privacy page describes the code that exists', () => {
    * supposed to prevent.
    */
   it('does not pretend to be adopted, and invents no contact address', () => {
-    expect(DICTIONARY).toContain('Draft — not yet adopted')
+    expect(DICTIONARY).toContain('Draft, not yet adopted')
     expect(DICTIONARY).toContain('No contact address has been set yet')
 
     const legal = /legal: \{[\s\S]*?\n {2}\},/.exec(DICTIONARY)?.[0] ?? ''
