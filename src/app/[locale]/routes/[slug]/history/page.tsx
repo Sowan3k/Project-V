@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { ContentColumn } from '@/components/layout'
 import { LifecycleHistory, MergedFromList } from '@/components/lifecycle'
 import { RouteContext } from '@/components/route-context'
-import { ContributorLink } from '@/components/ui'
+import { RouteHistoryList } from '@/components/route-history'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { lifecycleHistory, mergedIntoThis } from '@/server/lifecycle/read'
@@ -78,29 +78,7 @@ export default async function RouteHistoryPage({
         {history.length === 0 ? (
           <p className="mt-6 text-sm text-ink-700">{t.route.historyEmpty}</p>
         ) : (
-          <ol className="mt-6 space-y-3">
-            {history.map((entry) => (
-              <li key={entry.id} className="rounded-panel border border-hairline bg-surface p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">
-                    {entry.kind}
-                  </p>
-                  <time dateTime={entry.createdAt.toISOString()} className="text-xs text-ink-500">
-                    {entry.createdAt.toISOString().slice(0, 10)}
-                  </time>
-                </div>
-                <p className="mt-1 text-sm leading-6 text-ink-900">{entry.value}</p>
-                {entry.reason === null ? null : (
-                  <p className="mt-1 text-xs text-ink-700">“{entry.reason}”</p>
-                )}
-                {entry.authorHandle === null ? null : (
-                  <p className="mt-1 text-xs text-ink-500">
-                    <ContributorLink handle={entry.authorHandle} locale={locale} />
-                  </p>
-                )}
-              </li>
-            ))}
-          </ol>
+          <RouteHistoryList entries={history} locale={locale} dictionary={t} />
         )}
 
         <MergedFromList routes={mergedFrom} locale={locale} dictionary={t} />

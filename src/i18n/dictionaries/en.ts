@@ -426,6 +426,17 @@ export const en = {
     noSteps: 'This route has no steps yet.',
     noFields: 'No information has been added to this step yet.',
     history: 'Route history',
+    /**
+     * What a revision was made to — Phase 12H.
+     *
+     * The ledger used to print the union member itself, uppercased, so a reader saw FIELD and
+     * had to work out what it meant. These are the same three things in words a student reads.
+     */
+    historyKind: {
+      route: 'Route details',
+      step: 'A stage',
+      field: 'Information',
+    },
     historyEmpty: 'No changes recorded yet.',
     historyLede:
       'Every change is kept. Earlier values are never overwritten, so you can see what a route said before.',
@@ -1312,6 +1323,8 @@ export const en = {
     stanceSaved: 'Saved. Only you can see this.',
     stanceClear: 'Change my answer',
 
+    /** The step-by-step table, behind a disclosure — the roads above already show where. */
+    exactRowsSummary: 'Compare the two roads step by step',
     exactlyWhatChanged: 'Exactly what this change did',
     exactlyWhatChangedHint:
       'Reconstructed from the edit this announcement is linked to, not from dates. It reads the same today and in five years, because the stored history cannot be altered.',

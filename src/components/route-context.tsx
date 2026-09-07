@@ -29,6 +29,7 @@ export function RouteContext({
   locale,
   tab,
   rail,
+  wide,
   children,
 }: {
   route: RouteDetail
@@ -48,6 +49,22 @@ export function RouteContext({
    * than building a second column inside its own.
    */
   rail?: React.ReactNode
+  /**
+   * A region that takes the whole canvas, above the body grid — Phase 12H.
+   *
+   * ─────────────────────────────────────────────────────────────────────────────────────
+   * **One tab needs this and the reason is geometric.** The shadow comparison draws two
+   * roads side by side. Inside the eight-of-twelve body each of them got about 400px, which
+   * is not a road anybody can read — and the obvious remedy, widening the column, makes the
+   * page *taller*, because a road is an SVG with a viewBox that scales in both dimensions
+   * (Phase 12H's standing finding). What it actually needs is more *room* and a denser
+   * layout in it, and room is what the body region cannot give.
+   *
+   * So this is not a general escape hatch and should not become one. It exists for content
+   * that is genuinely canvas-width — a comparison of two routes — and CLAUDE.md §7.2 names
+   * exactly that case: "route-oriented screens: roads, comparisons".
+   */
+  wide?: React.ReactNode
   children: React.ReactNode
 }) {
   const base = `/${locale}/routes/${route.slug}`
@@ -218,7 +235,9 @@ export function RouteContext({
        * next to it. It still appears on every tab, which is what FR-74 asks for — a reader
        * who opens the history should not lose sight of how mature the route is.
        */}
-      <PageCanvas className="py-8">
+      {wide === undefined ? null : <PageCanvas className="pt-8">{wide}</PageCanvas>}
+
+      <PageCanvas className={wide === undefined ? 'py-8' : 'pt-8 pb-8'}>
         <PageGrid>
           <GridRegion span={8} tablet={4}>{children}</GridRegion>
           <GridRegion span={4} tablet={2}>

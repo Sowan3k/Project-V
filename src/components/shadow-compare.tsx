@@ -1,9 +1,10 @@
 import { GridRegion, PageGrid } from '@/components/layout'
+import { Disclosure } from '@/components/ui'
 import { rendererStrings } from '@/components/route-shared'
 import type { ComparisonRow, ShadowComparison, StepChangeMark } from '@/domain/changes'
 import type { RouteGraph } from '@/domain/graph/types'
 import type { Dictionary } from '@/i18n/dictionaries/en'
-import { ROAD_NARROW, Road, type RouteAnnotations } from '@/renderer'
+import { ROAD, ROAD_NARROW, Road, type RouteAnnotations } from '@/renderer'
 
 /**
  * The shadow route — Phase 10. FR-22, FR-77, §14.1, §14.2, VR-07.
@@ -141,16 +142,48 @@ function RoadPanel({
         {graph.steps.length === 0 ? (
           <p className="text-sm text-ink-500">{t.changes.notPresentThen}</p>
         ) : (
-          <Road
-            graph={graph}
-            density={ROAD_NARROW}
-            strings={rendererStrings(t)}
-            annotations={annotations}
-            // The older side is drawn quieter, so a glance can tell which is which without
-            // reading the headings. It is the same road, at the same density, not a
-            // different rendering — only its opacity differs.
-            className={muted ? 'opacity-60' : ''}
-          />
+          <>
+            {/*
+              Two densities, chosen by CSS — Phase 12H, and the same mechanism `ResponsiveRoad`
+              has used since Phase 4.
+
+              ───────────────────────────────────────────────────────────────────────────────
+              The comparison used to draw `ROAD_NARROW` at whatever width it was given. Inside
+              the body region that was about 400px a side, and `ROAD_NARROW` is 324 units wide
+              naturally — so it was scaled *up* by a fifth, which made a thirteen-stage route
+              1,604px tall in a column too narrow to read it in.
+
+              Now the comparison takes the whole canvas, so each side gets about 620px, and at
+              that width the ordinary `ROAD` — three stages per row rather than two — is both
+              the right shape and shorter, because more columns means fewer rows. Below `lg`
+              the canvas is not there to take and `ROAD_NARROW` is still correct.
+
+              **Both sides always use the same density**, which is the rule that makes this a
+              comparison rather than two drawings: the reader is comparing like with like, and
+              a difference in shape has to mean a difference in the route.
+            */}
+            <div className="hidden lg:block">
+              <Road
+                graph={graph}
+                density={ROAD}
+                strings={rendererStrings(t)}
+                annotations={annotations}
+                // The older side is drawn quieter, so a glance can tell which is which
+                // without reading the headings. It is the same road, at the same density,
+                // not a different rendering — only its opacity differs.
+                className={muted ? 'opacity-60' : ''}
+              />
+            </div>
+            <div className="lg:hidden">
+              <Road
+                graph={graph}
+                density={ROAD_NARROW}
+                strings={rendererStrings(t)}
+                annotations={annotations}
+                className={muted ? 'opacity-60' : ''}
+              />
+            </div>
+          </>
         )}
       </div>
     </section>
@@ -331,12 +364,46 @@ export function ShadowCompare({
         </GridRegion>
       </PageGrid>
 
-      <ComparisonRows
-        comparison={comparison}
-        beforeHeading={beforeLabel}
-        afterHeading={t.changes.currentRoute}
-        dictionary={t}
-      />
+      {/*
+        The exact rows, on request — Phase 12H.
+
+        ───────────────────────────────────────────────────────────────────────────────────
+        Thirteen steps produce a 1,087px table under two roads that have just drawn the same
+        thirteen steps with their added and archived markers on them. That is the third
+        rendering of one comparison on one screen, and it was the single tallest thing on this
+        page.
+
+        What is *not* hidden is the part FR-77 actually asks for: the counts ("2 steps added,
+        1 archived, 3 fields changed") lead the view, and the roads show where. The rows answer
+        the next question — "what exactly, step by step" — which is detail within the object,
+        and §7.1 puts detail within an object behind progressive disclosure.
+
+        It stays a `<details>`, so it is in the HTML, findable by in-page search, and open with
+        no JavaScript.
+      */}
+      {/*
+        **Open when the structure moved, closed when it did not.**
+
+        The two cases are genuinely different. A route whose *shape* changed — a stage added,
+        archived, reordered, renamed or retimed — has rows a reader wants: which one, and where.
+        A route where only a field value changed produces thirteen rows every one of which says
+        "No change", which is the noise this disclosure exists to remove.
+
+        `structureChanged` is the same flag `ExactChange` already keys on, computed in
+        `compareVersions` from the stored graphs. Nothing new decides it.
+      */}
+      <Disclosure
+        summary={t.changes.exactRowsSummary}
+        open={comparison.structureChanged}
+        className="mt-6"
+      >
+        <ComparisonRows
+          comparison={comparison}
+          beforeHeading={beforeLabel}
+          afterHeading={t.changes.currentRoute}
+          dictionary={t}
+        />
+      </Disclosure>
     </div>
   )
 }

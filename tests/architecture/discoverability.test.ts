@@ -127,7 +127,10 @@ describe('a contributor handle leads to the evidence behind it', () => {
     ['src/components/changes.tsx', 'a change announcement names who announced it'],
     ['src/components/contribute.tsx', 'a challenge names who raised it'],
     ['src/components/lifecycle.tsx', 'a lifecycle transition names who decided it'],
-    ['src/app/[locale]/routes/[slug]/history/page.tsx', 'a revision in the history names its author'],
+    // The ledger moved out of the page and into a component of its own in Phase 12H, when it
+    // stopped being forty bordered cards. The site is wherever the row is rendered, not
+    // wherever it used to be — what this guards is that a handle is a link, and it still is.
+    ['src/components/route-history.tsx', 'a revision in the history names its author'],
     ['src/app/[locale]/admin/routes/page.tsx', 'a duplicate flag names who flagged it'],
   ] as const
 

@@ -147,34 +147,85 @@ export default async function RouteChangesPage({
    * (§8.6, §35); the page says so at its foot rather than offering a control that does nothing.
    */
   const rail = (
+    <Rail title={t.changes.summaryTitle} level={2}>
+      <UpdateActivity changes={announced} disruptions={disruptions} dictionary={t} />
+    </Rail>
+  )
+
+  /*
+    Reference material at the foot of the page, not in the rail — Phase 12H.
+
+    ───────────────────────────────────────────────────────────────────────────────────────
+    Three panels in the rail came to about 1,040px, beside a body of roughly 600 once the
+    comparison moved to the canvas. A grid row is as tall as its tallest child, so the rail had
+    become the thing setting this page's height — the same defect as before with the columns
+    swapped, and shortening the body could not help while it held.
+
+    Only the activity summary is genuinely *about* this route and belongs beside its content.
+    The other two are reference — what a change is versus what a disruption is, and what the
+    four levels mean — read once by a first-time visitor and skipped by everyone after. Two
+    across at the foot is where reference belongs, and it costs about 200px instead of 590.
+  */
+  const reference = (
+    <section className="mt-10 grid gap-6 border-t border-hairline pt-6 sm:grid-cols-2">
+      <div>
+        <h2 className="text-panel font-semibold text-ink-900">
+          {t.changes.permanentVsTemporaryTitle}
+        </h2>
+        <GuidanceList className="mt-2" lines={t.changes.permanentVsTemporary} />
+      </div>
+      <div>
+        <h2 className="text-panel font-semibold text-ink-900">{t.changes.severityLegendTitle}</h2>
+        <div className="mt-2">
+          <SeverityLegend dictionary={t} />
+        </div>
+      </div>
+    </section>
+  )
+
+  /*
+    The comparison takes the whole canvas — Phase 12H.
+
+    ─────────────────────────────────────────────────────────────────────────────────────────
+    It draws two roads side by side, and inside the eight-of-twelve body each of them had about
+    400px. `ROAD_NARROW` is 324 units wide naturally, so it was being scaled *up* by a fifth —
+    which made a thirteen-stage route 1,604px tall in a column too narrow to read it in, and is
+    the reverse of what a reader needs from the one view whose entire idea is that you see the
+    *shape* of a change before you read a word of it (VR-07, FR-77).
+
+    At canvas width each side gets about 620px, which is enough for the ordinary `ROAD` — three
+    stages per row instead of two, so fewer rows and a shorter panel that is also easier to
+    read. `RoadPanel` picks the density by breakpoint; below `lg` nothing changes.
+
+    §7.2 names this case exactly: "route-oriented screens: roads, comparisons".
+  */
+  const comparison = (
     <>
-      <Rail title={t.changes.summaryTitle} level={2}>
-        <UpdateActivity changes={announced} disruptions={disruptions} dictionary={t} />
-      </Rail>
-      <Rail title={t.changes.permanentVsTemporaryTitle} level={2}>
-        <GuidanceList lines={t.changes.permanentVsTemporary} />
-      </Rail>
-      <Rail title={t.changes.severityLegendTitle} level={2}>
-        <SeverityLegend dictionary={t} />
-      </Rail>
+      <h2 className="text-section font-semibold tracking-tight text-ink-900">{t.changes.title}</h2>
+      <ContentColumn width="reading">
+        <p className="mt-2 text-sm leading-6 text-ink-700">{t.changes.lede}</p>
+      </ContentColumn>
+
+      {report === null ? (
+        <AnonymousComparison routeId={route.id} dictionary={t} />
+      ) : (
+        <FollowerPanel report={report} routeId={route.id} dictionary={t} />
+      )}
     </>
   )
 
   return (
-    <RouteContext route={route} dictionary={t} locale={locale} tab="changes" rail={rail}>
+    <RouteContext
+      route={route}
+      dictionary={t}
+      locale={locale}
+      tab="changes"
+      rail={rail}
+      wide={comparison}
+    >
       <ContentColumn width="canvas">
-        <h2 className="text-section font-semibold tracking-tight text-ink-900">{t.changes.title}</h2>
-        <ContentColumn width="reading">
-          <p className="mt-2 text-sm leading-6 text-ink-700">{t.changes.lede}</p>
-        </ContentColumn>
 
-        {report === null ? (
-          <AnonymousComparison routeId={route.id} dictionary={t} />
-        ) : (
-          <FollowerPanel report={report} routeId={route.id} dictionary={t} />
-        )}
-
-        <section className="mt-10">
+        <section>
           <h2 className="text-section font-semibold tracking-tight text-ink-900">
             {t.changes.announcedTitle}
           </h2>
@@ -233,6 +284,8 @@ export default async function RouteChangesPage({
           signedIn={viewer !== null}
           dictionary={t}
         />
+
+        {reference}
 
         {/* §35, CLAUDE.md §8.6: VR-10 offers "Subscribe to Alerts". Proactive external
             notification is deferred, and saying so is better than a control that does
