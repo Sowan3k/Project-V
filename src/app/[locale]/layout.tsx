@@ -60,6 +60,22 @@ const bengaliFont = Anek_Bangla({
   display: 'swap',
 })
 
+/**
+ * The public origin, for absolute URLs in metadata.
+ *
+ * Deliberately not a constant: `NEXT_PUBLIC_SITE_URL` is read at render rather than at module
+ * load so a deployment can change the domain without a rebuild.
+ */
+function siteOrigin(): string {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL
+  if (configured !== undefined && configured !== '') return configured
+
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  if (vercel !== undefined && vercel !== '') return `https://${vercel}`
+
+  return 'http://localhost:3000'
+}
+
 export function generateStaticParams(): { locale: string }[] {
   return LOCALES.map((locale) => ({ locale }))
 }
@@ -74,6 +90,26 @@ export async function generateMetadata({
   const t = await getDictionary(locale)
 
   return {
+    /*
+     * **The absolute origin every other URL in the metadata is resolved against** — Phase 12G.
+     *
+     * Without it Next resolves Open Graph and canonical URLs against `localhost:3000` and
+     * warns at build time. A link shared to Facebook, WhatsApp or Slack — which is how a
+     * student sends a route to another student, and the main way this product is likely to
+     * spread — would carry a preview pointing at the sharer's own machine.
+     *
+     * Three sources, in order of how much they can be trusted:
+     *
+     *   `NEXT_PUBLIC_SITE_URL`  the real public origin, once there is a domain (owner item B2).
+     *   `VERCEL_PROJECT_PRODUCTION_URL`  Vercel's stable production hostname — the same for
+     *                           every deployment, unlike `VERCEL_URL`, which is unique per
+     *                           deployment and would make a shared preview link rot.
+     *   localhost               development only.
+     *
+     * `https://` is prepended rather than assumed: Vercel supplies bare hostnames.
+     */
+    metadataBase: new URL(siteOrigin()),
+
     // A template, so every page supplies its own subject and the brand comes along.
     // Before Phase 12 every page in the application shared one title, which made browser
     // tabs, history and bookmarks useless the moment a reader had two routes open.

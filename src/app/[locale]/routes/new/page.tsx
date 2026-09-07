@@ -188,7 +188,7 @@ export default async function NewRoutePage({
                   maxLength={2}
                   pattern="[A-Za-z]{2}"
                   autoCapitalize="characters"
-                  placeholder="DE"
+                  placeholder={t.contribute.destinationCodeExample}
                   className={INPUT}
                 />
               </FormField>
@@ -215,7 +215,7 @@ export default async function NewRoutePage({
               </FormField>
 
               <FormField label={t.search.intake} hint={t.contribute.intakeHint}>
-                <input type="text" name="routeIntake" className={INPUT} placeholder="2027 autumn" />
+                <input type="text" name="routeIntake" className={INPUT} placeholder={t.contribute.intakeExample} />
               </FormField>
 
               {/* The two long fields take the whole band, as VR-09's second row does. */}

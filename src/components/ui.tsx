@@ -565,7 +565,19 @@ export type FieldSize = 'default' | 'compact'
 
 export function inputClass(size: FieldSize = 'default', className = ''): string {
   const sizing = size === 'compact' ? 'px-2 py-1.5' : 'px-3 py-2'
-  return `mt-1 block w-full rounded-control border border-hairline bg-surface ${sizing} text-sm text-ink-900 ${className}`
+  /*
+   * `vx-field` carries nothing for an `<input>` or a `<textarea>` — Phase 12G.
+   *
+   * It exists so `globals.css` can say `select.vx-field` and reach every dropdown in the
+   * product without a second primitive and without 31 call sites being edited. Phase 12G's
+   * scope names "default browser widgets" as a prototype characteristic to remove, and the
+   * four filters at the top of the search page were the most visible ones: a native chevron
+   * in the system's own grey, at the system's own size, beside controls that had been styled.
+   *
+   * The selector needs an element **and** a class to outweigh Tailwind's `px-3`, which is why
+   * this is a marker class rather than a bare `select` rule.
+   */
+  return `vx-field mt-1 block w-full rounded-control border border-hairline bg-surface ${sizing} text-sm text-ink-900 ${className}`
 }
 
 export function labelClass(size: FieldSize = 'default'): string {

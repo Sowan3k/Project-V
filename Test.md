@@ -2692,3 +2692,60 @@ Neither of the two open items is engineering.
   partway through and looks like missing stages. It is not — a probe at +2s shows all nine groups
   at `opacity: 1`. **Any future screenshot test of `/en` must wait past ~1.1s** or it will fail
   for the wrong reason.
+
+---
+
+## 26. Phase 12G — what was tested, 2026-09-07
+
+### The loading-state question, settled by measurement
+
+A production build loaded in Chromium with `javaScriptEnabled: false`, against a branch that had
+`loading.tsx` and a `<Suspense>` boundary around the header's session read:
+
+| | `.vx-skeleton` blocks in the DOM | `[role="status"]` text |
+|---|---|---|
+| `js=true` `/en/routes` | 0 | `0 routes` |
+| `js=false` `/en/routes` | **35** | **`Searching routes…`** |
+| `js=false` `/en` | **6** | **`Loading…`** |
+
+The real markup was present as hidden templates — `h1` and the footer both found — which is the
+point: only React's inline reveal script can uncover it. **A reader without JavaScript is
+stranded on the skeleton permanently.** The work was removed; the guard was widened from three
+page files to the whole shell, and now carries this table instead of an assertion.
+
+### Navigation timings (local production build, warm database, 1280×900)
+
+| Path | Pass | Wall (ms) | TTFB (ms) | DOMContentLoaded (ms) | FCP (ms) |
+|---|---|---|---|---|---|
+| `/en` | cold | 789 | 586 | 620 | 768 |
+| `/en` | warm | 344 | 281 | 341 | — |
+| `/en/routes` | cold | 694 | 546 | 643 | 652 |
+| `/en/routes` | warm | 627 | 594 | 619 | — |
+| `/en/how-it-works` | cold | 159 | 7 | 104 | 124 |
+| `/en/how-it-works` | warm | 45 | 12 | 32 | — |
+
+`/en/how-it-works` is the control: it touches no database, and its 7 ms TTFB is what the other
+two would look like if they did not. **These numbers are against a database that was already
+awake.** They say nothing about the 25–30 second cold start, which is the case that matters and
+is not fixed — see Phases.md §12G.
+
+Read-path JavaScript on `/en/routes`: **10 files, 356.7 kB uncompressed**, none of it required
+for the page to function.
+
+| What | How | Result |
+|---|---|---|
+| Dropdown chevron matches the ink scale | Test recomputes `--color-ink-500` from `globals.css` and asserts the data URI carries that hex | pass |
+| Chevron rendered | Screenshot of the filter bar at 1440 | consistent across all four filters |
+| `global-error.tsx` leaks nothing | In the client-component allowlist with its reason; no `error.message` / `error.stack` | pass |
+| No literal placeholder copy left | Repo grep; only `placeholder="https://"` remains, which is a URL scheme rather than language | pass |
+| Whole suite | `npm run lint`, `npx tsc --noEmit`, `npx vitest run`, `npm run build` | clean, clean, 906 passed, 13/13 pages |
+
+### Not tested
+
+- **The cold start itself.** Every timing above is against a warm database. Reproducing a
+  25–30 second wake means letting the branch idle for five minutes between runs, and nothing in
+  the front end changes the outcome anyway.
+- **`global-error.tsx` has never actually rendered.** It fires only on a root-layout failure,
+  which nothing currently triggers. Its markup is reviewed, not executed.
+- **The chevron in a browser without `appearance: none`.** Every target browser supports it;
+  the fallback is a native arrow beside the drawn one, which is ugly rather than broken.

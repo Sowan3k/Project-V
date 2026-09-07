@@ -10,10 +10,15 @@ import { PageCanvas } from '@/components/layout'
  * What a reader sees when a page fails — Phase 12.
  *
  * ─────────────────────────────────────────────────────────────────────────────────────────
- * **This is the application's only client component, and it has to be.** Next requires error
- * boundaries to be client components so they can offer a retry. Everything else is server
- * rendered, which is most of why the read path is fast, and this file existing does not
- * change that: it ships only when something has already gone wrong.
+ * **This is a client component because Next requires it to be.** Error boundaries have to be,
+ * so they can offer a retry. Everything on the read path is server rendered, which is most of
+ * why it is fast, and this file existing does not change that: it ships only when something has
+ * already gone wrong.
+ *
+ * It was the application's *only* client component when it was written. It is now one of three,
+ * and the other two are listed with their reasons in `tests/architecture/presentation.test.ts`
+ * — `global-error.tsx`, which catches what this cannot, and the pointer glow, which the owner
+ * asked for. The list is asserted, so a fourth is a decision rather than a drift.
  *
  * **It says nothing about what failed.** A stack trace or a database error message on a public
  * page is an information leak, and to a student trying to read a visa process it is noise. The

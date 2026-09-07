@@ -2562,3 +2562,67 @@ and no Prettier dependency here; formatting is hand-maintained and ESLint-checke
 Also: a stale `.next` shared with another session produced a phantom prerender failure on `/en`
 again. `rm -rf .next` first when a build error does not match any change you made.
 
+---
+
+## 2026-09-07 — Phase 12G: the loading state removed for a third time, and the widgets that were still browser widgets
+
+### Done
+
+- **Built a full loading-state layer, measured it, and deleted it.** Skeleton primitives shaped
+  like a ribbon and a road, four `loading.tsx` files, and `<Suspense>` around the header's
+  session read — because `session: { strategy: 'database' }` means the whole HTML response was
+  waiting behind one session lookup. A Phase 12 guard caught it. Rather than take its note on
+  trust, a production build was loaded with JavaScript disabled: **35 skeleton blocks still on
+  screen after full load, live region still announcing "Searching routes".** React reveals
+  streamed markup with an inline script, so a reader without JavaScript is stranded on the
+  skeleton for ever. Removed.
+
+- **Widened that guard.** It checked three page files; the attempt it needed to catch was in the
+  shell. It now covers layout, pages, header, footer and bottom tabs, and its note carries the
+  measurement instead of an argument.
+
+- **The dropdowns stopped looking like browser widgets.** One marker class on the shared input
+  primitive reaches all 31 `<select>` elements. The chevron's colour is the only literal hex in
+  `globals.css` — an SVG in a `background-image` cannot see `var()` — and a test recomputes
+  `--color-ink-500` and fails if they disagree, so it is derived rather than picked.
+
+- **`global-error.tsx`**, styled entirely inline because it renders exactly when the scaffolding
+  that loads the stylesheet did not. **`metadataBase`**, which was absent — a route shared to
+  WhatsApp carried a preview pointing at the sharer's own machine. **Two literal placeholders**
+  moved into the dictionary.
+
+- **Navigation timings recorded** (Test.md §26), and the read-path payload measured at 356.7 kB
+  across 10 files, none of it needed for the page to work.
+
+### Decisions taken
+
+- **The cold start is a database problem and gets a database answer.** Three attempts at a
+  front-end fix have now been removed. The two real options — pay to keep Neon warm, or make the
+  read path cacheable, which is blocked by the header reading cookies — are both owner decisions
+  and are recorded as such rather than pretended solved.
+
+- **An exit criterion was corrected rather than quietly failed.** 12G said "the client-component
+  count is still exactly one". It is three. The number was never the point — *nothing on the read
+  path should need JavaScript* is — and that still holds, so the criterion now says the true
+  thing and the allowlist carries a reason per entry.
+
+### Blockers
+
+Unchanged, plus one clarification: the Neon cold start is now a named owner decision rather than
+an open engineering task.
+
+### Next step
+
+The launch-readiness leftovers that are still mine: privacy and terms drafts, an admin-grant
+tool, rate limiting, error monitoring, account deletion. Then Gate 4 needs the owner's review of
+the contact sheet.
+
+### Note for the next session
+
+`next build` logs `UntrustedHost … https://null/api/auth/session` while prerendering. Benign:
+there is no request host during static generation and Auth.js v5 trusts the host automatically on
+Vercel. All 13 pages generate. Do not chase it.
+
+And again, twice in two sessions: **a running `next start` serving from `.next` while you rebuild
+into it produces phantom "Could not find the module … in the React Client Manifest" errors.** Kill
+the server first.

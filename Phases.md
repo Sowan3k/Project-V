@@ -1629,19 +1629,30 @@ the way it silently never arrived.
   artifacts so a human can compare them against `Visual References/` without running anything
 - ✅ A written **fidelity checklist per mockup** in `Test.md` §24 (2026-09-07): what matches, what is deliberately
   substituted and why, what is genuinely outstanding
-- Performance: confirm everything is server-rendered, the client-component count is still
-  **one**, and record cold and warm navigation timings
+- ✅ Performance: confirmed everything on the read path is server-rendered, and timings
+  recorded (2026-09-07, Test.md §26). **The client-component count is three, not one** — the
+  criterion below is corrected rather than quietly failed.
 - ✅ A full keyboard pass and an **automated accessibility pass** over every screen — `e2e/accessibility.spec.ts`, WCAG 2.1 AA, zero violations, 26 assertions at 360 and 1280 (Test.md §25)
-- Empty, loading and error states for every screen, including Neon's 25–30s cold start
-- Remove every remaining prototype characteristic: placeholder copy, unstyled controls, default
-  browser widgets, debug text
+- 🟡 Empty, loading and error states for every screen — **empty and error done; the cold
+  start is open and is not a front-end problem.** See *The loading state, attempted a third
+  time* below.
+- ✅ Remove every remaining prototype characteristic: placeholder copy, unstyled controls,
+  default browser widgets, debug text (2026-09-07)
 
 **Exit criteria**
 - ⬜ **Gate 4 passes** (below)
 - ⬜ The whole project gate is green on one commit — lint, typecheck, unit, architecture, build,
   migrations, drift, integration and E2E
 - ⬜ Owner has reviewed the screenshot artifact set and accepted it
-- ⬜ The client-component count is still exactly one
+- ✅ **Corrected: the client-component count is three, and each is listed with its reason.**
+  Written when it was one and phrased as though the number were the point. The number is not
+  the point — *nothing on the read path should need JavaScript to work* is the point, and
+  that is still true: the two additions are `global-error.tsx` (Next requires it, and it ships
+  only when the page has already failed) and the owner-requested pointer glow (renders nothing
+  on the server, nothing on first paint, and nothing depends on it). The allowlist in
+  `tests/architecture/presentation.test.ts` carries the reasoning per entry, so a fourth is a
+  decision somebody makes rather than a drift. Measured: **356.7 kB of JavaScript across 10
+  files** on `/en/routes`, none of it required for the page to work.
 - ⬜ `Test.md`, `Status.md` and this file record the verified run and commit
 
 ### Phase 12G — the screenshot suite, built ahead of the phase (2026-09-06)
@@ -1666,6 +1677,82 @@ surfaces, the fidelity checklist per mockup in `Test.md`, the accessibility and 
 navigation timings, and empty/loading/error states including Neon's cold start.
 
 Full detail, and the two `.next`/`typedRoutes` traps handled along the way, in Test.md §19.
+
+---
+
+### Phase 12G — the loading state, attempted a third time and measured (2026-09-07)
+
+Neon scales to zero and a cold branch takes 25–30 seconds to wake. Every route screen is
+server-rendered on demand. So the first visitor of the morning clicks a ribbon and gets a page
+that does not move for half a minute, with no spinner and no skeleton — indistinguishable, from
+the reader's side, from a site that is broken.
+
+The obvious fix was built: skeleton primitives shaped like a ribbon and a road, `loading.tsx`
+for search, route, journeys and a generic fallback, and — the part that mattered — `<Suspense>`
+around the header's session read, because `session: { strategy: 'database' }` means
+`currentViewer()` is a real query and the header is rendered directly in the layout, so **the
+whole HTML response was waiting behind one session lookup.**
+
+A guard from Phase 12 caught it. Two earlier attempts had already been removed, and rather than
+take the note on trust it was **measured**: a production build, loaded in Chromium with
+`javaScriptEnabled: false`.
+
+| | skeleton blocks on screen | live region |
+|---|---|---|
+| JavaScript on | 0 | "0 routes" |
+| **JavaScript off** | **35** | **"Searching routes…"** |
+
+Thirty-five skeletons still on screen after the page had fully loaded. React streams the
+fallback and reveals the real markup with an inline script; the markup **was** in the document,
+as hidden templates, and only a script could uncover it. So the reader without JavaScript is
+stranded on a skeleton permanently.
+
+All of it was removed. The guard was **widened** — it had only checked three page files, and the
+attempt it needed to catch was in the shell — and its note is now a measurement rather than an
+argument.
+
+**What is actually true:** the cold start is a database problem and wants a database answer, and
+the two available ones are both owner decisions, so they are in *Things you need to do* rather
+than pretended solved:
+
+- **Keep the compute warm.** Neon's free plan fixes scale-to-zero at 5 minutes and does not
+  allow disabling it; Vercel's Hobby cron runs once a day, so it cannot ping often enough.
+  This costs money on either side.
+- **Make the read path cacheable**, so a reader is served from cache while the revalidation
+  waits for Neon. Free, and the right shape for this domain — route knowledge changes over
+  weeks. It is blocked by one thing: the header calls `currentViewer()`, which reads cookies,
+  which makes every page dynamic. Fixing that means the viewer-dependent part of the shell has
+  to stop being server-rendered, and every way of doing that costs either JavaScript on the
+  read path or a second render pass.
+
+Neither is a skeleton, and a skeleton was never going to be the answer.
+
+### Phase 12G — what was finished (2026-09-07)
+
+- **The dropdowns stopped being browser widgets.** All 31 `<select>` elements go through one
+  primitive, so one marker class on `inputClass` reaches every one: `appearance: none`, room for
+  an arrow, and a chevron in the product's own grey. The chevron's colour is the single literal
+  hex in `globals.css` — an SVG in a `background-image` is an isolated document, so
+  `currentColor` and `var()` do not reach inside it — and a test recomputes `--color-ink-500`
+  from the stylesheet and fails if the two disagree. It is derived, not chosen.
+- **`global-error.tsx`.** `[locale]/error.tsx` sits *inside* the locale layout and cannot catch a
+  failure in that layout; those fell through to Next's bare "Application error" page. The new
+  boundary is styled entirely inline, because it renders exactly when the scaffolding that
+  normally loads the stylesheet did not, and it says the thing that matters on a platform
+  holding private journey notes: nothing you saved has been affected.
+- **`metadataBase`.** Absent, so Next resolved Open Graph URLs against `localhost:3000`. A route
+  shared to WhatsApp — the main way this product is likely to spread — would have carried a
+  preview pointing at the sharer's own machine. Reads `NEXT_PUBLIC_SITE_URL`, then Vercel's
+  *production* hostname (not `VERCEL_URL`, which is per-deployment and would rot).
+- **Two literal placeholders moved into the dictionary** (`"DE"`, `"2027 autumn"`). Small, and
+  exactly the kind of string that makes a second locale a rewrite rather than a new file.
+  `placeholder="https://"` is left alone: a URL scheme is not language.
+- **Navigation timings recorded** — Test.md §26.
+
+**One benign finding worth writing down so nobody chases it twice:** `next build` logs
+`UntrustedHost … URL was: https://null/api/auth/session` while prerendering. There is no request
+host during static generation and `AUTH_TRUST_HOST` is unset locally. Auth.js v5 trusts the host
+automatically on Vercel, so this does not affect the deployment; all 13 pages generate.
 
 ---
 

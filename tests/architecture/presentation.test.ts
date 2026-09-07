@@ -555,13 +555,22 @@ describe('the read path stays server rendered', () => {
    *   `error.tsx`       Next requires the error boundary to be a client component so it can
    *                     offer a retry. It ships only after something has already failed.
    *
+   *   `global-error.tsx` The same requirement one level up (Phase 12G). `error.tsx` sits inside
+   *                     the locale layout and cannot catch a failure in that layout; this
+   *                     replaces the root document when one happens. Same trade — it ships only
+   *                     when the page has already failed, and here the page has failed harder.
+   *
    *   `pointer-glow.tsx` Owner-requested decoration (Phase 12L). It renders nothing on the
    *                     server and nothing on first paint, creates no animation-frame loop,
    *                     triggers no React render on pointer movement, is disabled entirely on
    *                     coarse pointers and under `prefers-reduced-motion`, and nothing on any
    *                     page depends on it. With JavaScript off the site is exactly what it was.
    */
-  const ALLOWED = ['src/app/[locale]/error.tsx', 'src/components/pointer-glow.tsx']
+  const ALLOWED = [
+    'src/app/[locale]/error.tsx',
+    'src/app/global-error.tsx',
+    'src/components/pointer-glow.tsx',
+  ]
 
   it('has no client component outside the allowed list', () => {
     const clientFiles = SOURCE_FILES.filter((file) => /^\s*'use client'/m.test(read(file)))
@@ -766,19 +775,99 @@ describe('the application presents itself as a finished product', () => {
    * with an inline script; with no script the swap never happens and the reader is left on a
    * skeleton for ever. The Phase 5 no-JavaScript spec caught it.
    *
+   * ───────────────────────────────────────────────────────────────────────────────────────
+   * **Phase 12G tried a third time, and measured the result rather than arguing about it.**
+   *
+   * The attempt was skeletons behind `loading.tsx` plus `<Suspense>` around the header's
+   * session read, on the reasoning that Neon's 25–30 second cold start currently shows the
+   * reader a page that does not move — which is a real problem and is still unsolved. A
+   * production build was loaded in Chromium with `javaScriptEnabled: false`:
+   *
+   *     js=true   /en/routes   skeletons: 0    status: "0 routes"
+   *     js=false  /en/routes   skeletons: 35   status: "Searching routes…"
+   *
+   * Thirty-five skeleton blocks still on screen after the page had fully loaded, and the live
+   * region still announcing that it was searching. The real markup **was** in the document —
+   * as hidden templates — which is precisely the point: it is there, and only a script can
+   * reveal it.
+   *
+   * So the note above is no longer an argument, it is a measurement, and it holds in 2026 on
+   * the current Next and React. Three attempts, three removals.
+   *
+   * **The cold start is a database problem and wants a database answer** — keeping the
+   * compute warm, or making the read path cacheable so a reader is served from cache while
+   * the revalidation waits for Neon. Both are recorded in `Phases.md`; neither is a skeleton.
+   *
    * Search is the first thing a visitor does, on a phone, often on a poor connection
    * (CLAUDE.md §7). Working without JavaScript is worth more than a shimmer.
    */
+  /**
+   * **The one colour in this product that cannot be a token, checked against the token.**
+   *
+   * The dropdown chevron is an SVG in a `background-image`. That SVG is an isolated document:
+   * `currentColor` does not reach it and `var(--color-ink-500)` means nothing inside it, so the
+   * value has to be written as a literal hex. It is the only such literal in `globals.css`.
+   *
+   * A literal colour is exactly what the token scale exists to prevent — it sits where no
+   * contrast guard can see it, and the next time the ink scale is adjusted it silently stops
+   * matching. So rather than trusting a comment saying "keep these in sync", this recomputes
+   * `--color-ink-500` from the stylesheet and asserts the hex is what that conversion produces.
+   *
+   * Change the token, and this fails with the hex to paste in.
+   */
+  it('derives the dropdown chevron from the ink scale rather than picking a colour', () => {
+    const ink = themeTokens().get('ink-500')
+    expect(ink, '--color-ink-500 is missing').toBeDefined()
+
+    const hex = `#${oklchToRgb(...(ink as [number, number, number]))
+      .map((channel) => {
+        const byte = Math.round(Math.min(1, Math.max(0, channel)) * 255)
+        return byte.toString(16).padStart(2, '0')
+      })
+      .join('')}`
+
+    // The data URI percent-encodes the `#`.
+    const encoded = `stroke='%23${hex.slice(1)}'`
+    expect(
+      CSS,
+      `the chevron should be ${hex} — --color-ink-500 converted to sRGB — but the stylesheet disagrees`,
+    ).toContain(encoded)
+  })
+
   it('has no loading state that would break without JavaScript', () => {
     const segmentWide = walk('src/app', ['.tsx']).filter((file) => file.endsWith('loading.tsx'))
     expect(segmentWide, 'a segment-wide loading.tsx would blank the route context').toEqual([])
 
-    for (const page of [
+    /*
+     * ─────────────────────────────────────────────────────────────────────────────────────
+     * **Widened in Phase 12G, after this guard caught a third attempt that the old list
+     * would have missed.**
+     *
+     * The previous version checked three page files. The attempt it needed to catch put the
+     * boundary in the *shell* instead — `<Suspense>` around the header's session read and
+     * around the bottom bar's account tab — on the reasoning that isolating the one slow
+     * thing would let the rest of the page paint during Neon's cold start. That reasoning is
+     * correct about the cold start and wrong about the cost, and the old list did not cover
+     * either file.
+     *
+     * So the check is now every server-rendered file on the read path, which is what the
+     * rule always meant.
+     */
+    const SHELL_AND_PAGES = [
+      'src/app/[locale]/layout.tsx',
+      'src/app/[locale]/page.tsx',
       'src/app/[locale]/routes/page.tsx',
       'src/app/[locale]/routes/[slug]/page.tsx',
-      'src/app/[locale]/page.tsx',
-    ]) {
-      expect(stripComments(read(page)), page).not.toMatch(/<Suspense/)
+      'src/app/[locale]/routes/[slug]/changes/page.tsx',
+      'src/app/[locale]/routes/[slug]/history/page.tsx',
+      'src/app/[locale]/how-it-works/page.tsx',
+      'src/components/site-header.tsx',
+      'src/components/site-footer.tsx',
+      'src/components/bottom-tabs.tsx',
+    ]
+
+    for (const file of SHELL_AND_PAGES) {
+      expect(stripComments(read(file)), file).not.toMatch(/<Suspense/)
     }
   })
 

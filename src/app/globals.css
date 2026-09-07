@@ -878,3 +878,52 @@ a[class*='rounded-control']:active {
     display: none;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   Dropdowns — Phase 12G
+   ══════════════════════════════════════════════════════════════════════════════════════════
+
+   Phase 12G's scope lists "default browser widgets" among the prototype characteristics still
+   to remove, and the four filters at the top of the search page were the clearest example: a
+   native chevron in the operating system's own grey, at its own size, beside controls that had
+   been styled to match everything else.
+
+   **On the chevron's colour.** An SVG in a `background-image` is an isolated document, so
+   `currentColor` does not reach it and the value has to be written literally. That is a colour
+   living outside `globals.css` where no contrast guard can see it and nothing keeps it in step
+   with the ink scale — which is exactly the drift the token system exists to prevent.
+
+   So `#6c727b` below is **not a chosen colour**. It is `--color-ink-500`
+   (`oklch(0.55 0.015 258)`) converted to sRGB, and `tests/architecture/presentation.test.ts`
+   recomputes that conversion on every commit and fails if the two ever disagree. Change the
+   token and the test tells you this needs regenerating.
+
+   `select.vx-field` rather than a bare `select`: it takes an element *and* a class to outweigh
+   the `px-3` the shared input primitive puts on the same element.
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+select.vx-field {
+  appearance: none;
+
+  /* Room for the arrow, so a long option label never runs underneath it. */
+  padding-inline-end: 2rem;
+
+  /* --vx-chevron-ink: #6c727b — see the note above; the test derives this from --color-ink-500. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236c727b' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.625rem center;
+  background-size: 1rem 1rem;
+
+  /* `appearance: none` drops the native background as well as the arrow. */
+  background-color: var(--color-surface);
+}
+
+/*
+ * A dropdown that cannot be changed should not look like one that can. Both states keep the
+ * arrow — its absence would say "this is a text field", which is a different control.
+ */
+select.vx-field:disabled {
+  background-color: var(--color-surface-muted);
+  color: var(--color-ink-500);
+  cursor: not-allowed;
+}

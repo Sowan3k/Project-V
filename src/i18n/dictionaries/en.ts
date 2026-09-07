@@ -937,6 +937,19 @@ export const en = {
    *   - No wording implies a community submission carries official standing (invariant 11).
    */
   contribute: {
+    /*
+     * Example values, not labels — Phase 12G.
+     *
+     * These were literals in the JSX. Harmless-looking, and precisely the kind of string that
+     * makes a second locale a rewrite rather than a new file: the country code example a
+     * Bangladeshi reader recognises is not necessarily the one an English form would show, and
+     * "2027 autumn" is an English intake convention with an ordering that does not survive
+     * translation. CLAUDE.md §4 asks for i18n scaffolding from day one so Bangla can be added
+     * without rework, and a literal in a component is exactly the rework.
+     */
+    destinationCodeExample: 'DE',
+    intakeExample: '2027 autumn',
+
     signInToContribute: 'Sign in to correct or confirm this',
     confirm: 'Still accurate',
     update: 'Correct this',
