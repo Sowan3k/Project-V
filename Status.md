@@ -130,17 +130,85 @@ Activity is about this route and belongs in the rail. "What a change is versus w
 is" is read once and skipped forever after; it belongs at the foot, where it costs 200px instead
 of 590.
 
+### Then Phase 13, same session
+
+Owner said "move to next phases". **Gates 1 and 3 are closed. Gate 4 has one line left and it is
+not engineering. Gate 2 is the owner's content, as designed.**
+
+#### An automated accessibility pass, which found a real defect
+
+Phase 12G has always scoped "a full keyboard pass and an automated accessibility pass over every
+screen", and only the keyboard half existed — the checks somebody thought to write.
+`e2e/accessibility.spec.ts` is the complement: axe-core, WCAG 2.1 AA, **zero violations rather
+than a budget**, over every public screen, every route tab and the step opened in place, which is
+where most of the interactive markup lives. **26 assertions green at 360 and 1280**, and it runs
+in CI already because the E2E job runs playwright unfiltered.
+
+It found `brand-50`, which had **two faults at once**:
+
+- **Outside sRGB.** `oklch(0.972 0.014 254)` converts to a blue channel of 1.0014, so the browser
+  clamps it and the colour being painted was never the colour anybody measured. That is the Phase
+  12B category-tone defect again, in a token the gamut guard did not cover.
+- **Under AA by a hair.** `ink-500` at 4.48:1 on it, `brand-500` at 4.49 — on the selected row of
+  the step index and the checked card of the report category grid, which is exactly where a
+  reader is being told *which one is chosen*.
+
+**Neither guard could have caught it, and the reason generalises.** The contrast guard tests every
+text token against every background "in use", and its list predated `brand-50` becoming a
+selection colour. The gamut guard was scoped to `cat-*`, the family where the *previous* such
+defect was found. **A guard scoped to where a defect was last found will not catch it where it
+goes next** — when a token changes job, the guards that mention it are part of the change. Both
+widened; the token re-fitted (at hue 254 that is the most chroma sRGB holds while clearing 4.55:1
+for every text token — searched, not guessed).
+
+#### Gate 4's fidelity checklist, which Phase 12G scoped and nobody had written
+
+Test.md §24: all fourteen mockups, three columns — matches, substituted, outstanding — and every
+substitution names the thing above the mockups in the hierarchy that forced it. It is a checklist
+for a **person**; Gate 4 is human-judged and cannot be automated away. What it removes is the
+excuse that a reviewer did not know which differences were chosen, and it makes them
+**overrulable** — the choices are ours and the mockups are the owner's.
+
+Writing it found nothing new, which is the useful result: every departure already had a rule and a
+commit. What it surfaced is how many there are — forty-one — and that the great majority trace to
+four things: no verification claim (BR-20), no invented percentage (§7.3), no upload path
+(invariant 6), no cross-route updates feed (§35).
+
+Every machine-checkable line of Gate 4 is now ticked with the guard that proves it.
+
+#### Gates 1 and 3 close, and the last item was a budget
+
+Both rested on the same line — *a route created through the UI by a non-developer renders with
+zero code changes*. It is the longest test in the suite: two signed-in contexts, nine sequential
+server actions, **1.6–1.7 minutes** against the remote Neon branch. The default budget is sixty
+seconds, so it timed out, and a Playwright timeout reads exactly like a broken product — which is
+why §22 left it open rather than guessing.
+
+`test.slow()` triples the budget and changes no assertion. **A gate item that cannot be run
+locally is a gate item nobody checks.**
+
+### Where the gates stand
+
+| Gate | State |
+|---|---|
+| 1 — Visualisation scalability | ✅ |
+| 2 — Real launch content | ⬜ the owner's research, as designed |
+| 3 — Complete community loop | ✅ |
+| 4 — Visual fidelity | 🟡 every machine-checkable line green; **the owner's review of the sheet is what remains** |
+
 ### Open
 
-- **Owner review of the re-shot contact sheet** (`npm run review:build`, `review:start`,
-  `review:shoot`).
-- **Gate 4** — the same review, formally.
-- **Gate 2** — the owner's researched content, as always.
+- **The owner's review of `scripts/review/out/index.html`** — Gate 4, and the last engineering-
+  adjacent thing standing.
+- **Gate 2** — researched content for Germany, Australia, USA and Malaysia.
+- **The review sheet is produced on a workstation, not by CI.** Worth wiring in; not what the
+  gate waits on, since a reviewer needs the pictures and the pictures exist.
+- **CI has not been read from here** — `gh` is not installed on this workstation.
 
 ### Next step
 
-Gate 4 with the owner's eye on the sheet, then Gate 2 waits on content. The engineering side of
-12B–12H is finished.
+Nothing in 12B–12H or Gates 1, 3 and 4 is waiting on engineering. The two remaining are the
+owner's: look at the sheet, and start the route research.
 
 ---
 
