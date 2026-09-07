@@ -54,6 +54,16 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 12I | Motion | Page transitions, hover, press feedback — all CSS | ✅ |
 | 12J | Onboarding and guidance | The site explains itself | ✅ |
 | 12K | Visual depth, and the hero | Presence, not only composition | 🟡 built; owner review |
+| 12L | A light that follows the pointer | Owner-requested, and bounded | ✅ |
+| 12M | The empty column, the buttons, the stranded queue | Owner feedback, three fixes | ✅ |
+| 13A | Leaving, the legal pages, an administrator | A person can close their account | ✅ |
+| 13B | Error monitoring, without a third party | A production failure is visible | ✅ |
+| 13C | The activity band, and a clean test branch | The record says how big it is | ✅ |
+| **14** | **Updates: every change in one place** | A follower sees what moved, across routes | ⬜ |
+| **15** | **Reaching what needs help** | Counts become lists you can act on | ⬜ |
+| **16** | **Time travel and the ribbon's missing signals** | Pick a past version; followers and changes on the ribbon | ⬜ |
+| **17** | **Deadlines** — *needs owner approval first* | What is next, and when | ⬜ blocked on D5 |
+| **18** | **Safety, explained** — *needs owner approval first* | What happens after you report | ⬜ blocked on D6 |
 | 13 | Pre-launch gates and release | Gates 1–4 pass | 🟡 Gates 1 and 3 ✅; Gate 4 awaits owner review; Gate 2 awaits content |
 | — | **Things you need to do** (owner-only tasks) | Launch readiness: access, legal, content | ⬜ see the section before the gates |
 | — | **Content track** (parallel, from Phase 1) | Real seeded routes | 🟡 |
@@ -2356,6 +2366,279 @@ publicly reachable.
 
 ---
 
+## Phase 14 — Updates: every change in one place — ⬜ not started
+
+**Closes G1, the largest gap in the mockup audit below.**
+
+**The problem, in one sentence:** every change is visible only from inside the route it belongs
+to, so somebody following four routes visits four pages to learn whether anything moved.
+
+`Updates` is a top-level navigation item in **five** mockups — VR-03, VR-06, VR-10, VR-12,
+VR-14 — and VR-10 is an entire screen for it. It is the only mockup destination that has no page
+at all.
+
+**Everything it needs is already written.** `RouteChange` with contributor-assigned severity and
+an `effectiveAt` date, `RouteChangeRevision` pointing at exact revision rows, `TemporaryDisruption`
+with date and location scope, and `journeys/changes.ts` which already answers "does this land
+ahead of or behind where you are". Phase 14 is a **view over data that exists**, not new
+mechanism.
+
+### Scope
+
+- `/[locale]/updates` — a real page and a real URL, in the header and the bottom bar
+- Four tabs, each its own URL (§7.1): **All** · **Affecting my journey** · **Routes I follow** ·
+  **Everything else**. The middle two are empty and say so for an anonymous reader — they are
+  not hidden, because hiding them hides what signing in is *for*
+- Each row: severity, what changed, which route and which step, when it was announced, when it
+  becomes **effective**, and whether it is a permanent change or a temporary disruption
+- Filters by kind and by severity, as links rather than script (VR-10 draws checkboxes; a
+  `<form method="get">` gives the same thing, deep-linkable and working with no JavaScript)
+- A relevance summary for a signed-in reader — how many of each severity land ahead of them
+- Temporary disruptions that have expired drop out without rewriting anything (invariant 19)
+
+### Rules this phase must not break
+
+- **Effective date beats edit date** when deciding whether a change affects a follower
+  (invariant 21, FR-59, BR-26, D-39). The list may sort by announcement; relevance must not.
+- **Severity is contributor-assigned, never derived** (CLAUDE.md §5). No ordering that promotes
+  a change because it touched more fields, and no wording that calls severity measured.
+- **No proactive notification.** No email, no push, no bell with an unread count (§35). This
+  page *is* the first-release mechanism, and the deferral is the reason it matters.
+- **Anonymous readers see the public half.** Changes to public routes are public knowledge;
+  only the two journey-scoped tabs need a session (FR-01, D-03).
+- Privacy: the "affecting my journey" query is scoped by session user id like every other
+  journey read (invariant 5).
+
+### Exit criteria
+
+- ⬜ `/updates` exists, is linked from the header and the bottom bar, and every tab is its own URL
+- ⬜ A signed-in reader with two followed routes sees changes from both, ordered, with relevance
+- ⬜ An anonymous reader sees the public tabs and a clear account of what the other two would show
+- ⬜ Works with JavaScript disabled, including every filter
+- ⬜ A test asserts relevance is decided by `effectiveAt`, never by `announcedAt`
+- ⬜ `Test.md` and `Status.md` record the run
+
+**FRs:** FR-28, FR-29, FR-59, FR-61, FR-62, FR-63, FR-76
+
+---
+
+## Phase 15 — Reaching what needs help — ⬜ not started
+
+**Closes G3.** The cheapest large win in the audit: the queries already exist and only the list
+and its links are missing.
+
+A route already knows how many of its fields need review and how many challenges are open — both
+are in the route passport. **There is no way to get from the count to the fields.** A contributor
+who wants to help has to open every step and look, which is precisely the friction FR-50 exists
+to remove.
+
+### Scope
+
+- On the route page, the two counts become **navigable**: each opens a list of the fields
+  concerned, each item deep-linking to `?step=…` with the field in view
+- A route-level view of open challenges: what was challenged, the stated reason, when, and by
+  whom — leading to the field, not to a discussion thread
+- Reuse `snapshotCautions` and the passport rather than adding a second source of truth
+
+### Rules
+
+- **A list of problems is not a ranking of routes** (invariant 14). Nothing here feeds standing,
+  and a route with more open challenges is not thereby worse — it may simply be better attended.
+- **No comment threads.** VR-14 shows "2 comments" on a challenge; a challenge carries a reason
+  and is answered by a revision, not by a conversation (§25, and this is not a social feed).
+- Conflict is shown, not hidden (invariant 15) — this phase makes that easier to act on, and must
+  not make a contested field look like a defective one.
+
+### Exit criteria
+
+- ⬜ Both counts on the route page lead somewhere
+- ⬜ Every item deep-links to the field it names, and the road stays on screen (§7.1)
+- ⬜ A route with nothing needing attention says so rather than showing an empty list
+- ⬜ `Test.md` and `Status.md` record the run
+
+**FRs:** FR-50, FR-53, FR-70
+
+---
+
+## Phase 16 — Time travel, and the ribbon's missing signals — ⬜ not started
+
+**Closes G6 and G5.** Two small, unrelated items, together because neither justifies a phase.
+
+**G6 — a version picker on the Changes tab.** VR-07 offers *View other versions*: choose a past
+date, see the route as it stood. `loadRouteGraphAt` already does exactly this and is already used
+for "what did this look like when I started following". Only the control is missing. Note the
+date-keyed query is correct here and must stay date-keyed — "what did this look like on the 5th"
+is a temporal question (CLAUDE.md §5).
+
+**G5 — followers and recent changes on the ribbon.** FR-10 asks routes to display "followers,
+recent changes and last confirmation". All three are on the route page's passport; the ribbon —
+the surface built for comparing routes — carries neither of the first two.
+
+### Rules
+
+- A follower count on a comparison surface is the exact shape invariant 14 warns about. It is a
+  **fact stated**, never an input: no ordering, no badge, no promotion, and the search ordering
+  test stays as it is.
+- The ribbon must not grow into a card. If a signal cannot earn its line at ribbon density it
+  belongs on the route page (invariant 25, §7.3).
+
+### Exit criteria
+
+- ⬜ A reader can view any past version of a route from the Changes tab, by date, deep-linkably
+- ⬜ The ribbon shows follower count and recent-change count without gaining height
+- ⬜ Search ordering is unchanged, and its test still passes untouched
+- ⬜ `Test.md` and `Status.md` record the run
+
+**FRs:** FR-10, FR-31, FR-62
+
+---
+
+## Phase 17 — Deadlines — ⬜ blocked on an owner decision (D5)
+
+**Closes G2 — and must not start until the owner approves it.**
+
+`deadline` is a field category (FR-07, FR-51), so the data is already being written. **Nothing
+aggregates it.** A student following a route with four dated deadlines has no view saying which
+one is next. VR-06 shows *Deadlines (Next 3)* with a countdown and a *Calendar & Deadlines*
+section.
+
+**Why this is blocked rather than queued:** a deadline calendar is **not in the frozen baseline**.
+§529 supports the data; no FR asks for the view. BR-35 and CLAUDE.md §2 are explicit — a feature
+that cannot be traced to the baseline is a **change request, raised rather than silently
+implemented**. See D5 in *Decisions an agent must not make for you*.
+
+**If approved, the shape:** deadline-category fields from the steps of a followed route,
+collected, sorted by date, shown against the reader's own progress. Never a promise (invariant
+16) — a deadline is a stored value with a source and a date, and the copy has to keep it that way.
+
+**FRs, if approved:** FR-07, FR-24, FR-51 (data); the view itself would need a new id.
+
+---
+
+## Phase 18 — Safety, explained — ⬜ blocked on an owner decision (D6)
+
+**Closes G4, partly.** Two halves with different answers.
+
+**The half that is straightforward:** somebody who files a report can never see what happened to
+it, and somebody deciding whether to trust the platform cannot read how the safety system works
+without first finding something to report. The explanatory copy already exists in
+`safety.tsx` — it is just buried in a disclosure on the thing being reported.
+
+**The half that needs a decision:** VR-11 shows a public *Recently Quarantined Items* list. That
+is real transparency and it also advertises what was caught, which tells somebody running a scam
+exactly which of their links stopped working. See D6.
+
+**FRs:** FR-33, FR-34, FR-79 (transparency). The public list, if approved, would need §23.2's
+audited-surface treatment.
+
+---
+
+## Baseline review — does `REQUIREMENTS.md` still describe the product we are building? — 2026-09-07
+
+**Owner:** *"check the main requirement doc whether it's going with the actual project idea."*
+
+Read the whole baseline against the product and against what the owner has actually asked for
+across twelve phases.
+
+### The verdict: yes, and closely. The baseline is not drifting
+
+§1's core line is word-for-word what the project still is. §33's *Explicitly Out of Scope* list
+matches "What this project is NOT" item for item — no document vault, no consultancy, no
+application submission, no sponsorship ranking, no social feed, no AI as a core feature, no
+dependence on external data APIs. §34's initial release scope is, item by item, what has been
+built. §45's cold-start risk is the reason production still holds zero routes.
+
+**Nothing in the baseline describes a product other than this one.** That is worth stating
+plainly, because it is the question that was asked and the answer is unusually clean for a
+document frozen before any code existed.
+
+Four things do need attention, and one of them is a mistake made today.
+
+---
+
+### 1. Account closure was built without going through the change process — mine to own
+
+**There is no requirement anywhere in the baseline for closing or deleting an account.** §24
+covers what is *not* collected and what an account is *for*; it says nothing about leaving.
+
+FR-80 is explicit: *"materially new features shall be treated as requirement changes"*, and
+BR-35 and CLAUDE.md §2 say the same — raise it, do not silently implement it. Phase 13A built it
+anyway, in a single session, and reasoned about it in the code comments rather than raising it.
+
+The feature is almost certainly right to have. That is not the point: the point is that the
+process exists so that "almost certainly right" is the owner's call rather than an agent's, and
+this bypassed it.
+
+**The privacy and terms pages are in the same position** — §24 requires neither.
+
+**What to do:** treat all three as **Amendment 002** to the frozen baseline, or decide they are
+out of scope and remove them. Either is a legitimate answer; leaving them undocumented is not,
+because the whole traceability claim (FR-80, Gate 1) rests on there being no such gaps.
+
+---
+
+### 2. The terms page publicly forecloses advertising, which the baseline keeps open
+
+The baseline permits advertising in **seven** places — §4's principles, §28.2, **FR-47**,
+**BR-14**, §35's future possibilities, §36's open decisions, **D-28**, and §44. Never as a
+revenue plan, always as *"only to offset operating costs"*, and always with the same condition:
+it must not touch route order, confidence, source status or governance.
+
+The terms page published today says, publicly:
+
+> There is no payment, no paid tier and no ads.
+
+That follows CLAUDE.md §10.1, which decided the Gumroad link is *"the only monetisation of any
+kind"* — a decision made inside the baseline's latitude, and a reasonable one. But putting it in
+**published terms** turns a reversible internal decision into a public promise, and FR-47 and
+BR-14 exist precisely because the baseline expected the option to stay open.
+
+**Owner decision (new: D7).** Either confirm that no advertising is ever intended — in which
+case the terms are right and the baseline's advertising clauses are dead letters worth marking as
+such — or soften the sentence to what is actually true today: *there is no advertising on this
+site.* Present tense, no promise about the future.
+
+---
+
+### 3. The baseline is more permissive than we are about contribution counts
+
+§25 explicitly allows *"badges, contribution counts or messages such as 'Your updates helped
+future students', without turning the platform into a competitive points game."*
+
+CLAUDE.md §25 and §11 have been read as forbidding all of that, and a guard fails the build on
+gamification vocabulary. The activity band (Phase 13C) is the first thing to use counts at all,
+and it is well within what §25 allows.
+
+**Not a conflict — but worth knowing the room exists.** If contributor recognition ever seems
+worth having, the baseline already permits it and the constraint is the phrase *competitive
+points game*, not counts themselves.
+
+---
+
+### 4. Two things CLAUDE.md treats as decided that §36 still lists as open
+
+Neither is a problem; both are decisions taken inside the baseline's latitude, recorded in the
+right place. Listed so a future reader does not think the baseline is stale:
+
+| §36 open item | Where it was actually decided |
+|---|---|
+| Primary interface language | CLAUDE.md §4 — English UI, Bengali brand identity, i18n scaffolding from day one |
+| Route maturity labels and colours | CLAUDE.md §11, closed 2026-09-04 — **no palette at all**, carried by weight, word and icon |
+
+§36's own last row anticipates this: the open items *"concern branding, presentation or
+operational thresholds and do not prevent development from starting."*
+
+---
+
+### One observation about Phase 16
+
+§35 lists a *"research/archive view showing historical versions"* as a **future possibility**.
+Phase 16's version picker is adjacent to it but not the same thing: FR-31 already requires that
+users can inspect what changed and when, and the picker is that requirement's control surface for
+one route. A browsing surface *across* history would be the §35 item, and remains deferred.
+
+---
+
 ## Mockup coverage audit — what the visual references show that the product does not — 2026-09-07
 
 **Owner:** *"study the visual reference folder mockups and figure out the features that we have
@@ -2479,6 +2762,10 @@ answer** — each is only blocking if something needs it.
 | D2 | **Keep the Neon compute warm?** Scale-to-zero costs the first visitor after idle 25–30 seconds. A keep-warm ping fixes it and burns compute hours against §28.1's free-tier philosophy. | Cost versus the first impression, and it only matters while traffic is low. |
 | D3 | **Exact staleness, quarantine and report thresholds** (§11). Nothing needs them yet; they become blocking the first time a route goes stale or a report queue has volume. | Inventing a number is what §11 forbids. |
 | D4 | **Contributor reputation labels and weights** (§11). Currently there are none, deliberately (§25). | A score changes what the platform *is*. |
+| **D5** | **Should there be a deadlines view?** (Phase 17, gap G2.) `deadline` is already a field category so the data is being written, and VR-06 draws a *Deadlines (Next 3)* rail. But **no requirement asks for the view**, and BR-35 says a feature that cannot be traced to the baseline is a change request rather than something an agent decides. | Useful, and outside the frozen baseline. Approving it is a scope change; it is yours to make. |
+| **D7** | **Is advertising permanently off the table?** The baseline permits it in seven places, always and only to offset operating costs and never touching route order or trust (§4, §28.2, FR-47, BR-14, §35, §36, D-28, §44). The terms page published on 2026-09-07 says *"no ads"* in the present and the future. Confirm the promise, or soften it to *"there is no advertising on this site"* — true today, and not a commitment about a baseline option you may want. | A published promise is much harder to take back than an internal decision. |
+| **D8** | **Amend the baseline for account closure, the privacy page and the terms page**, or remove them. None of the three is traceable to a requirement, and FR-80 says a materially new feature is a requirement change. They were built in one session without being raised — recorded here because the traceability claim depends on there being no undocumented gaps. | Amending the frozen baseline is a formal act, and it is yours. |
+| **D6** | **Should quarantined items be listed publicly?** (Phase 18, gap G4.) VR-11 shows a *Recently Quarantined Items* panel. It is genuine transparency about what moderation does — and it also tells somebody running a scam which of their links stopped working. The *My Reports* half of that screen needs no decision and can be built either way. | Transparency against discretion, on a safety surface. Not an engineering trade-off. |
 
 ---
 
