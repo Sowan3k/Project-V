@@ -835,7 +835,7 @@ export const en = {
     saved: 'Saved',
     markCompleted: 'Mark this journey completed',
     unmarkCompleted: 'Not completed after all',
-    completedNote: 'You marked this journey completed. This is your own record.',
+    completedNote: 'You marked this journey completed. This is your own record, and the platform does not verify it.',
     tasksTitle: 'Your own tasks',
     tasksLede: 'Things that matter to you and do not belong in the public route.',
     taskPlaceholder: 'Something to remember',
@@ -1295,11 +1295,29 @@ export const en = {
       'Nothing you write here is checked by Vindeshi Express before or after it appears. What the route says is what the community has put into it, and readers are told that.',
       'Nothing is ever deleted. Every correction keeps the value before it, with your name against what you wrote.',
     ],
+    /*
+     * The completion prompt, rebuilt 2026-09-07.
+     *
+     * It says the date back rather than asking for it, because the progress row already holds
+     * it and asking a question the product can answer itself is exactly the friction that stops
+     * people contributing.
+     *
+     * `peopleBehindYou` is the reason to bother, and it is stated as a fact rather than an
+     * appeal. "Help future students" moves almost nobody; a count of people about to hit the
+     * thing you just learned is different in kind, and no comparable platform can say it,
+     * because none of them knows who is partway along.
+     */
+    youCompleted: (step: string) => `You marked “${step}” done.`,
+    youWereThere: (date: string) => `You were there on ${date}.`,
+    peopleBehindYou: (count: number) =>
+      count === 1
+        ? '1 person is following this route and has not reached this step yet.'
+        : `${count} people are following this route and have not reached this step yet.`,
     stillAccurate: 'Was this step still accurate?',
     stillAccurateLede:
       'You have just been through it, so you know better than anyone. This is the most useful moment to say.',
     yesAccurate: 'Yes, everything here was still accurate',
-    somethingChanged: 'Something changed',
+    somethingChanged: 'Something was different',
     somethingChangedHint: 'Opens the step so you can correct or flag the part that is wrong.',
     contributorSince: 'First contributed',
 

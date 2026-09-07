@@ -2760,3 +2760,50 @@ Then rate limiting, which is the last agent-doable item and is half-blocked on B
   workers — killing the task does not kill them.
 - **The disposable-marker guard is checked at start-up, not per write.** A run that began before a
   reset will happily keep writing after it.
+
+---
+
+## 2026-09-07 (late) — the voice, and the first four contribution items
+
+### Done
+
+- **The demonstration the owner asked for: 12 files, 180 tests, zero failures.** The ten
+  failures were three parts pollution and seven parts a 30-second timeout that was never
+  realistic against Neon.
+
+- **The voice work.** The owner: *"the design guides the people where to go, what to do, but in
+  my website all the other pages has info scattered like saying what our building documents are
+  saying."* Measured: 108 of 271 substantial strings were defensive or system-explaining against
+  27 that told a reader to do anything. The cause was mine, and it is a clean category error:
+  the invariants specify what the *code* must not do, and I turned them into copy.
+
+- **`StartHere`.** Every route now opens with the first stage by name, its duration, a way in,
+  and the two after it, derived from `layout()` so it cannot disagree with the road.
+
+- **Em dashes: 83 in the UI, 9 in the README, all gone**, with a guard. The owner asked for this
+  on 6 September and every one of them was added afterwards.
+
+- **Contribution items 1 to 4.** The completion prompt rebuilt into the panel it deserved; the
+  "N people behind you" count; self-confirmation refused. Item 3 turned out to be done already,
+  with better labels than the design proposed.
+
+### Decisions taken
+
+- **A guard that fires is usually right.** Three fired during this work and all three were
+  correct: a misplaced module, a weakened invariant, and a wrong assertion of mine. None was
+  widened. The one that looked most like it needed an exception, the journey privacy rule, had
+  the answer written in its own comment.
+
+- **The panel stays silent at zero followers.** "0 people are following this route" is true and
+  discourages the exact thing the panel exists to encourage.
+
+### Blockers
+
+Unchanged. A2 (the Google consent screen) is still the highest-consequence unknown, and D5 to D8
+are still waiting.
+
+### Next step
+
+Contribution items 5 and 6, the distinctive half: scope narrowing as a contribution type, and
+the dated observation. Both need the owner's approval first under FR-80, which the design
+document raises.

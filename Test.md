@@ -2958,3 +2958,68 @@ log, or say the log was partial.
 - The full suite has not yet been demonstrated green end to end at the new timeout — that run is
   in progress at the time of writing and its result belongs in the next entry.
 - Whether 120s is comfortably above the true worst case, or merely above the observed one.
+
+---
+
+## 31. The demonstration, and the first four contribution items. 2026-09-07
+
+### The demonstration, finally green
+
+```
+Test Files  12 passed (12)
+Tests      180 passed (180)
+```
+
+The full integration suite, against the reset branch at the corrected 120s timeout. The ten
+failures of §29 are gone: three were the branch pollution, seven were the clock.
+
+### The voice work
+
+| What | Before | After |
+|---|---|---|
+| Em dashes in user-facing strings | 83 across 76 strings | **0** |
+| Em dashes in the README | 9 | **0** |
+| The paragraph above every road | 41 words | **15** |
+
+Guarded by `tests/architecture/house-style.test.ts`, with a planted-violation check so it is
+not decoration. Code comments are deliberately out of scope: they address whoever maintains
+this, not a reader.
+
+### Contribution items 1 to 4
+
+| Item | Proved by | Result |
+|---|---|---|
+| The completion prompt, rebuilt | `e2e/journey.spec.ts`, four viewports | 24/24 |
+| "N people behind you" | `tests/db/self-confirmation.db.test.ts`, and seen live in the E2E run reading **"19 people are following this route and have not reached this step yet"** | pass |
+| "Something changed?" beside every field | Already existed with human labels (*Still accurate* / *Correct this* / *Flag a problem*); left alone | n/a |
+| Self-confirmation refused | 5 integration tests | pass |
+
+**The followers-ahead count is asserted in the database tests, not in the E2E spec.** On a
+fixture route with a single follower there is nobody behind them, and the panel is meant to stay
+silent rather than announce a zero.
+
+### Three things the guards caught, and all three were right
+
+1. **`followersYetToReach` was in the wrong directory.** Put in `src/server/journeys/`, it broke
+   the rule that every exported function there names `userId`. The guard's own comment gives the
+   answer: *"Public aggregates deliberately live in `src/server/routes/read.ts` instead, so this
+   rule needs no exceptions. An exception list is where a rule like this goes to die."* Moved,
+   beside `followerAggregates`, which is there for exactly the same reason.
+
+2. **Trimming `completedNote` weakened invariant 17.** The em dash pass cut "the platform does
+   not verify it", and an E2E test that exists to hold FR-41/§26 went red. Restoring it, the
+   obvious wording used *verified*, which the verification-vocabulary guard forbids. The
+   permitted form is *verify* in the negative, which the guard's own note says and which the
+   E2E assertion already expected. **Two guards in sequence, each correct.**
+
+3. **The date assertion I added was wrong, not the code.** The prompt only says "you were there
+   on ..." when a date was recorded, and the fixture recorded none. The test now records one,
+   which also covers the feature.
+
+### Not tested
+
+- **The prompt has never been photographed.** The review server has no `AUTH_SECRET`, so session
+  reads return null there and every page renders signed out. The E2E run is what proves it,
+  including the exact text.
+- **No test covers a contributor confirming a step where they wrote *some* fields.** The refusal
+  is silent by design so the other fields still confirm; only the single-field case is proved.

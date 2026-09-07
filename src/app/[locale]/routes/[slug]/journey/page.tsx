@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { StepCompletedPrompt } from '@/components/step-completed-prompt'
 import { ContentColumn } from '@/components/layout'
 import { LinkButton, Panel, buttonClass } from '@/components/ui'
 import { RouteContext } from '@/components/route-context'
@@ -15,7 +16,7 @@ import { currentViewer } from '@/server/auth'
 import { shadowSince } from '@/server/changes/read'
 import { followerChangeReport } from '@/server/journeys/changes'
 import { getJourneyForRoute, type JourneyView } from '@/server/journeys/read'
-import { getRouteBySlug, type RouteDetail } from '@/server/routes/read'
+import { followersYetToReach, getRouteBySlug, type RouteDetail } from '@/server/routes/read'
 
 import {
   addTaskAction,
@@ -204,7 +205,7 @@ function FollowInvitation({
   )
 }
 
-function JourneyBoard({
+async function JourneyBoard({
   dictionary: t,
   route,
   journey,
@@ -220,6 +221,31 @@ function JourneyBoard({
   userId: string
 }) {
   const byStep = new Map(journey.progress.map((row) => [row.stepId, row]))
+
+  /*
+   * How many followers have not reached each completed step.
+   *
+   * Only for steps this person has actually finished, because that is the only place the
+   * prompt appears. On a route with eighteen stages and three of them done, this is three
+   * counts rather than eighteen, run together rather than in sequence.
+   *
+   * An aggregate that identifies nobody, and excludes the reader's own journey (invariant 5).
+   */
+  const completedStepIds = journey.progress
+    .filter((row) => row.status === JourneyStepStatus.completed)
+    .map((row) => row.stepId)
+
+  const aheadCounts = new Map(
+    await Promise.all(
+      completedStepIds.map(
+        async (stepId) =>
+          [
+            stepId,
+            await followersYetToReach({ stepId, routeId: route.id, excludeUserId: userId }),
+          ] as const,
+      ),
+    ),
+  )
   const done = journey.progress.filter((row) => row.status === JourneyStepStatus.completed).length
 
   return (
@@ -277,6 +303,7 @@ function JourneyBoard({
             index={index}
             step={step}
             progress={byStep.get(step.id) ?? null}
+            followersAhead={aheadCounts.get(step.id) ?? null}
             journeyId={journey.id}
             slug={slug}
             locale={locale}
@@ -311,6 +338,7 @@ function StepProgressRow({
   index,
   step,
   progress,
+  followersAhead,
   journeyId,
   slug,
   locale,
@@ -319,6 +347,7 @@ function StepProgressRow({
   index: number
   step: RouteDetail['steps'][number]
   progress: JourneyView['progress'][number] | null
+  followersAhead: number | null
   journeyId: string
   slug: string
   locale: string
@@ -407,35 +436,32 @@ function StepProgressRow({
         </div>
       </form>
 
-      {/* FR-42, §16.5: the prompt appears only once the step is done, because that is the
-          moment the follower's knowledge is worth the most. It offers CONFIRM and a route to
-          UPDATE/CHALLENGE — no new contribution type is invented for it. */}
-      {progress?.status === JourneyStepStatus.completed ? (
-        <div className="mt-3 rounded-control border border-brand-500/40 bg-brand-500/5 p-3">
-          <p className="text-sm font-medium text-ink-900">{t.contribute.stillAccurate}</p>
-          <p className="mt-0.5 text-xs leading-5 text-ink-700">{t.contribute.stillAccurateLede}</p>
+      {/*
+        FR-42, §16.5. The prompt appears only once the step is done, because that is when this
+        person knows more about it than anybody else. Rebuilt on 2026-09-07 from four lines of
+        small text into the panel it deserved: it names the step, says the date back rather than
+        asking for it, and says how many people are about to hit the same thing.
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+        It invents no contribution type. The buttons lead to CONFIRM, and to the field-level
+        controls that already exist on the route.
+      */}
+      {progress?.status === JourneyStepStatus.completed ? (
+        <StepCompletedPrompt
+          stepLabel={step.label}
+          stepHref={`/${locale}/routes/${slug}?step=${step.id}`}
+          actualDate={progress.actualDate ?? null}
+          followersAhead={followersAhead}
+          dictionary={t}
+          confirmForm={
             <form action={confirmStepAction}>
               <input type="hidden" name="stepId" value={step.id} />
               <input type="hidden" name="slug" value={slug} />
-              <button
-                type="submit"
-                className={buttonClass('primary', { size: 'compact' })}
-              >
+              <button type="submit" className={buttonClass('primary', { size: 'compact' })}>
                 {t.contribute.yesAccurate}
               </button>
             </form>
-
-            <Link
-              href={`/${locale}/routes/${slug}?step=${step.id}`}
-              className="text-xs text-brand-700 underline"
-            >
-              {t.contribute.somethingChanged}
-            </Link>
-          </div>
-          <p className="mt-1.5 text-xs text-ink-500">{t.contribute.somethingChangedHint}</p>
-        </div>
+          }
+        />
       ) : null}
     </li>
   )

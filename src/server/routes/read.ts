@@ -8,7 +8,7 @@ import type {
   SourceClass,
   StudyLevel,
 } from '@/domain/enums'
-import { SourceClass as Source, StepCategory, StepEdgeKind } from '@/domain/enums'
+import { JourneyStepStatus, SourceClass as Source, StepCategory, StepEdgeKind } from '@/domain/enums'
 import { expectedFlyWindow, type FlyWindow } from '@/domain/fly-window'
 import { SEARCHABLE_LIFECYCLE_STATES } from '@/domain/lifecycle'
 import type { RouteGraph } from '@/domain/graph/types'
@@ -953,4 +953,54 @@ export async function getRouteStructure(routeId: string): Promise<RouteStructure
     edges: structureEdges,
     incomplete,
   }
+}
+
+/**
+ * How many people are following this route and have not reached this step yet.
+ *
+ * ═════════════════════════════════════════════════════════════════════════════════════════
+ * **The most motivating sentence this product can say**, and no comparable platform can say it.
+ * The abstract beneficiary of a public good moves almost nobody; a specific count of people
+ * about to hit the exact step you have just finished is different in kind. Wikipedia cannot
+ * know who stood in the visa queue last Tuesday, because it does not know who is partway along.
+ * This does.
+ *
+ * Shown in the completion prompt, at the moment somebody is deciding whether to confirm or
+ * correct a step they have just been through.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────
+ * **Here rather than in `src/server/journeys/`, for the reason `followerAggregates` above is
+ * here.** A count over everybody's journeys legitimately has no single owner, and the rule that
+ * every function in that directory takes a user id stays absolute rather than gaining its first
+ * exception. The guard in `journey-privacy.test.ts` says so in as many words, and it is right:
+ * an exception list is where a rule like that goes to die.
+ *
+ * It returns one integer and identifies nobody: no handles, no dates, no per-person rows, and
+ * nothing that can be narrowed to an individual (invariant 5). `excludeUserId` keeps the reader
+ * out of their own number, which is both more accurate and avoids telling somebody that one of
+ * the people waiting behind them is themselves.
+ *
+ * **"Not reached yet" is deliberately generous.** Anyone who has not marked the step completed
+ * counts, whether they started it, skipped it or never opened it. From the point of view of
+ * somebody who has just learned something, all three are still ahead of the news.
+ */
+export async function followersYetToReach({
+  stepId,
+  routeId,
+  excludeUserId,
+}: {
+  readonly stepId: string
+  readonly routeId: string
+  readonly excludeUserId: string
+}): Promise<number> {
+  return prisma.journey.count({
+    where: {
+      routeId,
+      archivedAt: null,
+      userId: { not: excludeUserId },
+      // `none` covers both halves of "not reached": a row saying anything other than
+      // completed, and no row at all.
+      progress: { none: { stepId, status: JourneyStepStatus.completed } },
+    },
+  })
 }

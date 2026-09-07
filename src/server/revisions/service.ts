@@ -735,6 +735,38 @@ export async function confirmField(
       return
     }
 
+    /*
+     * **You cannot vouch for your own work.**
+     *
+     * The cheapest attack in the whole system, and the cheapest to close. `confirmedContribution
+     * Count` on the contributor page is the one signal that speaks to usefulness rather than
+     * volume, and it only means anything because the confirmations come from *other people*.
+     * Without this check, a contributor writes a claim and confirms it in the next request, and
+     * a number designed to say "others agreed" says "I agreed with myself".
+     *
+     * It also protects the reader-facing count: a field showing "confirmed by 3 people" must
+     * not be counting its own author.
+     *
+     * Refused silently rather than thrown. A person who marks a step complete on a route they
+     * contributed to has done nothing wrong, and `confirmStepFields` walks every field in the
+     * step — some of which they may have written and some not. Throwing would abort the whole
+     * confirmation over one field they happened to author. The other fields are still confirmed,
+     * which is the honest outcome.
+     */
+    const current = await tx.field.findUnique({
+      where: { id: input.fieldId },
+      select: { currentRevision: { select: { authorId: true } } },
+    })
+
+    if (current?.currentRevision?.authorId === input.actor.id) {
+      // Still touch the review date: the field *was* looked at by somebody who knows it.
+      await tx.field.update({
+        where: { id: input.fieldId },
+        data: { reviewDueAt: input.reviewDueAt ?? null },
+      })
+      return
+    }
+
     await tx.confirmation.upsert({
       where: { fieldId_authorId: { fieldId: input.fieldId, authorId: input.actor.id } },
       create: { fieldId: input.fieldId, authorId: input.actor.id },

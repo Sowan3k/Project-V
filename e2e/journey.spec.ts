@@ -112,6 +112,9 @@ test.describe('a private journey', () => {
     const firstStep = page.locator('form').filter({ has: page.locator('select[name="status"]') }).first()
     await firstStep.locator('select[name="status"]').selectOption('completed')
     await firstStep.locator('textarea[name="privateNote"]').fill('Collected at the DU office.')
+    // The date they say it happened. It is what the completion prompt says back to them
+    // instead of asking for it again, so the flow below depends on it being recorded here.
+    await firstStep.locator('input[name="actualDate"]').fill('2026-03-12')
     await firstStep.locator('button[type="submit"]').click()
 
     /**
@@ -138,8 +141,29 @@ test.describe('a private journey', () => {
     await expect(savedStep.locator('textarea[name="privateNote"]')).toHaveValue(
       'Collected at the DU office.',
     )
-    // FR-42, §16.5: the prompt appears once the step is done, and only then.
-    await expect(page.getByText(/was this step still accurate/i)).toBeVisible()
+    /*
+     * FR-42, §16.5: the prompt appears once the step is done, and only then.
+     *
+     * Rebuilt 2026-09-07 from four lines of small text into the panel it deserved, so these
+     * assertions cover what it now says as well as that it is there. The two additions are the
+     * point of the redesign:
+     *
+     *   the date, said back rather than asked for  — it comes from the progress row above,
+     *                                                which this test has just filled in
+     *   what the reader is being asked to do       — one tap to confirm, one to correct
+     *
+     * The "N people are following this route" line is deliberately NOT asserted here: on a
+     * fixture route with one follower there is nobody behind them, and the panel is meant to
+     * stay silent rather than say zero. `tests/db/self-confirmation.db.test.ts` proves the
+     * count itself against a route with several followers.
+     */
+    const prompt = page.getByRole('region', { name: /was this step still accurate/i })
+    await expect(prompt).toBeVisible()
+    await expect(prompt).toContainText(/you marked/i)
+    await expect(prompt).toContainText(/you were there on \d{4}-\d{2}-\d{2}/i)
+    await expect(prompt.getByRole('button', { name: /yes, everything here was still accurate/i }))
+      .toBeVisible()
+    await expect(prompt.getByRole('link', { name: /something was different/i })).toBeVisible()
 
     await context.close()
   })
