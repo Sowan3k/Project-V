@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 
 import { ContentColumn, GridRegion, PageCanvas, PageGrid } from '@/components/layout'
 import { CategoryRoad } from '@/components/category-road'
+import { HowItWorksTiles } from '@/components/how-it-works'
 import { Chip, LinkButton, Panel } from '@/components/ui'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
@@ -61,12 +62,15 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <LinkButton href={`/${locale}/routes`}>{t.landing.findMyRoute}</LinkButton>
-              <a
-                href="#how-it-works"
-                className="text-sm font-medium text-brand-700 hover:underline"
+              {/* Was an anchor to the band below. VR-01's secondary call to action means
+                  "explain this to me", and a band of four tiles is not that explanation —
+                  the page is (Phase 12J). */}
+              <Link
+                href={`/${locale}/how-it-works`}
+                className="vx-underline text-sm font-medium text-brand-700"
               >
-                {t.landing.howItWorks}
-              </a>
+                {t.nav.howItWorks}
+              </Link>
             </div>
 
             <ul className="mt-7 flex flex-wrap gap-2">
@@ -147,20 +151,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       {/* ── How it works ─────────────────────────────────────────────────────────────── */}
       <section id="how-it-works" className="scroll-mt-6 border-y border-hairline bg-surface">
         <PageCanvas className="py-12">
-          <h2 className="text-section font-semibold text-ink-900">{t.landing.howItWorks}</h2>
-          <ol className="mt-6 grid gap-6 sm:grid-cols-3">
-            {t.landing.steps.map((entry, index) => (
-              <li key={entry.title} className="flex gap-3">
-                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-micro font-semibold text-brand-900">
-                  {index + 1}
-                </span>
-                <div>
-                  <p className="text-panel font-semibold text-ink-900">{entry.title}</p>
-                  <p className="mt-1 text-sm leading-6 text-ink-700">{entry.body}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
+          <HowItWorksTiles dictionary={t} locale={locale} />
         </PageCanvas>
       </section>
 

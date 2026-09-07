@@ -78,6 +78,14 @@ export async function SiteHeader({
             {t.nav.routes}
           </Link>
 
+          {/* Phase 12J. A reader who does not know what a ribbon is needs the explanation
+              reachable from wherever they got confused, not only from the homepage they may
+              never have seen. Hidden on a phone like the other nav items — the bottom bar
+              carries navigation there, and this is reference rather than a destination. */}
+          <Link href={`/${locale}/how-it-works`} className={phoneHiddenNavLink}>
+            {t.nav.howItWorks}
+          </Link>
+
           {viewer === null ? (
             <Link href={`/${locale}/signin`} className={buttonClass('secondary', { className: 'py-2' })}>
               {t.auth.signIn}

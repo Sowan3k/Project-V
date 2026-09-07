@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { ContentColumn, PageCanvas } from '@/components/layout'
-import { LinkButton } from '@/components/ui'
+import { EmptyState, LinkButton } from '@/components/ui'
 import { JourneyStepStatus } from '@/domain/enums'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
@@ -94,7 +94,23 @@ export default async function JourneysPage({
         </ContentColumn>
 
         {journeys.length === 0 ? (
-          <p className="mt-6 text-sm text-ink-700">{t.journey.indexEmpty}</p>
+          /* Phase 12J. A signed-in reader who has followed nothing got one line of grey text
+             and no idea what to do next — on the page they land on straight after signing in.
+             §45's cold start applies to an empty *account* as much as to an empty platform. */
+          <div className="mt-6">
+            <EmptyState
+              title={t.journey.indexEmpty}
+              body={t.journey.indexEmptyBody}
+              action={
+                <div className="flex flex-wrap justify-center gap-3">
+                  <LinkButton href={`/${locale}/routes`}>{t.landing.findMyRoute}</LinkButton>
+                  <LinkButton href={`/${locale}/how-it-works`} tone="secondary">
+                    {t.nav.howItWorks}
+                  </LinkButton>
+                </div>
+              }
+            />
+          </div>
         ) : (
           <ul className="mt-6 space-y-3">
             {journeys.map((journey) => {

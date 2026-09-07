@@ -237,6 +237,18 @@ export default async function RouteSearchPage({
 
             {/* FR-13, where a student actually notices the gap: at the moment their own route
                 is not in the results. */}
+            {/* VR-03's rail carries "New Here? … See How It Works". It pointed at nothing
+                until Phase 12J. This is the moment a reader is most likely to be confused:
+                looking at six coloured bands for the first time. */}
+            <Rail title={t.howItWorks.newHereTitle} level={2}>
+              <p className="text-meta leading-5 text-ink-700">{t.howItWorks.newHereBody}</p>
+              <div className="mt-3">
+                <LinkButton href={`/${locale}/how-it-works`} tone="secondary">
+                  {t.nav.howItWorks}
+                </LinkButton>
+              </div>
+            </Rail>
+
             <Rail title={t.search.missingTitle} level={2}>
               <p className="text-meta leading-5 text-ink-700">{t.search.missingLede}</p>
               <div className="mt-3">

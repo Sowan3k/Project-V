@@ -65,6 +65,8 @@ export const en = {
    * arrangement, not on inventory.
    */
   nav: {
+    home: 'Home',
+    howItWorks: 'How this works',
     routes: 'Routes',
     myJourney: 'My Journey',
     /**
@@ -300,6 +302,125 @@ export const en = {
     travel_departure: 'Departure',
   } satisfies Record<StepCategory, string>,
 
+  /**
+   * How this works — Phase 12J.
+   *
+   * Reference for somebody who has already looked at a route and is confused, not a sales
+   * page. Wording rules that carry requirements rather than tone:
+   *   - It never claims the platform checks anything (BR-20, invariant 12).
+   *   - It states the limits in our own words rather than leaving a reader to discover them.
+   *   - It contains no example route: an invented one is the single thing this platform
+   *     cannot afford (§45, Gate 2, CLAUDE.md §10.2).
+   */
+  howItWorks: {
+    title: 'How this works',
+    lede:
+      'This platform describes the ways people actually get from Bangladesh to studying abroad — every stage, in order, with the requirements inside it. It is written and corrected by the people who have been through it. Here is what the words on it mean.',
+    /** Beside the 'How it works' heading, so it must not repeat it. */
+    readMore: 'The full explanation',
+    stepOf: (n: number, total: number) => `Step ${n} of ${total}`,
+
+    vocabularyTitle: 'The five words this site uses',
+    vocabularyLede:
+      'Everything else on the site assumes these. They are worth two minutes.',
+    vocabulary: [
+      {
+        label: 'Route',
+        value:
+          'One recognisable way of reaching a study destination — for example applying directly to a German university, as opposed to going through a scholarship. Two genuinely different processes are two routes, not one route with notes.',
+      },
+      {
+        label: 'Ribbon',
+        value:
+          'A route, compressed into a single band, so you can compare several at a glance. It is not a preview or a summary card: it is the same route, drawn small. Opening it unfolds the same thing.',
+      },
+      {
+        label: 'Road',
+        value:
+          'The ribbon opened out: every stage in order, with how long each one takes and which ones happen at the same time. Where a route genuinely branches — two ways of proving English, say — the road shows the branch rather than pretending there is one path.',
+      },
+      {
+        label: 'Step',
+        value:
+          'One stage of the journey: preparing documents, sitting a test, applying, waiting for a visa. Opening a step shows what is inside it.',
+      },
+      {
+        label: 'Field',
+        value:
+          'One piece of information inside a step — a requirement, a cost, a deadline, an address, a warning, or somebody’s experience. Each one carries where it came from and when it was last checked, and each one can be corrected on its own.',
+      },
+    ],
+
+    readingTitle: 'Reading a route',
+    reading: [
+      {
+        title: 'Search from Bangladesh',
+        body: 'Choose a destination and a study level. You do not need an account to read anything on this site.',
+      },
+      {
+        title: 'Compare the ribbons',
+        body: 'Each band is one route. The colours are the kind of stage — documents, language, admission, funding, visa, travel — in the order you meet them. The key is beside the results.',
+      },
+      {
+        title: 'Open one into a road',
+        body: 'Stages appear in order, with their length. Branches are labelled: “Choose one pathway” means the route splits and you take one; “Optional branch” means a stage that applies to some people; “Parallel work” means stages that overlap.',
+      },
+      {
+        title: 'Open a stage to see what is inside',
+        body: 'Fields are grouped by who is making the claim. Official and institutional sources sit apart from community experience, always, so you can tell a government rule from somebody’s story.',
+      },
+      {
+        title: 'Follow it, if you want to',
+        body: 'Signing in lets you keep private progress against a route — what you have finished, target dates, your own notes. Nobody else can see any of it, and you are never asked to upload a document to prove anything.',
+      },
+    ],
+
+    contributingTitle: 'Correcting something',
+    contributingLede:
+      'Four actions, and they mean different things. Picking the right one is most of what makes this work.',
+    actions: [
+      {
+        label: 'Still accurate',
+        value:
+          'You checked and nothing has changed. One click, nothing to fill in. This is the most useful thing you can do and the one people skip.',
+      },
+      {
+        label: 'Correct this',
+        value:
+          'You know what the right answer is now. Your correction goes live immediately — there is no queue and nobody approves it. The previous value is kept, with your name on the change, and anyone can correct it again.',
+      },
+      {
+        label: 'Flag a problem',
+        value:
+          'You know something is wrong but not what is right. This leaves the value alone and marks it as needing review, so the next reader is warned and somebody who knows can fix it.',
+      },
+      {
+        label: 'Report as unsafe',
+        value:
+          'Different from the three above, and rarer. For something dangerous rather than merely wrong: a phishing link, somebody impersonating an office, a scam, a private person’s details. A person looks at it.',
+      },
+    ],
+
+    limitsTitle: 'What this platform does not do',
+    limits: [
+      'It does not check anything. Nothing here has been through an authority, and the absence of a warning is not evidence that a fact is right — always confirm anything that matters against the official source.',
+      'It is not an agency or a consultancy. Nobody here submits an application for you, and there is nothing to buy.',
+      'It never asks for a document. No passport, no transcript, no certificate, no bank statement — there is nowhere on this platform to upload a file, for anything.',
+      'It cannot promise a date. Timings are built from what a route says about itself, and are planning aids rather than commitments.',
+      // Worded around the invariant-13 guard, which forbids that vocabulary anywhere in
+      // src/ and is right to: it is the thing standing between this product and a paid
+      // ranking. The claim is unchanged; only the words it cannot use are.
+      'It does not rank routes by anything anybody paid for. Nobody can buy a better position, a badge, or standing of any kind — there is nothing on this platform that money changes.',
+    ],
+
+    newHereTitle: 'New here?',
+    newHereBody:
+      'Every band below is one whole route, compressed. Two minutes on what a ribbon, a road, a stage and a field are will make the rest of this site read easily.',
+    privacyTitle: 'What is private',
+    privacyBody:
+      'Your progress, your dates and your notes are visible only to you. No other user can see them, aggregate figures cannot be traced back to you, and a route changing underneath you never alters what you recorded.',
+  },
+
   landing: {
     headlineBn: 'ভিনদেশী এক্সপ্রেস',
     headline: 'Understand the road before you fly',
@@ -307,10 +428,17 @@ export const en = {
       'Compare the ways to reach an overseas study destination, open a route to see every step, and benefit as the community keeps it current.',
     findMyRoute: 'Find my route',
     howItWorks: 'How it works',
+    /**
+     * Four tiles, not three lines — Phase 12J, VR-12's "How Vindeshi Express Works".
+     *
+     * The fourth is the one that was missing, and it is the half this product is actually
+     * about: a reader is also a contributor, and nothing on the landing page said so.
+     */
     steps: [
-      { title: 'Search', body: 'Choose where you are going and what you are studying.' },
-      { title: 'Compare', body: 'Each route appears as a ribbon you can compare at a glance.' },
-      { title: 'Open', body: 'A ribbon unfolds into a road: every step, in order, with its detail.' },
+      { title: 'Search', body: 'Say where you are going and what you are studying. No account needed.' },
+      { title: 'Compare', body: 'Each way of getting there appears as a ribbon — the whole route, compressed into one band.' },
+      { title: 'Open', body: 'A ribbon unfolds into a road: every stage in order, with the requirements, costs and deadlines inside it.' },
+      { title: 'Follow', body: 'Sign in to keep your own private progress against a route — and to correct anything you find is out of date.' },
     ],
 
     /**
@@ -666,6 +794,8 @@ export const en = {
     indexTitle: 'My journeys',
     indexLede: 'Routes you are following, and the progress you have recorded on each. Only you can see this.',
     indexEmpty: 'You are not following any routes yet. Open a route and choose “Follow this route” to start one.',
+    indexEmptyBody:
+      'Open any route and choose “Follow this route”. Your progress, dates and notes then live here — private to you, and never shown to anyone else.',
     privateBadge: 'Private to you',
     privateExplainer:
       'Your progress, dates and notes are visible only to you. No other user can see them, and the platform never asks you to upload a document to prove anything.',
