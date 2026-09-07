@@ -51,6 +51,9 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 12F | Mobile and tablet as their own product | Phone IA, not a narrower desktop | ✅ |
 | 12G | Visual acceptance | Gate 4 green, screenshots reviewed | 🟡 |
 | 12H | Density: the composition around the drawing | Every space occupied; less scrolling | 🟡 owner review |
+| 12I | Motion | Page transitions, hover, press feedback — all CSS | ✅ |
+| 12J | Onboarding and guidance | The site explains itself | ✅ |
+| 12K | Visual depth, and the hero | Presence, not only composition | ⬜ **needs an owner decision** |
 | 13 | Pre-launch gates and release | Gates 1–4 pass | 🟡 Gates 1 and 3 ✅; Gate 4 awaits owner review; Gate 2 awaits content |
 | — | **Things you need to do** (owner-only tasks) | Launch readiness: access, legal, content | ⬜ see the section before the gates |
 | — | **Content track** (parallel, from Phase 1) | Real seeded routes | 🟡 |
@@ -1865,6 +1868,126 @@ fly window. Not every route needs every item.
 - Confirmations accumulate naturally as real students complete steps and answer "Was this step
   still accurate?" (Phase 8) — that is how our seed content becomes community-maintained rather
   than permanently dependent on us.
+
+---
+
+## Phase 12I — Motion (2026-09-07) ✅
+
+**Owner request:** *"add page loading animation, add page changing animation, add motion, add hover
+effects, add tiles reaction after hovering mouse etc — subtle changes but enough to make the
+website look dynamic and reactive."*
+
+**All of it is stylesheet.** No JavaScript, no library, no client component, nothing added to any
+bundle. The client-component count is still exactly one and the read path still works with
+JavaScript disabled. That is not restraint for its own sake: a motion layer that cost a download
+would be paid for by the student in Dhaka on a slow connection who is the person this is for.
+
+| Built | How |
+|---|---|
+| Page-change animation | `@view-transition { navigation: auto }` — three lines, no router, no script. Browsers without support navigate as they always did |
+| Content arrival | 240ms, six pixels, deliberately below the threshold at which anyone would call it an animation |
+| Tiles react to the mouse | 1px lift and a shadow, on `:hover` **and `:focus-within`** — a keyboard user gets what a pointer user gets |
+| Press feedback | 60ms scale on every control |
+| Road stations | Half a percent of scale; larger visibly breaks alignment with the road beneath |
+| Disclosures | Contents animate open rather than snapping |
+
+**The one thing that was asked for and is not built: a loading indicator.** It cannot be done
+without script — `loading.tsx` blanks the route context and `<Suspense>` leaves a
+no-JavaScript reader looking at a skeleton for ever (both tried and removed in Phase 12, both now
+guarded). The view transition covers the gap as far as CSS can: the outgoing page stays put and
+legible rather than the screen blanking. Going further is decision **D1**.
+
+Everything above is disabled under `prefers-reduced-motion`, including `@view-transition`
+separately — a cross-fade is motion whether or not a transition-duration governs it.
+
+---
+
+## Phase 12J — Onboarding and guidance (2026-09-07) ✅
+
+**Owner request:** *"people don't know what to do, how to do… they need a visually good anything
+like tiles or stuffs that will tell them what, how can we do the things."*
+
+The gap was real and older than the request: **two links had been pointing at an explanation that
+did not exist since Phase 12D.** VR-01's secondary call to action is "How It Works"; VR-03's rail
+carries "New Here? … See How It Works". Both were wired to an anchor on the landing page holding
+three lines of small text.
+
+A product can be entirely honest about a route and still be unusable, because its central object
+is a *ribbon* that *unfolds into a road* of *steps* containing *fields*, and a visitor is expected
+to arrive knowing none of that.
+
+| Built | Where |
+|---|---|
+| VR-12's four-tile band, with icons from this product's own vocabulary | Landing |
+| `/how-it-works` — the five words, reading a route, which of the four actions to use, and what the platform does not do | Its own page |
+| A permanent way in | Header |
+| VR-03's "New Here?" panel | Search rail, at first sight of six coloured bands |
+| A real empty state | My Journeys, which gave a signed-in reader one grey line |
+
+**No modal, no tour, no dismissible overlay.** Those need state, state on the read path needs a
+client component, and a reader who dismisses a tour can never find it again. A page is linkable,
+re-readable, indexable and free.
+
+**No example route anywhere in it.** A worked example needs a route, and an invented one is the
+single thing this platform cannot afford (§45, Gate 2, CLAUDE.md §10.2).
+
+**Still open in this phase:** guidance at the moment a signed-in reader first meets the four
+action links on a field. They explain themselves once opened and not before.
+
+---
+
+## Phase 12K — Visual depth, and the hero — ⬜ not started
+
+**Owner, 2026-09-07:** *"the entire project looks very flat by looks… i am looking for a good hero
+section, where people usually land first."*
+
+This is the third piece of look-and-feel feedback from the owner and the first that is not about
+composition. 12H fixed *where things sit*; this is about whether what sits there has any presence.
+
+### The tension has to be named, because it is in our own guidance
+
+CLAUDE.md §8.5.5 asks for "white and light backgrounds, generous whitespace… subtle borders, very
+light shadows" and warns against "heavy gradients and shadows, clutter, decorative excess and
+generic SaaS-dashboard styling."
+
+**Followed literally, that produces flat.** Every instruction in it pushes toward less. The result
+is exactly what the owner is describing, and it was reached by following the rules rather than by
+neglecting them — which means this phase cannot be executed without an owner decision about how
+far §8.5.5 bends.
+
+### What can add depth without breaking anything
+
+Ordered by how much presence each buys per unit of risk. **None of these needs JavaScript, a
+dependency, a GPU or a single byte of bundle.**
+
+| Candidate | Why it fits |
+|---|---|
+| **The road draws itself in** on the hero — `stroke-dasharray` animated in CSS | It is *this product's own metaphor* animating, not a generic effect. Nothing else on any competitor's homepage looks like it |
+| **A layered light ground** instead of flat white — two or three very wide, very low-chroma radial washes | Adds depth with no object, no edge and no contrast cost. Reversible in one token |
+| **A real display scale** on the hero heading | `--text-display` exists at 40px and the hero is the only place entitled to it. Presence from type is free |
+| **Elevation that means something** — the hero illustration lifted, everything else flat | Currently every panel has the same weight, so nothing reads as primary |
+| **The Bengali wordmark as a graphic element**, not only a label | §8.5.6 asks for Bengali identity; today it is one line of text at 15px |
+
+### What is out, and why
+
+- **WebGL / shader heroes** (react-three-fiber, shadergradient, liquid-metal buttons) — costs a
+  bundle and a GPU, and Design-References.md already parked them on terms that still stand: hero
+  only, lazily loaded, static fallback, off under reduced motion, measured on a throttled
+  connection. Adopting one is a change request, not a styling decision.
+- **A stock photograph of students** — §44.2, never look like an agency.
+- **An illustrated named route** — §45 and Gate 2: a reader cannot tell an invented route from a
+  researched one, and the whole product rests on that difference staying visible.
+
+### Exit criteria
+- ⬜ The landing page reads as *designed* rather than *assembled*, in the owner's judgement
+- ⬜ First paint is not slower — measured, on a throttled connection
+- ⬜ The client-component count is still exactly one; the read path still works without JavaScript
+- ⬜ Contrast, the category palette and every §6 invariant hold unchanged
+- ⬜ Whatever §8.5.5 bends to is **written into CLAUDE.md**, not left as a deviation
+
+**Decision needed from the owner before this can close:** how far §8.5.5 bends. Everything in the
+table above is defensible under a slightly looser reading; a shader hero is not, and needs its own
+answer.
 
 ---
 
