@@ -52,6 +52,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 12G | Visual acceptance | Gate 4 green, screenshots reviewed | 🟡 |
 | 12H | Density: the composition around the drawing | Every space occupied; less scrolling | 🟡 owner review |
 | 13 | Pre-launch gates and release | Gates 1–4 pass | 🟡 Gates 1 and 3 ✅; Gate 4 awaits owner review; Gate 2 awaits content |
+| — | **Things you need to do** (owner-only tasks) | Launch readiness: access, legal, content | ⬜ see the section before the gates |
 | — | **Content track** (parallel, from Phase 1) | Real seeded routes | 🟡 |
 
 **Phase 12 closed on 2026-09-04.** Its one outstanding E2E failure — 4px of horizontal overflow
@@ -1864,6 +1865,74 @@ fly window. Not every route needs every item.
 - Confirmations accumulate naturally as real students complete steps and answer "Was this step
   still accurate?" (Phase 8) — that is how our seed content becomes community-maintained rather
   than permanently dependent on us.
+
+---
+
+## Things you need to do
+
+**Added 2026-09-07 at the owner's request.** Everything below is blocked on the owner and cannot
+be done by an agent — because it needs a credential nobody else holds, a judgement nobody else
+can make, or a responsibility nobody else can take.
+
+Ordered by what blocks what. Nothing in **A** can be worked around; **B** is what makes the
+platform safe to be public; **C** is the long pole and can start today in parallel.
+
+---
+
+### A. Without these, the platform cannot serve anybody
+
+| # | Task | Why only you |
+|---|---|---|
+| A1 | **Turn off Vercel deployment protection.** `https://vindeshi-express-…vercel.app/en` currently answers `302` to a Vercel login — the site is not publicly reachable. | Vercel project settings. Needs your account. |
+| A2 | **Publish the Google OAuth consent screen.** Until it leaves "testing", only accounts you have whitelisted can sign in — everybody else gets an error at the moment they try to contribute. Verify the current mode before launch; this is the commonest silent launch blocker there is. | Google Cloud console. Needs your account. |
+| A3 | **Grant yourself the administrator role in production.** The role is checked in three services and the moderation queues are built — but **there is no path in the product to grant it.** Today nobody is an administrator, which means a reported phishing link cannot be withheld by anyone. An agent can write the grant tool; running it against production is a deliberate human act under the CLAUDE.md §4 branch discipline. | Production database write. |
+| A4 | **Decide the public brand name (D-32).** It is listed as an open decision and "Vindeshi Express is a working candidate, not frozen". Everything downstream waits on it: the domain, the wordmark, every link anybody shares, the OAuth consent screen's app name. Changing it after launch breaks all of them. | A naming decision is yours. |
+| A5 | **Buy the domain and point it at the deployment**, then set `AUTH_URL` and a metadata base URL. Sign-in redirects and shared-link previews are wrong until this exists. | Purchase and DNS. |
+
+### B. Without these, the platform should not be public
+
+| # | Task | Why only you |
+|---|---|---|
+| B1 | **Approve the privacy policy and the terms.** The platform stores Google-linked accounts, private journey notes, dates and progress, and there is currently **no page saying what is kept, why, for how long, or who to contact.** An agent can draft both from what the code actually does — which is unusually little, and worth saying plainly. **You publish them, because you are the one making the promise.** | Legal responsibility. |
+| B2 | **Name a contact address for reports, takedowns and data requests.** §23 gives administrators a moderation queue; nothing tells a person outside the platform how to reach one. | It is your address. |
+| B3 | **Decide the operational posture on abuse.** There is no rate limiting anywhere, and this compounds with invariant 1: a signed-in account can write thousands of revisions, nothing may be deleted, and until A3 there is no administrator to archive them. An agent can build the limiter; the numbers — how many edits an hour is normal — are a judgement about your community. | §11 leaves the thresholds open on purpose. |
+| B4 | **Confirm the Neon backup and restore posture.** The whole product's value is a revision ledger nobody can destroy. Nobody has tested restoring it. | Neon plan and account. |
+
+### C. The long pole — start it now, in parallel
+
+| # | Task | Why only you |
+|---|---|---|
+| C1 | **Research and supply the launch route content** — Germany first, then Australia, USA, Malaysia (Gate 2, content track, CLAUDE.md §10.2). This is measured in weeks, not days, and everything else is finished before it. | You decided to research it yourself, and it is the right call: an agent inventing route facts is the one failure this product cannot survive. |
+| C2 | **Find a Bangladeshi reader who has never used the site**, and watch them read a route. Gate 2's last line is *"a Bangladeshi reader … says the route explains something they were actually trying to understand"*. | It needs a person who is not us. |
+| C3 | **Review the visual contact sheet** — `npm run review:build`, `review:start`, `review:shoot`, then `scripts/review/out/index.html`. Every machine-checkable line of Gate 4 is green; this is the line that is not. | Gate 4 is human-judged and cannot be automated away. |
+
+### D. Decisions an agent must not make for you
+
+These are open in CLAUDE.md §11 or arise from work done since. **Leaving them open is a valid
+answer** — each is only blocking if something needs it.
+
+| # | Decision | The trade-off |
+|---|---|---|
+| D1 | **Does a progress indicator on the read path justify a script?** There are no loading states, deliberately: `loading.tsx` blanks the route context, and `<Suspense>` leaves a no-JavaScript reader looking at a skeleton for ever (both tried and removed in Phase 12, both now guarded). A small inline script would fix it and break nothing without JavaScript — but it puts script on a read path that has had none since Phase 5. | 25 seconds of apparent nothing on a cold start, versus a principle held since Phase 5. |
+| D2 | **Keep the Neon compute warm?** Scale-to-zero costs the first visitor after idle 25–30 seconds. A keep-warm ping fixes it and burns compute hours against §28.1's free-tier philosophy. | Cost versus the first impression, and it only matters while traffic is low. |
+| D3 | **Exact staleness, quarantine and report thresholds** (§11). Nothing needs them yet; they become blocking the first time a route goes stale or a report queue has volume. | Inventing a number is what §11 forbids. |
+| D4 | **Contributor reputation labels and weights** (§11). Currently there are none, deliberately (§25). | A score changes what the platform *is*. |
+
+---
+
+### What an agent can still do, so the split is clear
+
+None of these is blocked on you, and none is large. Listed so this section is not mistaken for
+the whole of what remains:
+
+- draft the privacy policy and terms pages from what the code actually does (**you** approve)
+- the administrator-grant tool for A3 (**you** run it)
+- rate limiting, once B3 gives it numbers
+- error monitoring — today there is none at all, so a production failure is invisible
+- an account-deletion path — a user can delete their own journey, but cannot leave
+- `metadataBase`, so shared links and previews resolve
+- pressed states on controls, which need no decision
+- publishing the review screenshots from CI rather than a workstation
 
 ---
 
