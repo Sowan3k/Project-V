@@ -88,7 +88,23 @@ describe('the session carries the role, and costs nothing extra to do it', () =>
   it('reads the role in the query that already fetched the handle', () => {
     // The header renders on every page. A second query there for a link almost nobody sees
     // would be a database round trip per page view.
-    expect(config).toMatch(/select:\s*\{\s*handle:\s*true,\s*role:\s*true\s*\}/)
+    //
+    // **Loosened in Phase 13**, from an exact column list to "these two are in the same
+    // select". Account closure added `closedAt` to the same query — which is the behaviour
+    // this test wants, one query rather than two — and the old regex read as though the
+    // column *list* were the rule. It was never the rule; the round trip is.
+    const select = /select:\s*\{([^}]*)\}/.exec(config)?.[1] ?? ''
+    expect(select, 'handle and role must come from one select').toMatch(/handle:\s*true/)
+    expect(select).toMatch(/role:\s*true/)
+    // Scoped to the session callback: `updateUser` above has a `findUniqueOrThrow` of its
+    // own, and an unanchored count over the file would find that too. The session callback is
+    // the last one in the file, so everything after its opening line is its body.
+    const sessionCallback = config.slice(config.indexOf('async session('))
+    expect(sessionCallback, 'session callback not found').not.toBe(config)
+    expect(
+      sessionCallback.match(/prisma\.user\.find/g) ?? [],
+      'the session callback makes one lookup, not two',
+    ).toHaveLength(1)
     expect(config).toContain('role: stored?.role ?? UserRole.member')
   })
 

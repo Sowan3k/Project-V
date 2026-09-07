@@ -187,7 +187,7 @@ export default async function LocaleLayout({
               out of flow and would otherwise sit on top of the last thing on the page. The
               padding is removed at `md`, where the bar is hidden. */}
           <div className="pb-16 md:pb-0">
-            <SiteFooter dictionary={t} />
+            <SiteFooter dictionary={t} locale={locale} />
           </div>
         </div>
         <BottomTabs dictionary={t} locale={locale} />

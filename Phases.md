@@ -2166,6 +2166,91 @@ with the house style explicitly. **Do not run Prettier here without `--config`.*
 
 ---
 
+## Phase 13A — Leaving, the two legal pages, and somebody who can moderate — ✅ 2026-09-07
+
+Three of the "what an agent can still do" items, in the order the dependencies actually run:
+closure first, because the privacy page cannot describe leaving until leaving exists.
+
+### 1. A person could not leave
+
+`deleteJourney` has existed since Phase 7 and does the right thing for one followed route.
+There was no way to close the account itself — on a platform that asks somebody to sign in with
+Google and then holds their private visa timeline, that is the one thing a privacy promise has
+to include.
+
+**The obvious implementation cannot work, and would be wrong if it could.** `prisma.user.delete()`
+fails: every attribution in this schema is `onDelete: SetNull`, and setting a revision's
+`authorId` to null is an **UPDATE on a revision row**, which `vindeshi_revisions_are_immutable`
+refuses outright. The delete comes back `restrict_violation`. That trigger is one of the three
+layers holding invariant 2, and it was not loosened to make a delete possible.
+
+It would be wrong anyway. **The handle was never personal data** — generated, never taken from
+the Google profile, never an email (§24.3). Erasing it strips a public knowledge ledger of its
+authorship in order to remove an identifier that identifies nobody.
+
+So the rule is **erase the person, keep the pseudonym**:
+
+| Destroyed | Kept |
+|---|---|
+| email, the OAuth link, every session | the `User` row: id, handle, `createdAt`, `closedAt` |
+| every journey, and by cascade every status, target date, completion date, private note and task | every revision, confirmation, challenge, report and created route, still attributed |
+
+There is no route back in: the email is gone, so the same Google account signing in afterwards
+is a genuinely new user with a new handle and no history.
+
+Eight integration tests in `tests/db/account-closure.db.test.ts` prove both halves against a
+real database — including one that performs the raw `user.delete()` and asserts it is refused,
+so the next person to think "this could be simpler" reads the answer instead of finding it.
+
+New: `closedAt` on `User` (migration `20260907120000_account_closure`, applied to `test` and
+`production`), `src/server/accounts/service.ts`, `/[locale]/account`, and a defensive check in
+the session callback so a closed account is never a signed-in one.
+
+### 2. Privacy and terms — drafts, and they say so
+
+The platform stored Google-linked accounts and private notes with **no page anywhere saying
+what was kept, why, or how to leave**. Both pages now exist, linked from the footer.
+
+**Every factual claim was read out of the code**, and `tests/architecture/legal-pages.test.ts`
+re-checks the load-bearing ones on every commit — no OAuth token columns, no email on the
+session, no name or image column, no upload path anywhere, no analytics dependency, and
+`closeAccount` doing exactly what the page says it does and touching no contribution. A privacy
+policy is the one page that can become a lie without anybody editing it; this makes that fail
+loudly.
+
+They are short because the product is. Most of the privacy page is a list of things that do not
+happen, and that list is asserted rather than promised.
+
+**Both carry a "Draft — not yet adopted" banner and neither invents a contact address.** An
+agent can make the words match the code; it cannot make a promise on the owner's behalf, and a
+placeholder address is worse than a visible gap — a takedown request sent to one disappears
+silently. **B1 and B2 remain the owner's.**
+
+*One thing worth recording:* the copy tripped four vocabulary guards, because it uses "verified",
+"advertising", "premium" and "supporter" **while denying them** and a guard cannot tell denial
+from assertion. Nothing was weakened. Three were reworded to words a reader scans for anyway
+("no ads", "no paid tier"), and the fourth followed the guard's own note — it says `verify` in
+the negative is deliberately still allowed — so "Nothing here is verified by us" became **"We do
+not verify any of it"**, which is the stronger sentence for naming who is not doing the checking.
+
+### 3. Somebody who can moderate (A3)
+
+`npm run admin:list | admin:grant -- --handle X | admin:revoke -- --handle X`.
+
+Run against production, it confirms the diagnosis: **"No administrators. Nobody can act on a
+report or a quarantine."**
+
+A script rather than a page, for CLAUDE.md §10.2's reason for refusing an admin delete: a
+capability built for a one-off need outlives the need, and a page that grants the safety role
+can grant it to anybody, for ever, reachable by whoever holds it that year. It identifies people
+by **handle, never by email** — the email is the one value in the database that names a real
+person, and a maintenance script is not a reason to put one in shell history. It prints the
+branch before it writes, requires a typed `yes`, and retries through Neon's cold start.
+
+**Running it is still A3, and still the owner's** — it needs the production credential.
+
+---
+
 ## Things you need to do
 
 **Added 2026-09-07 at the owner's request.** Everything below is blocked on the owner and cannot
@@ -2223,13 +2308,13 @@ answer** — each is only blocking if something needs it.
 None of these is blocked on you, and none is large. Listed so this section is not mistaken for
 the whole of what remains:
 
-- draft the privacy policy and terms pages from what the code actually does (**you** approve)
-- the administrator-grant tool for A3 (**you** run it)
+- ✅ ~~draft the privacy policy and terms pages~~ — done 2026-09-07, both carry a draft banner. **B1 and B2 are still yours: adopt them, and set a contact address.**
+- ✅ ~~the administrator-grant tool for A3~~ — `npm run admin:list` / `admin:grant` / `admin:revoke`, done 2026-09-07. **Running it against production is still yours (A3).**
 - rate limiting, once B3 gives it numbers
 - error monitoring — today there is none at all, so a production failure is invisible
-- an account-deletion path — a user can delete their own journey, but cannot leave
-- `metadataBase`, so shared links and previews resolve
-- pressed states on controls, which need no decision
+- ✅ ~~an account-deletion path~~ — done 2026-09-07. Closing erases the email, the Google link, every session and every journey; contributions stay attributed to a handle that names nobody.
+- ✅ ~~`metadataBase`~~ — done 2026-09-07 (Phase 12G).
+- ✅ ~~pressed states on controls~~ — done 2026-09-07 (Phase 12M): the button surface collapses into its own shadow on `:active`.
 - publishing the review screenshots from CI rather than a workstation
 
 ---

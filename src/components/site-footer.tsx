@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 import { PageCanvas } from '@/components/layout'
 import { SUPPORT_URL } from '@/lib/support'
 import type { Dictionary } from '@/i18n/dictionaries/en'
@@ -31,7 +33,13 @@ import type { Dictionary } from '@/i18n/dictionaries/en'
  * and the line beside it says plainly that supporting changes nothing, because a reader who
  * suspects it buys standing has been told something false about the whole platform.
  */
-export function SiteFooter({ dictionary: t }: { dictionary: Dictionary }) {
+export function SiteFooter({
+  dictionary: t,
+  locale,
+}: {
+  dictionary: Dictionary
+  locale: string
+}) {
   return (
     <footer className="border-t border-hairline bg-surface">
       <PageCanvas className="space-y-1 py-6 text-sm text-ink-500">
@@ -50,6 +58,32 @@ export function SiteFooter({ dictionary: t }: { dictionary: Dictionary }) {
             <span className="sr-only"> {t.footer.supportOpensExternal}</span>
           </a>{' '}
           <span>{t.footer.supportChangesNothing}</span>
+        </p>
+
+        {/*
+          Privacy and terms — Phase 13.
+
+          The footer is where a reader looks for these, and until now there was nothing to
+          find: the platform stored Google-linked accounts and private journey notes with no
+          page anywhere saying what was kept or how to leave.
+
+          Last, and quiet. They are reference rather than destinations, and §10.1's rule for
+          the support link applies just as well here — nothing in this footer should compete
+          with the route a reader came for.
+        */}
+        <p className="flex flex-wrap gap-x-4 pt-1">
+          <Link
+            href={`/${locale}/privacy`}
+            className="underline underline-offset-2 hover:text-ink-700 focus-visible:text-ink-700"
+          >
+            {t.footer.privacy}
+          </Link>
+          <Link
+            href={`/${locale}/terms`}
+            className="underline underline-offset-2 hover:text-ink-700 focus-visible:text-ink-700"
+          >
+            {t.footer.terms}
+          </Link>
         </p>
       </PageCanvas>
     </footer>

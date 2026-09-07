@@ -197,8 +197,26 @@ export const authConfig: NextAuthConfig = {
     async session({ session, user }) {
       const stored = await prisma.user.findUnique({
         where: { id: user.id },
-        select: { handle: true, role: true },
+        select: { handle: true, role: true, closedAt: true },
       })
+
+      /*
+       * A closed account is not a signed-in account — Phase 13.
+       *
+       * `closeAccount` deletes every session row, so in the ordinary case this is unreachable:
+       * there is no session left to run this callback for. It is here for the case that is not
+       * ordinary — a session created in the same instant the account was closed, or a row that
+       * outlives its deletion through some future caching layer.
+       *
+       * Returning a session with a null user makes every `currentViewer()` call answer null,
+       * which is what the rest of the application already handles: the person is anonymous,
+       * the read path works exactly as it does for any visitor, and nothing that writes will
+       * accept them. Cheap, and it costs one column on a query that was already happening.
+       */
+      if (stored?.closedAt != null) {
+        return { ...session, user: undefined }
+      }
+
       return {
         ...session,
         user: {

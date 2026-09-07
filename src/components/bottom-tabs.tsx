@@ -59,11 +59,17 @@ export async function BottomTabs({
     { id: 'explore', href: `/${locale}/routes`, label: t.nav.explore, icon: <ExploreIcon /> },
     { id: 'journey', href: `/${locale}/journeys`, label: t.nav.myJourney, icon: <JourneyIcon /> },
     {
+      /*
+       * Phase 12F pointed this at the signed-in person's *public contributor page*, because
+       * that was the only page about them that existed. Phase 13 added `/account`, and a tab
+       * labelled "Account" that lands on a public profile is the wrong destination now that a
+       * private one exists — what is stored about you, and how to leave, are both there, and
+       * the account page links out to the public page in one tap.
+       *
+       * On a phone this bar is the only navigation, so this is the sole route to either.
+       */
       id: 'account',
-      href:
-        viewer === null
-          ? `/${locale}/signin`
-          : `/${locale}/contributors/${encodeURIComponent(viewer.handle)}`,
+      href: viewer === null ? `/${locale}/signin` : `/${locale}/account`,
       label: viewer === null ? t.auth.signIn : t.nav.account,
       icon: <AccountIcon />,
     },

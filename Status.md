@@ -2626,3 +2626,56 @@ Vercel. All 13 pages generate. Do not chase it.
 And again, twice in two sessions: **a running `next start` serving from `.next` while you rebuild
 into it produces phantom "Could not find the module … in the React Client Manifest" errors.** Kill
 the server first.
+
+---
+
+## 2026-09-07 (later) — Phase 13A: leaving, the legal pages, and somebody who can moderate
+
+### Done
+
+- **Account closure.** A person could delete one journey but could not leave. `/[locale]/account`
+  now lists everything stored about them and closes the account behind a typed confirmation.
+
+  **The obvious implementation is impossible here, and that is the interesting part.**
+  `prisma.user.delete()` fails with `restrict_violation`: every attribution is `onDelete:
+  SetNull`, and nulling a revision's `authorId` is an UPDATE on a revision row, which the
+  immutability trigger refuses. It would also be wrong — the handle is generated and is not a
+  name, so erasing it takes authorship out of a public ledger to remove an identifier that
+  identifies nobody. So: **erase the person, keep the pseudonym.**
+
+- **Privacy and terms**, linked from the footer, with every factual claim read out of the code
+  and nine guards keeping them true. Both carry a "Draft — not yet adopted" banner and neither
+  invents a contact address.
+
+- **The administrator-grant tool.** `npm run admin:list` against production reports "No
+  administrators. Nobody can act on a report or a quarantine." A script rather than a page, for
+  §10.2's reason; identifies people by handle, never by email.
+
+- **Migration `20260907120000_account_closure`** applied to `test` and `production`.
+
+### Decisions taken
+
+- **Closing is the end state, not a soft delete.** There is deliberately no job that later
+  removes the row, and no plan to add one.
+- **The legal pages ship as drafts.** An agent can make the words match the code; it cannot make
+  a promise on the owner's behalf. B1 and B2 stay owner tasks.
+- **No vocabulary guard was weakened to let the legal copy through.** Reworded instead — and the
+  copy is better for it.
+
+### Blockers
+
+Unchanged. A3, B1 and B2 now have their tooling and their drafts, but all three still need the
+owner.
+
+### Next step
+
+Rate limiting (blocked on B3 for the numbers — buildable with clearly-labelled placeholders) and
+error monitoring, which today does not exist at all: a production failure is invisible.
+
+### Note for the next session
+
+**A destruction test must prove the thing existed before it was destroyed.** The first version of
+the closure test wrote a progress row with a null note and every "it is gone" assertion passed.
+
+**A Next server holding `.next` while you rebuild produces phantom module errors**, and one
+holding the Prisma engine blocks `prisma generate` with `EPERM`. Kill servers before either.

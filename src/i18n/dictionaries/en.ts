@@ -137,6 +137,8 @@ export const en = {
      * suspects that paying buys standing has been told something false about the entire
      * platform, and invariant 13 is the reason the sentence can be made without qualification.
      */
+    privacy: 'Privacy',
+    terms: 'Terms',
     support: 'Support Vindeshi Express',
     supportOpensExternal: '(opens gumroad.com in a new tab)',
     supportChangesNothing:
@@ -936,6 +938,164 @@ export const en = {
    *   - CONFIRM, UPDATE and CHALLENGE are named as the different things they are (§16).
    *   - No wording implies a community submission carries official standing (invariant 11).
    */
+  /**
+   * The account page — Phase 13 (FR-26, BR-16, §24.1).
+   *
+   * The copy here is the privacy promise in its most concrete form: not "we value your
+   * privacy" but a list of exactly what is destroyed and exactly what survives. It is written
+   * from `closeAccount` in `src/server/accounts/service.ts` and must be changed with it.
+   *
+   * **It says what stays, not only what goes.** A page that promised complete erasure and then
+   * left a handle on eleven revisions would be lying, and somebody would find out at the worst
+   * possible moment. Saying it up front is also the honest sales pitch for how the handle
+   * works: it is generated, it is not a name, and it was never the identifying part.
+   */
+  /**
+   * Privacy and terms — Phase 13 (B1, B2 in Phases.md § Things you need to do).
+   *
+   * ═══════════════════════════════════════════════════════════════════════════════════════
+   * **A draft for the owner to approve, not a published promise.** The owner makes the
+   * promise; an agent can only make sure the words match the code. Every factual claim below
+   * was read out of the schema, the Auth.js adapter and `closeAccount`, and both pages carry
+   * a banner saying so until the owner has approved them and set a contact address (B2 —
+   * there is no address to publish yet, and inventing one would be worse than a visible gap).
+   *
+   * **It is short because the product is.** No analytics, no tracking, no advertising, no
+   * third-party scripts, no cookies beyond the session, no OAuth tokens kept, no uploads
+   * anywhere. Most privacy policies are long because they describe collection; this one is
+   * mostly a list of things that do not happen — and that list is asserted by tests rather
+   * than promised: `oauth-retention.test.ts`, `journey-privacy.test.ts`, and the guard that
+   * refuses any upload path.
+   *
+   * If `closeAccount` changes, this changes with it. They are one statement in two places.
+   */
+  legal: {
+    draftBannerTitle: 'Draft — not yet adopted',
+    draftBannerBody:
+      'This page describes exactly what the software does today, but it has not been reviewed or adopted by whoever runs this service, and no contact address has been set. Read it as a description of the system, not as a legal document.',
+
+    privacyTitle: 'Privacy',
+    privacyLede:
+      'What this platform stores about you, why, and how to make it stop. This describes the software as it is built, not an intention.',
+
+    principleTitle: 'The short version',
+    principleBody:
+      'You can read every route, road, step, field, source and history on this site without an account and without being counted. Signing in exists for two things only: contributing, and privately tracking your own progress.',
+
+    collectTitle: 'What is stored when you sign in',
+    collectEmail:
+      'Your email address, from Google, used only to recognise you when you return. It is never displayed, never appears in any web address, and is never put on your session — so no page on this site can render it even by mistake.',
+    collectHandle:
+      'A handle, generated at random. It is not your name and is not taken from your Google profile. It is what your contributions are signed with.',
+    collectLink:
+      'A link to your Google account: the provider name and Google’s account identifier. No access token, no ID token and no refresh token is stored — this software never calls Google on your behalf, so it holds no credential that would let it.',
+    collectSession: 'A session, so your browser stays signed in. Signing out deletes it.',
+    collectNotName:
+      'Your name and profile photo are not stored. There are no columns for them.',
+
+    privateTitle: 'What you write, and who can see it',
+    privateBody:
+      'When you follow a route you can record a status against each step, target and completion dates, private notes, and your own tasks. None of it is visible to any other user, ever. Every query for it requires your own user id — there is no version of the function that could fetch somebody else’s.',
+    privateNoProof:
+      'You are never asked to prove any of it. There is no upload anywhere in this product — no passport, transcript, certificate, bank statement, admission letter or visa document — and nowhere to put one.',
+
+    publicTitle: 'What is public',
+    publicBody:
+      'Your contributions are public and signed with your handle: the revisions you write, the routes you create, and your confirmations and challenges. That is the point of the platform — the record has to say who wrote what, or nobody can weigh it. Reports you file are not public.',
+
+    trackingTitle: 'What is not done at all',
+    trackingBody:
+      'No analytics, no tracking pixels, no ads, no third-party scripts, and no cookies other than the sign-in session. Nothing you read is recorded against you. Reading this site anonymously is genuinely anonymous.',
+
+    leavingTitle: 'Leaving',
+    leavingBody:
+      'You can close your account from your account page. It erases your email, the link to your Google account, every session, and every followed route with all of its progress, dates, notes and tasks. It cannot be undone, and signing in again creates a new account with a new handle and no history.',
+    leavingKeeps:
+      'Your contributions stay, signed with your handle. The handle was generated and is not your name, so what remains identifies nobody — and taking authorship out of a public record other people depend on would damage the record without protecting you.',
+
+    processorsTitle: 'Who else is involved',
+    processorsBody:
+      'The site runs on Vercel and its database is Neon; both necessarily handle requests and store data on this service’s behalf. Signing in goes to Google. If you use the optional support link you leave this site for Gumroad, and no payment detail ever reaches us.',
+
+    contactTitle: 'Contact',
+    contactPending:
+      'No contact address has been set yet. Until one is, the reporting form on the content itself is the only route for a takedown or a data request.',
+
+    termsTitle: 'Terms',
+    termsLede:
+      'What this service is, what it is not, and what is expected of you. Short, because the service is simple and free.',
+
+    notAdviceTitle: 'This is not advice, and not an authority',
+    notAdviceBody:
+      'Vindeshi Express is a community-maintained record of how people have reached study destinations. It is not an education agency, a consultancy, an application service or an immigration adviser, and it is not affiliated with any university or government. We do not verify any of it. Check a requirement against its official source before you act on it — every field shows where it came from and when it was last confirmed, precisely so that you can.',
+
+    noGuaranteeTitle: 'No guarantees',
+    noGuaranteeBody:
+      'Requirements, fees, timelines and procedures change, sometimes without notice. Durations and expected departure windows are planning estimates, never promises. A route being established means people have used and confirmed it — not that it will work for you.',
+
+    contributingTitle: 'Contributing',
+    contributingBody:
+      'Anyone signed in may add, update, confirm or challenge. Nothing written here is deleted — a correction is a new revision and the old value stays in the history — so contribute on the understanding that your edits are permanent and public. Creating a route does not make it yours: anybody may revise it, and that is deliberate.',
+    contributingRules:
+      'Do not post anything you have no right to post, anything designed to mislead, or anything unsafe: phishing links, scams, impersonation, harassment. Report those rather than editing around them.',
+
+    moderationTitle: 'Moderation',
+    moderationBody:
+      'Content reported as unsafe may be withheld from public view while it is looked at. Permanent removal is reserved for abuse, legal and safety cases; ordinary disagreement is settled by challenging and revising, not by deleting.',
+
+    freeTitle: 'It is free, and it stays free',
+    freeBody:
+      'There is no payment, no paid tier and no ads. The optional support link changes nothing: the software keeps no record of who has helped with its costs, so nothing about ranking, standing or moderation could depend on it even if somebody wanted it to.',
+
+    liabilityTitle: 'Liability',
+    liabilityBody:
+      'This service is provided as it is, with no warranty, and it may be unavailable or wrong. Decisions about your education, your money and your immigration are yours, and you make them against official sources.',
+  },
+
+  account: {
+    title: 'Your account',
+    lede: 'What this platform knows about you, and how to leave.',
+
+    whatWeKeepTitle: 'What is stored',
+    whatWeKeepLede:
+      'Less than you might expect. This list is complete — there is nothing kept that is not named here.',
+    keepsHandle: 'A generated handle. It is not your name and was never taken from your Google profile.',
+    keepsEmail:
+      'Your email address, used only to recognise you when you sign in again. It is never displayed and never appears in any address on this site.',
+    keepsJourneys:
+      'The routes you follow, and against each step: a status, the dates you set, your private notes and your own tasks. Nobody else can see any of it.',
+    keepsContributionsLabel: 'Contributions',
+    keepsContributions:
+      'Your contributions — the revisions, confirmations, challenges and reports you have made — attributed to your handle.',
+    keepsNothingElse:
+      'No documents, no passport, no transcript, no certificate, no bank statement. There is no upload anywhere in this product, so there is nothing of that kind to store.',
+
+    publicPageTitle: 'Your public page',
+    publicPageLede:
+      'Your contributions are public and attributed to your handle. This is the same page anyone else sees — there is no separate private profile, because there is nothing private on it.',
+    viewPublicPage: 'View your public page',
+
+    closeTitle: 'Close your account',
+    closeLede:
+      'This cannot be undone, and there is no way back into a closed account. Signing in again with the same Google account creates a new account with a new handle and no history.',
+    closeDestroysTitle: 'Destroyed, permanently',
+    closeDestroysEmail: 'Your email address and the link to your Google account.',
+    closeDestroysSessions: 'Every session, so you are signed out everywhere.',
+    closeDestroysJourneys:
+      'Every route you follow, and all of your private progress: statuses, target dates, completion dates, notes and tasks.',
+    closeKeepsTitle: 'Kept, and why',
+    closeKeepsContributions:
+      'Your contributions stay, attributed to your handle. The handle was generated and is not your name, so what remains identifies nobody — and removing it would take the authorship out of a public record other people are relying on.',
+    closeConfirmationLabel: 'To confirm, type CLOSE below.',
+    closeConfirmationPhrase: 'CLOSE',
+    closeConfirmationMismatch: 'That did not match. Nothing has been changed. Type CLOSE exactly.',
+    closeButton: 'Close my account permanently',
+
+    closedNoticeTitle: 'This account is closed',
+    closedNoticeBody:
+      'The person who wrote these contributions has closed their account. The contributions stay because other people rely on them; nothing here identifies anybody.',
+  },
+
   contribute: {
     /*
      * Example values, not labels — Phase 12G.

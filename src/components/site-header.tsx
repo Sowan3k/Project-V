@@ -114,6 +114,14 @@ export async function SiteHeader({
               >
                 {viewer.handle}
               </Link>
+              {/* Phase 13. The account page holds what is stored about a person and the only
+                  way to leave; before it existed, neither was reachable from anywhere. It sits
+                  next to the handle because that is where somebody looks for *themselves*, and
+                  it is a plain link rather than a menu so it works with no JavaScript. */}
+              <Link href={`/${locale}/account`} className={phoneHiddenNavLink}>
+                {t.nav.account}
+              </Link>
+
               <form
                 action={async () => {
                   'use server'

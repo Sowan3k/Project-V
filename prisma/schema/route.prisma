@@ -53,6 +53,27 @@ model User {
   /// (§24.2). Never displayed, never used as an identifier in any URL or public surface.
   email     String?  @unique
   createdAt DateTime @default(now())
+  /// Set when the person closed their account (FR-26, BR-16, §24.1).
+  ///
+  /// **The row survives; the person does not.** Closing erases everything that identifies a
+  /// real human — the email, the OAuth links, every session, and every private journey, date,
+  /// note and task — and keeps the pseudonymous handle the public ledger points at.
+  ///
+  /// It is not a soft delete waiting for a hard one. It is the correct end state, for two
+  /// reasons that both had to be true:
+  ///
+  /// 1. **`prisma.user.delete()` cannot work here, and would be wrong if it could.** Every
+  ///    attribution is `onDelete: SetNull`, and setting a revision's `authorId` to null is an
+  ///    UPDATE on a revision row — which the `vindeshi_revisions_are_immutable` trigger
+  ///    refuses outright. The delete fails with `restrict_violation`.
+  /// 2. **The handle was never personal data.** It is generated, never derived from the
+  ///    provider's display name, and never an email (§24.3). Erasing it would strip a public
+  ///    knowledge ledger of its authorship to remove an identifier that identifies nobody.
+  ///
+  /// A closed account cannot be signed into: the email is gone, so the same Google account
+  /// signing in afterwards creates a genuinely new user with a new handle. Leaving means
+  /// leaving.
+  closedAt  DateTime?
 
   createdRoutes  Route[]            @relation("RouteCreator")
   routeRevisions RouteRevision[]

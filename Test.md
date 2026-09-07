@@ -2749,3 +2749,69 @@ for the page to function.
   which nothing currently triggers. Its markup is reviewed, not executed.
 - **The chevron in a browser without `appearance: none`.** Every target browser supports it;
   the fallback is a native arrow beside the drawn one, which is ugly rather than broken.
+
+---
+
+## 27. Phase 13A — account closure, the legal pages, the admin tool. 2026-09-07
+
+### Account closure — 8 integration tests, against the Neon `test` branch
+
+`tests/db/account-closure.db.test.ts`. Both halves have to hold at once or the feature is a lie
+in one direction or the other.
+
+| What | Result |
+|---|---|
+| The fixture really has something to destroy — 1 journey, 1 progress row, 1 task, 1 OAuth link, 1 session, **and the private note actually written** | pass |
+| Closing destroys all five, and reports the journey count | pass |
+| The email is nulled and `closedAt` set | pass |
+| The handle survives | pass |
+| Route, step, field and revision all survive, **still attributed to the closed account** | pass |
+| Closing twice is not an error | pass |
+| Nobody else is touched | pass |
+| **A raw `prisma.user.delete()` is refused, and the revision keeps its author** | pass |
+
+**One near-miss worth recording.** The first version passed `privateNote` inside an `input: {}`
+object that `setStepProgress` does not take. A progress row was created with a **null note**, and
+every deletion assertion still went green — the test was proving that nothing is deleted
+correctly. Typecheck caught the shape; the fix added an explicit assertion that the note exists
+*before* the closure runs. **A destruction test must prove the thing existed first.**
+
+### The legal pages — 9 guards
+
+`tests/architecture/legal-pages.test.ts` re-checks each falsifiable claim against the code it
+describes: token columns absent from `Account`, `email: ''` on the session, no name or image
+column, no upload path anywhere in `src/`, no analytics dependency in `package.json`, the four
+operations `closeAccount` performs, and the eight models it must never write.
+
+**The prose-versus-code trap, for the fifth time** (Test.md §19, §21, §25). The `Account` model's
+doc comment lists `access_token`, `refresh_token` and `id_token` precisely to explain that they
+are *not* stored, and a whole-file `not.toContain` reported the explanation as the violation.
+Scoped to the model body with `///` lines stripped. An absence guard reads code, never prose.
+
+**And four existing vocabulary guards fired on the new copy** — "verified", "advertising",
+"premium", "supporter" — because the pages use those words while *denying* them and a regex
+cannot tell denial from assertion. **No guard was weakened.** Three sentences were reworded to
+words a reader would scan for anyway; the fourth followed the verification guard's own note that
+`verify` in the negative is still allowed.
+
+### The admin tool
+
+Exercised against production: `admin:list` reports **"No administrators. Nobody can act on a
+report or a quarantine."** — confirming A3 rather than assuming it. Both refusal paths checked:
+an unknown handle and a missing `--handle`.
+
+### Migration
+
+`20260907120000_account_closure` — one nullable column and a partial index. Applied to `test`,
+then to `production` with `npm run db:deploy`. Additive; it cannot lose data, and old code
+ignores the column, so migration-before-deploy is the safe order.
+
+### Not tested
+
+- **No E2E signs in and closes an account.** The integration tests call `closeAccount` directly;
+  the form, the typed confirmation and the sign-out redirect are not exercised end to end.
+- **The `confirm=mismatch` branch** on the account page is not covered by any test.
+- **`admin:grant` has never actually granted anything.** Only the two refusal paths ran; the
+  successful write is unexercised, deliberately, because the only accounts available are real.
+- **Neither legal page has been read by a lawyer or adopted by the owner.** That is B1, and the
+  draft banner says so on the page.

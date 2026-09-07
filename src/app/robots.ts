@@ -17,13 +17,19 @@ import type { MetadataRoute } from 'next'
  *   `/journeys`  a private journey is behind a session. A crawler would index the sign-in
  *                prompt, which is a wrong and slightly alarming search result for a page
  *                whose whole point is that only its owner can see it (invariant 5).
+ *
+ *   `/account`   the same, and one degree worse: a search result reading "Your account —
+ *                Vindeshi Express" against somebody else's site is exactly the shape of a
+ *                phishing page, and this product spends a lot of effort teaching readers to
+ *                distrust that shape (FR-64, FR-67). The page itself answers 404 to anyone
+ *                without a session; the `robots` metadata on it is the second layer.
  */
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/en/admin/', '/en/journeys', '/api/'],
+      disallow: ['/en/admin/', '/en/journeys', '/en/account', '/api/'],
     },
   }
 }
