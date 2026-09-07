@@ -36,6 +36,7 @@
     "review:start": "dotenv -e .env.test.local -v NEXT_DIST_DIR=.next-review -- next start -p 3101",
     "review:shoot": "node scripts/review/shoot.mjs",
     "fixture:germany": "dotenv -e .env.test.local -- tsx scripts/fixtures/germany-rwth-direct.ts",
+    "fixture:launch": "dotenv -e .env.test.local -- tsx scripts/fixtures/launch-candidates.ts",
     "db:wake": "dotenv -e .env.local -- node scripts/db/wake.mjs",
     "dev:test": "dotenv -e .env.test.local -- next dev"
   },

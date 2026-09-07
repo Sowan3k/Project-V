@@ -145,3 +145,114 @@ requirement at a different stage, and that one does sit outside V1.
 word covers two requirements with different owners, different timing and different scope, and
 only one of them is ours. Grouping by topic rather than by stage would have put a post-arrival
 task in front of a student who needed the pre-departure one.
+
+---
+
+## Findings from five real routes — 2026-09-07
+
+Five owner-supplied Bangladesh-origin Master's routes (Malaysia, UK, Japan, Germany, Austria)
+loaded to the disposable branch by `scripts/fixtures/launch-candidates.ts`. **89 steps, 5 routes,
+no fact changed to fit the schema** — where something did not fit, it is written below instead.
+
+**What held.** The graph model took all five without strain. Every structural case the owner
+asked for renders and is labelled by the ordinary renderer, with no route-specific code:
+
+| Route | Structure | Renders as |
+|---|---|---|
+| Malaysia | institution-managed vs permitted self-submission to EMGS | *Choose one pathway* + *Parallel work* |
+| UK | parallel CAS / funds / TB, with ATAS optional | *Parallel work* + *Optional branch* |
+| Japan | supervisor-first vs direct application; exam/interview optional | *Choose one pathway* + *Optional branch* |
+| Germany | three application channels — direct / uni-assist forward / VPD | *Choose one pathway* + *Parallel work* |
+| Austria | entrance-exam vs normal admission; Residence Permit **before** Visa D | *Choose one pathway* + *Parallel work* |
+
+Austria is the strongest evidence: its permit-before-visa ordering is expressed purely as edges,
+and nothing in the renderer knows Austria exists (invariant 24).
+
+---
+
+### 1. There is nowhere to record how well a fact has been checked
+
+`content/README.md` defines a research-status vocabulary — `SOURCED`, `NEEDS-HUMAN`,
+`UNVERIFIED`, `CONFLICTED` — and **the product has no column for it.** `SourceClass` answers a
+different question: *who asserts this*, not *how well has it been checked*.
+
+Carried in `sourceNote` free text as a workaround, which means it is not queryable, not
+renderable as a signal, and cannot be filtered or counted. **A field where two credible sources
+disagree currently looks identical to one that is fully sourced.**
+
+This matters most for `CONFLICTED`. §7.3's whole weight system is about a signal earning
+prominence by changing what a reader should do, and "two official sources disagree" is exactly
+such a signal — it is currently invisible.
+
+*Not a blocker for these five: none of them is CONFLICTED. It becomes one the first time a
+worksheet is.*
+
+### 2. Step categories stop at the airport, and three of five routes do not
+
+The six `STEP_CATEGORIES` end at `travel_departure`. But:
+
+- **Malaysia:** post-arrival medical screening at an EMGS panel clinic **within 7 working days**
+  of arrival — without it, Student Pass endorsement cannot proceed.
+- **Japan:** register your address at the municipal office **within 14 days**.
+- **Austria:** register your address **within three working days**, then collect the permit.
+
+All three are currently `travel_departure`, which is the closest available and is wrong: they
+happen *after* arrival, they carry hard deadlines, and a student who reads the route as ending
+at the aeroplane misses them. The category colour reinforces the error — they paint as travel.
+
+**This is the clearest modelling gap the five routes found.** A seventh category —
+`arrival_settling`, or similar — would be a schema change and a change request (BR-35), so it is
+recorded rather than made.
+
+### 3. A step's duration is one number, and some real durations are bimodal
+
+`typicalDurationDays` is a single value. Japan's visa decision is *"about 7 working days where
+documents are complete; incomplete or complex cases can take longer, potentially substantially
+longer"* — one number cannot say that, and the number is the one the road draws.
+
+Handled by putting the real statement in a `duration` **field** and the optimistic figure on the
+step. It works, but **the road shows the optimistic number** and the qualification is one click
+away inside the step. For a route whose whole value is honest timing, that is worth revisiting.
+
+Germany's case was handled better and shows the pattern that works: the 27-month queue and the
+4-week processing minimum are **two separate steps**, because they are two separate waits. That
+is the right modelling and it needed no schema change.
+
+### 4. A severe, current, route-level disruption has nowhere prominent to live
+
+Germany's *"waiting time is already MORE THAN 27 MONTHS and largely unpredictable"* is the single
+most decision-changing fact in all five routes. Today it is a `warning` field on step 14.
+
+- The **route passport** speaks only to maturity — experimental, unconfirmed, one contributor.
+  A student scanning search results sees nothing about a 27-month wait.
+- **`TemporaryDisruption`** exists and is the right *shape* (date-scoped, expires without
+  rewriting the route) but the wrong *claim*: this is not temporary, and filing it there would
+  say something false about it.
+- So the fact is truthful, correctly sourced, and **two clicks below the fold**.
+
+A student choosing between these five routes on the search page is making exactly the decision
+this fact should inform, and the ribbon cannot tell them.
+
+*This is a product gap rather than a schema gap — the data is right, the surfacing is not.*
+
+### 5. Real step labels are longer than fixture labels, and truncate
+
+*"uni-assist evaluates and forwards your application"* and *"Check which application channel your
+university uses"* both truncate on the road at 1440px — `uni-assist evaluates and forwards your
+appl…`. Every fixture label written by hand so far has been two or three words.
+
+The full label is in the station's `<title>`, so assistive technology gets it; a sighted reader
+gets an ellipsis. Not a defect in the renderer, but a real consequence of real content that no
+fixture had surfaced.
+
+### 6. What did *not* need changing
+
+- **`origin_specific` carried every Bangladesh-specific fact cleanly** — the Malaysian visa
+  requirement, the UK TB list, Japan's VFS routing, Germany's CSP registration, Austria's New
+  Delhi jurisdiction. FR-81's applicability set did its job.
+- **"visa-stage-specific" needs no new applicability value.** A field lives on a step, so
+  visa-stage scoping is already structural. Recorded so nobody adds one.
+- **Official and community never blurred.** Every community report is a
+  `community_experience` field with `community_submission` provenance, phrased as *"A student
+  reported…"*, and the field-group headings put them in a separate labelled region from
+  government facts (FR-54, invariant 11).
