@@ -50,7 +50,7 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 12E | Signed-in and community surfaces | Journey, changes, contribution, safety | ✅ |
 | 12F | Mobile and tablet as their own product | Phone IA, not a narrower desktop | ✅ |
 | 12G | Visual acceptance | Gate 4 green, screenshots reviewed | 🟡 |
-| 12H | Density: the composition around the drawing | Every space occupied; less scrolling | 🟡 |
+| 12H | Density: the composition around the drawing | Every space occupied; less scrolling | 🟡 owner review |
 | 13 | Pre-launch gates and release | Gates 1–4 pass | ⬜ |
 | — | **Content track** (parallel, from Phase 1) | Real seeded routes | 🟡 |
 
@@ -1711,6 +1711,48 @@ there:
 | Result row becomes two columns | VR-12 card | Search **3,917 → 3,087** (−21%); first screen shows three routes, not one and a half |
 | Route facts panel moves right of the title | VR-04 | Both halves of the header used |
 | Destinations move into the hero | VR-01 | Landing **1,406 → 1,163**, one band removed |
+| The comparison takes the canvas, at `ROAD` density | VR-07, §7.2 | Changes **4,101 → 2,787** (−32%); two roads that can actually be read |
+| The step-by-step table goes behind a disclosure | §7.1 | Open when the *structure* changed, closed when every row would say "No change" |
+| The ledger becomes dense rows, and says what it changed | — | History **5,012 → 3,069** (−39%) |
+
+### Where every screen finished
+
+| Screen | Before | After | |
+|---|---|---|---|
+| Landing | 1,406px | **1,163px** | 1.3 screens |
+| Route | 3,439px | **2,418px** | 2.7 |
+| Changes | 4,101px | **2,787px** | 3.1 |
+| Step | 2,934px | **2,875px** | 3.2 |
+| Search | 3,917px | **3,087px** | 3.4 |
+| History | 5,012px | **3,069px** | 3.4 |
+
+Nothing over 3.5 screens; the two worst were 4.6 and 5.6. Zero horizontal overflow at every
+width throughout.
+
+### The second finding: a rail can become the problem it solved
+
+Once the comparison left the Changes body, that page did not get shorter — the **rail** was
+three panels totalling 1,040px beside a body of 600, and a grid row is as tall as its tallest
+child. It is the same defect as the empty column this phase began with, with the columns
+swapped, and it is the failure mode of the fix itself.
+
+The test that separates the two: **is this panel about the thing beside it, or is it
+reference?** The activity summary is about this route and belongs in the rail. "What a change
+is versus what a disruption is" and "what the four levels mean" are read once by a first-time
+visitor and skipped forever after; they belong two-across at the foot, where they cost 200px
+instead of 590.
+
+### And one the ledger taught: length can hide a defect
+
+History was five and a half screens *and* under-informing. It rendered `entry.kind` — the
+literal union member `'route' | 'step' | 'field'` — uppercased, so a reader saw "FIELD"; and
+`entry.subject`, which says which stage or what kind of information a revision belongs to, was
+fetched and never displayed. A ledger that shows a value with no indication of what it belongs
+to is not a ledger.
+
+Nobody had noticed because forty identical bordered cards are not read, they are scrolled past.
+**Making a page dense enough to read is what exposed that it had nothing worth reading in it** —
+which is an argument for doing density work early rather than as polish.
 
 ### The finding worth keeping: width can cost height
 
@@ -1761,12 +1803,12 @@ first paint, and measured on a throttled connection. That would be a change requ
 styling decision.
 
 **Exit criteria**
-- ✅ No primary screen exceeds ~3 screens of scrolling at 1440×900 (landing 1.3, route 2.7,
-  search 3.4)
-- ✅ No page leaves a grid region structurally empty beside a tall neighbour
+- ✅ **No screen exceeds 3.5 screens of scrolling at 1440×900** — the worst is now 3.4, and the
+  two that were 4.6 and 5.6 are 3.1 and 3.4
+- ✅ No page leaves a grid region structurally empty beside a tall neighbour, **in either
+  direction** — the rail is not allowed to become the long column either
 - ✅ Nothing removed to gain density — every qualification, count and category word intact
-- ⬜ Changes (4.6) and History (5.6) — both dominated by renderer output in narrow columns, and
-  both blocked on the density-versus-width finding above. Neither is on the primary journey
+- ✅ Zero horizontal overflow at 360, 768, 1280 and 1440 throughout
 - ⬜ Owner review of the re-shot contact sheet
 
 **Visual references:** VR-01, VR-04, VR-12, VR-13

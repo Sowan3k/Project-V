@@ -2261,3 +2261,90 @@ query away and it is the difference between a real defect and a slow render.
   and 12F all still share.
 - **Gate 2** is untouched and waits on the owner's research, as intended.
 
+
+---
+
+## §23 — Phase 12H: density, measured rather than judged (2026-09-07)
+
+The owner's reservation — *"every space was smartly occupied. people have to scroll less"* —
+was actionable because it could be turned into a number. This section records the method as much
+as the result, because the method is what makes "does it look good" a thing engineering can
+answer at all.
+
+### The measurement
+
+One Playwright page at 1440×900, `document.documentElement.scrollHeight` per screen, against the
+13-step fixture on the disposable branch. That is the whole instrument.
+
+| Screen | Before | After | Change |
+|---|---|---|---|
+| Landing | 1,406px | **1,163px** | −17% |
+| Route | 3,439px | **2,418px** | −30% |
+| Changes | 4,101px | **2,787px** | −32% |
+| Step | 2,934px | **2,875px** | −2% |
+| Search | 3,917px | **3,087px** | −21% |
+| History | 5,012px | **3,069px** | −39% |
+
+Horizontal overflow was checked at the same time on every page and stayed 0 throughout.
+
+**Why a crude number was the right instrument.** Scroll height is not quality — a page can be
+short and bad. But it is *objective*, it moves when the thing the owner complained about moves,
+and it caught two changes that felt like improvements and were not. Design arguments that cannot
+be settled by looking get settled by this instead.
+
+### Two changes that measurement reversed
+
+**Giving the search results the full canvas made the page taller** — 3,917 → 4,364. A ribbon is
+an SVG with a viewBox and `w-full`, so it scales in *both* dimensions; a column widened from
+826px to 1,280px scaled every band by 1.55×, and a route with parallel stages, whose ribbon
+carries lane gaps, grew two hundred pixels. Reverted. **Width can cost height**, and the
+renderer's densities — not the container — are the scale dial.
+
+**Moving the Changes comparison to the canvas did not shorten that page at all** on the first
+measurement: 4,101 → 4,098. The comparison had shrunk by 530px, but the **rail** was three panels
+totalling 1,040px beside a body of 600, and a grid row is as tall as its tallest child. Without
+the number this would have been recorded as a win.
+
+### Three defects found by making pages dense enough to read
+
+None of these is a layout bug, and none had failed any test.
+
+1. **History rendered `entry.kind` raw** — the union member `'route' | 'step' | 'field'`,
+   uppercased — so a reader was shown "FIELD".
+2. **History fetched `entry.subject` and never displayed it.** That field carries *which* stage
+   or *what kind* of information a revision belongs to, so the ledger showed a value with no
+   indication of what it was a value of, on the one page whose entire purpose is following how a
+   claim came to say what it says.
+3. **Search had no key to its own ribbons.** Six categories in journey order, each an icon in a
+   colour, and nothing on the page said what any of them meant — information present and
+   unreadable.
+
+All three had been in front of every reviewer for months. Forty identical bordered cards are not
+read, they are scrolled past. **Making a page dense enough to read is what exposed that it had
+nothing worth reading in it**, which is an argument for treating density as structural work
+rather than as polish at the end.
+
+### What the guards said
+
+`vitest run` stayed at **903 passing** across the whole phase — no guard edited, added or
+skipped. Browser assertions: `presentation.spec.ts` 45 passing at 360 and 1280, `smoke.spec.ts`
+green, `changes.spec.ts` 9 passing at 1280.
+
+**One E2E failure, and it was right.** Putting the step-by-step comparison table behind a
+disclosure hid a row `changes.spec.ts` asserts on. The fix was to make the product behave better
+rather than to teach the test to open it: the disclosure is **open when the structure changed**
+— a stage added, archived, reordered, renamed or retimed — and closed when only a field value
+moved and every row would read "No change". `structureChanged` is the flag `ExactChange` already
+keys on; nothing new decides it.
+
+**One guard updated, not weakened.** The contributor-link check names the files where a handle is
+rendered, and the history row moved out of the page into a component. The list follows the row.
+What it guards — that a handle is a link to the evidence behind it — is unchanged.
+
+### Not verified here
+
+- **Whether it now looks like the mockups.** That is Gate 4, it is human-judged, and it cannot be
+  automated away. The sheet is re-shot and waiting.
+- **The signed-in surfaces.** Still not captured by the review suite, still listed rather than
+  omitted (§19).
+

@@ -13,6 +13,10 @@ By Claude Code
 
 **Goal:** the owner accepted the ribbon and road, and named one reservation. Act on it.
 
+**Pushed** to `origin/main` at `e8e27a8` after the first half, at the owner's go-ahead. The
+first attempt failed on a network timeout to github.com and succeeded on the retry; `gh` is
+not installed on this workstation, so **the CI result has not been read from here.**
+
 ### The acceptance, and what it closes
 
 > *"oh i just like these new rebons. um. all accepted"*
@@ -94,19 +98,49 @@ its visible *"an estimate, not a guarantee"* in full (invariant 16, BR-18) — m
 not shortened. Every category still states itself in words beside its colour (§10.4). The header
 counts are still counts and stored dates (invariant 14). No copy was rewritten to fit a layout.
 
+### Then Changes and History, the two that were left
+
+Owner said "move forward". Both are done, and both taught something.
+
+**Changes 4,101 → 2,787px.** Its two roads were drawn at about 400px each inside the body, and
+`ROAD_NARROW` is 324 units wide — so they were being scaled *up* by a fifth, 1,604px tall, in
+columns too narrow to read, in the one view whose whole idea is that you see the shape of a
+change before reading a word. `RouteContext` gained a `wide` slot, the comparison took the
+canvas, and at ~620px a side the ordinary `ROAD` fits: three stages per row instead of two, so
+fewer rows, shorter panels *and* larger type at once.
+
+**History 5,012 → 3,069px, and it was under-informing.** It rendered `entry.kind` — the literal
+union member — uppercased, so a reader saw "FIELD"; and `entry.subject`, which says which stage
+or what kind of information a revision belongs to, was fetched and never displayed. Forty
+identical bordered cards are not read, they are scrolled past, which is why nobody had noticed.
+**Making a page dense enough to read is what exposed that it had nothing worth reading in it.**
+
+**Every screen is now under 3.5 screens** at 1440×900. Landing 1.3, route 2.7, changes 3.1,
+step 3.2, search 3.4, history 3.4. The two worst were 4.6 and 5.6.
+
+### The second finding: a rail can become the problem it solved
+
+Once the comparison left the Changes body, the page did not get shorter — the **rail** was three
+panels totalling 1,040px beside a body of 600, and a grid row is as tall as its tallest child.
+Same defect as the empty column this phase started with, columns swapped. It is the failure mode
+of the fix itself.
+
+The test that separates them: **is this panel about the thing beside it, or is it reference?**
+Activity is about this route and belongs in the rail. "What a change is versus what a disruption
+is" is read once and skipped forever after; it belongs at the foot, where it costs 200px instead
+of 590.
+
 ### Open
 
-- **Changes (4.6 screens) and History (5.6)** — both dominated by renderer output in narrow
-  columns, both blocked on the width-costs-height finding. Neither is on the primary journey.
-- **Owner review of the re-shot contact sheet** (`npm run review:build && review:start &&
-  review:shoot`).
-- **Nothing has been pushed this session or the last.** CI is the authoritative gate and two
-  E2E items still rest on it.
+- **Owner review of the re-shot contact sheet** (`npm run review:build`, `review:start`,
+  `review:shoot`).
+- **Gate 4** — the same review, formally.
+- **Gate 2** — the owner's researched content, as always.
 
 ### Next step
 
-Re-shoot the sheet for the owner, then Changes and History — which need a density decision, not
-a layout one.
+Gate 4 with the owner's eye on the sheet, then Gate 2 waits on content. The engineering side of
+12B–12H is finished.
 
 ---
 
