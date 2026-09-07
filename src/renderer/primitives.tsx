@@ -270,10 +270,29 @@ export function RoadSegment({ placed, density }: { placed: PlacedEdge; density: 
  *   the shapes are distinct, and the accessible name states the category in words. What is
  *   gone is a text label that was illegible at phone width anyway.
  *
- * White on category `ink` is the pairing the contrast test already measures — `presentation
- * .test.ts` proves every category ink is at least 4.5:1 against white, worst case 6.13:1 —
- * so the icon is comfortably above the 3:1 that a non-text graphic needs, with no new token
- * and no new measurement to keep true.
+ ─────────────────────────────────────────────────────────────────────────────────────────
+ * **The band is painted in `line`, not `ink` — owner instruction, 2026-09-07.**
+ *
+ * The owner asked for the ribbon to match the mockups exactly. Sampling VR-03 settles what
+ * "exactly" means here, and it is not the hues: our six categories already sit on the
+ * mockup's spectrum in journey order — blue, teal, green, amber, red, violet. What differed
+ * was **tone**. VR-03's segments are bright mid-tones carrying white marks; ours were painted
+ * in `ink`, the family's darkest tone at L=0.46, so a ribbon read as a row of heavy navy and
+ * maroon slabs where the mockup reads as a bright band.
+ *
+ * `line` is L=0.62, which is the mockup's brightness, and it already exists — this needed no
+ * new token and no re-fit of a palette that §11 settled by measurement.
+ *
+ * **The contrast bar moves with it, and is still met.** White on `ink` was 6.73–7.67:1;
+ * white on `line` is 3.40–3.93:1. The mark inside a segment is a **non-text graphic**, whose
+ * bar is 3:1 (WCAG 1.4.11), not the 4.5:1 that text needs — and the ribbon carries no text at
+ * all, because `RIBBON.showLabels` is false. `presentation.test.ts` now measures this pairing
+ * directly rather than inheriting a guarantee about a tone the band no longer uses.
+ *
+ * What did **not** change is what colour *means*. VR-03's eight segments are a spectrum
+ * across a route's positions; ours are per category, so "documents" is the same blue on every
+ * route in the product. §8.5.4 asks for persistent semantic categories, and a positional
+ * spectrum would make a stage's colour depend on how many stages happened to precede it.
  */
 export function RibbonSegment({
   node,
@@ -371,7 +390,7 @@ export function RibbonSegment({
           changes nothing else.
         */
         d={`M ${x} ${y} L ${x + w} ${y} L ${x + w + notch + 0.5} ${y + h / 2} L ${x + w} ${y + h} L ${x} ${y + h} L ${x + notch} ${y + h / 2} Z`}
-        fill={archived ? 'var(--color-surface)' : style.ink}
+        fill={archived ? 'var(--color-surface)' : style.line}
         stroke={archived ? style.ink : 'none'}
         strokeWidth={archived ? 1 : 0}
         {...(archived ? { strokeDasharray: '4 3' } : {})}
@@ -395,8 +414,9 @@ export function RibbonSegment({
         cx={x + notch + (w - notch) / 2}
         cy={y + h / 2}
         size={icon}
-        // White on category ink: the pairing `presentation.test.ts` already measures at ≥4.5:1.
-        // A departing stage has no fill to sit on, so its mark returns to the category ink.
+        // White on category `line`: a non-text graphic, so the bar is 3:1 and the measured
+        // worst case is 3.40:1 (`presentation.test.ts`). A departing stage has no fill to sit
+        // on, so its mark returns to the category ink.
         colour={archived ? style.ink : 'var(--color-surface)'}
       />
     </g>

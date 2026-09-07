@@ -220,6 +220,37 @@ describe('the six step categories are a measured palette, not a chosen one', () 
    * 3:1 — but it *is* a bar. A pastel road on a white page is invisible to a reader with low
    * vision, and the road is the product's primary metaphor (§8.5.3).
    */
+  /**
+   * **White marks on the ribbon band — added 2026-09-07 when the band changed tone.**
+   *
+   * The band was painted in `ink` and the icon inherited that pairing's 4.5:1 guarantee. It is
+   * painted in `line` now, to match VR-03's brightness, so the guarantee has to be re-measured
+   * rather than assumed — which is exactly the failure mode Test.md §25 recorded: a guard
+   * scoped to where a defect was last found will not catch it where it goes next.
+   *
+   * The bar is **3:1**, not 4.5:1, and that is not a relaxation. WCAG 1.4.11 governs non-text
+   * contrast, and the ribbon carries no text: `RIBBON.showLabels` is false, so what sits on a
+   * segment is a category icon and nothing else. Asserted here so that if either the tone or
+   * the mark's colour moves again, this fails.
+   */
+  it('meets 3:1 for the white mark on every category band', () => {
+    const tokens = themeTokens()
+    const white = oklchToRgb(1, 0, 0)
+    const failures: string[] = []
+
+    for (const category of ['documents', 'language', 'admission', 'funding', 'immigration', 'travel']) {
+      const band = tokens.get(`cat-${category}-line`)
+      if (!band) {
+        failures.push(`cat-${category}-line missing`)
+        continue
+      }
+      const ratio = contrast(white, oklchToRgb(...band))
+      if (ratio < 3) failures.push(`white on cat-${category}-line: ${ratio.toFixed(2)}`)
+    }
+
+    expect(failures, 'The ribbon mark must stay above 3:1 on its band (WCAG 1.4.11)').toEqual([])
+  })
+
   it('meets 3:1 for every category line against the page', () => {
     const tokens = themeTokens()
     const white = oklchToRgb(1, 0, 0)

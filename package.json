@@ -37,6 +37,7 @@
     "review:shoot": "node scripts/review/shoot.mjs",
     "fixture:germany": "dotenv -e .env.test.local -- tsx scripts/fixtures/germany-rwth-direct.ts",
     "fixture:launch": "dotenv -e .env.test.local -- tsx scripts/fixtures/launch-candidates.ts",
+    "fixture:exercise": "dotenv -e .env.test.local -- tsx scripts/fixtures/launch-candidates-exercise.ts",
     "db:wake": "dotenv -e .env.local -- node scripts/db/wake.mjs",
     "dev:test": "dotenv -e .env.test.local -- next dev"
   },
