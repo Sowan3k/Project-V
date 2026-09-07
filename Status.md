@@ -2713,3 +2713,50 @@ Unchanged.
 Rate limiting is the last agent-doable item, and it is half-blocked: the mechanism is
 buildable, the numbers are B3 and belong to the owner. Everything else remaining is A1–A5,
 B1–B4 and C1–C3.
+
+---
+
+## 2026-09-07 (end of session) — Phase 13C, and four commits that had never been pushed
+
+### Done
+
+- **The activity band**, from VR-12's "Built by Students" footer. The mockup's four figures
+  include three things this product must not say — a verification percentage, a superlative, and
+  rounded-up marketing numbers — so what shipped is the honest half: exact counts of things that
+  exist, conferring nothing, and honest at zero.
+
+- **The test branch was reset.** The suite's 10 failures were **pollution, not a regression**:
+  304 routes and 77 users accumulated across months of runs. Now 5 routes and nothing else.
+
+- **Fresh README screenshots** against the five real routes, and the README brought up to date —
+  including correcting "the read path ships one client component", which is now three.
+
+- **`scripts/review/out` deleted** — 37 MB of gitignored, regenerable contact sheet.
+
+- **Pushed.** Four commits from this session had been built, tested and committed but **never
+  pushed**, so none of the work was on Vercel. That is why the owner could not see any of it.
+
+### Decisions taken
+
+- **A mockup's good idea and a mockup's numbers are different things.** VR-12 was right that a
+  community record should show how much community there is, and wrong about every figure. Taking
+  the first and refusing the second is the pattern; §8.6 exists for exactly this.
+- **Counting contributors, never accounts.** A sign-up tally rewards growth over accuracy.
+
+### Blockers
+
+**A1 is resolved** — the site answers 200, deployment protection is off. A2–A5, B1–B4 and C1–C3
+remain the owner's.
+
+### Next step
+
+Re-run the integration suite against the clean branch to demonstrate the 10 failures are gone.
+Then rate limiting, which is the last agent-doable item and is half-blocked on B3 for its numbers.
+
+### Notes for the next session
+
+- **Push.** Committing is not deploying, and four commits sat unpushed for a whole session.
+- **Stop every background suite before resetting a Neon branch**, then check for orphaned vitest
+  workers — killing the task does not kill them.
+- **The disposable-marker guard is checked at start-up, not per write.** A run that began before a
+  reset will happily keep writing after it.

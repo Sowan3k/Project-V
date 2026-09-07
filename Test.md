@@ -2841,3 +2841,62 @@ that is not in any log is a number nobody can look up.
 - **No alerting.** These are logs somebody has to go and read; nothing pages anybody. That is
   the right size for a platform with no traffic yet, and it is a decision to revisit rather than
   an oversight.
+
+---
+
+## 29. Phase 13C — the activity band, and the test branch reset. 2026-09-07
+
+### The 10 integration failures were pollution, not a regression
+
+Diagnosed rather than assumed. The `test` branch held **304 routes and 77 users** accumulated
+across months of runs, including one route with destination `ZZ` — which is precisely what makes
+
+```
+const empty = await searchRoutes({ destinationCountry: 'ZZ' })
+expect(empty.routes).toEqual([])
+```
+
+fail. Nothing in this session's work touched search.
+
+Fixed the documented way (CLAUDE.md §10.2 — *"cleanup is a branch reset, never a delete path in
+the product"*): `neon branches reset test --parent`, `scripts/mark-test-branch.mjs`, re-seed.
+Verified afterwards: **5 routes, exactly the five launch candidates, and nothing else.**
+
+**Two traps, both new, both worth the next session's time:**
+
+1. **A backgrounded test run kept writing through the reset.** Routes reappeared within seconds
+   and `mark-test-branch.mjs` correctly refused. The suite had checked the disposable marker at
+   start-up, so resetting mid-run left it writing to a branch that no longer carried one — the
+   guard was not bypassed, it was simply asked once, before the fact changed.
+2. **Stopping the task did not stop the writers.** Orphaned `vitest` and `dotenv-cli` node
+   processes survived and had to be found by command line and killed by pid.
+
+**Stop every background suite before resetting a branch, and check for orphans afterwards.**
+
+### The activity band
+
+| What | Result |
+|---|---|
+| Renders with real data | 377 routes / 9 destinations / 23 contributors / 1,340 corrections / 58 changes, on the pre-reset branch |
+| Renders honestly after the reset | 5 / 5 / **0** / 180 / 0 — zero contributors beside 180 corrections, because the fixtures were loaded by a script and not by a person |
+| Empty state | Not yet seen in a browser; production has no routes and the review branch now always has five |
+| Whole suite | lint, typecheck, 919 unit tests |
+
+### Deployment, verified live
+
+| Check | Result |
+|---|---|
+| `dpl_E6RBcQKewdWZ1jhJJ7ZTMFiJb8cj` | `READY` |
+| `https://vindeshi-express.vercel.app/en` | **200** — deployment protection is off, A1 resolved |
+| `/en/privacy`, `/en/terms` | 200 both |
+| New button surface live | `vx-btn-primary` present in the served HTML |
+| Footer legal links live | `Privacy` present in the served HTML |
+
+### Not tested
+
+- **The activity band's empty state has never been rendered in a browser.** It is the state that
+  ships to production, and it is currently only reasoned about.
+- **The integration suite has not been re-run since the reset**, so the 10 failures are diagnosed
+  but not yet demonstrated fixed.
+- **No test asserts the band's counts against known data.** It reads six aggregates; nothing
+  proves `contributions` is the sum it claims to be.

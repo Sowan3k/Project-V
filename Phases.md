@@ -2288,6 +2288,74 @@ The route was removed afterwards.
 
 ---
 
+## Phase 13C — the activity band, and a clean test branch — ✅ 2026-09-07
+
+**Owner:** *"somewhere in the website we should show the user counts, updates counts and
+contribution counts like cricket scores… probably the visual reference folder contains these."*
+
+It does. VR-12 runs a band across the bottom of the browse page: **"50K+ Active Students · 200+
+Destinations · 1.2M+ Steps Followed · 98% Community Verified"**, under *"Vindeshi Express is the
+largest community platform for Bangladeshi students. All information is community verified."*
+
+The idea is good and the band now exists. **Three of the four figures as drawn are things this
+product must not say**, which is worth recording, because building the mockup as drawn would have
+shipped all three:
+
+| VR-12 | Why not |
+|---|---|
+| `98% Community Verified` | §8.6 lists it by name as a mockup exception. Not an admission or immigration authority (BR-20, invariant 12), and a percentage implies precision this data has not got (§7.3). |
+| `the largest community platform` | An unfalsifiable superlative about ourselves. |
+| `50K+`, `1.2M+` | Rounded-up marketing shapes. §8.6: every number in the mockups is illustrative. |
+| `All information is community verified` | The opposite of true, and of what every route page says. |
+
+What survives is the honest half: **counts of things that actually exist, stated exactly.** Five
+figures — routes, destinations, people who have contributed, corrections recorded, changes
+announced — and when the record last moved.
+
+Three rules, all of them load-bearing:
+
+- **Exact, never rounded.** A platform that inflates the one number a reader can check has told
+  them how to read every other number on the site.
+- **They confer nothing** (invariant 14). Nothing reads `platformActivity()` except the component
+  that displays it. No count feeds ranking, standing, archival or a badge, and the lede says so.
+- **Honest at zero**, which is the state that ships. The empty case says what an empty
+  community-maintained record *is* and offers the one action that changes it, rather than hiding
+  the section or padding it (§45, Gate 2).
+
+**No people are counted.** VR-12's "Active Students" is a sign-up tally — a number nobody reading
+a route benefits from, and one that quietly rewards growth over accuracy (§25). `contributors`
+counts distinct authors of revisions, so it reads **0 beside 180 corrections** for the
+script-loaded fixtures. That looks odd and is exactly right: no person wrote them.
+
+### The test branch was reset, and it fixed two things at once
+
+The integration suite had **10 failures**, and they were **not a regression**: the `test` branch
+had accumulated **304 routes and 77 users** across months of runs, including a stray `ZZ`
+destination that made `searchRoutes({destinationCountry: 'ZZ'})` return a row where the test
+expects none. The same pollution made the browse page unphotographable — the results were full of
+`read-1788781951507-…` slugs.
+
+`neon branches reset test --parent`, then `scripts/mark-test-branch.mjs`, then re-seed the five
+launch candidates. **5 routes, nothing else.**
+
+*Two traps worth remembering.* The first reset appeared to fail — routes kept reappearing —
+because a **backgrounded integration run was still writing to the branch**. It had checked the
+disposable marker at start-up, so resetting the branch mid-run left it writing to a database that
+no longer carried one. Killing the task was not enough either: **orphaned vitest workers survived
+it** and had to be killed by name.
+
+### Deployment
+
+Four commits had been built and never pushed, so **nothing from this session was on Vercel**.
+Pushed; `dpl_E6RBcQKewdWZ1jhJJ7ZTMFiJb8cj` reached `READY`, and the live site was verified to be
+serving the new button surface and the footer legal links.
+
+**A1 is resolved.** `https://vindeshi-express.vercel.app/en` answers **200**, not the `302` to a
+Vercel login recorded when that task was written. Deployment protection is off; the site is
+publicly reachable.
+
+---
+
 ## Things you need to do
 
 **Added 2026-09-07 at the owner's request.** Everything below is blocked on the owner and cannot
@@ -2303,7 +2371,7 @@ platform safe to be public; **C** is the long pole and can start today in parall
 
 | # | Task | Why only you |
 |---|---|---|
-| A1 | **Turn off Vercel deployment protection.** `https://vindeshi-express-…vercel.app/en` currently answers `302` to a Vercel login — the site is not publicly reachable. | Vercel project settings. Needs your account. |
+| A1 | ✅ ~~**Turn off Vercel deployment protection.**~~ **Done — verified 2026-09-07.** `https://vindeshi-express.vercel.app/en` answers `200`. The site is publicly reachable. | — |
 | A2 | **Publish the Google OAuth consent screen.** Until it leaves "testing", only accounts you have whitelisted can sign in — everybody else gets an error at the moment they try to contribute. Verify the current mode before launch; this is the commonest silent launch blocker there is. | Google Cloud console. Needs your account. |
 | A3 | **Grant yourself the administrator role in production.** The role is checked in three services and the moderation queues are built — but **there is no path in the product to grant it.** Today nobody is an administrator, which means a reported phishing link cannot be withheld by anyone. An agent can write the grant tool; running it against production is a deliberate human act under the CLAUDE.md §4 branch discipline. | Production database write. |
 | A4 | **Decide the public brand name (D-32).** It is listed as an open decision and "Vindeshi Express is a working candidate, not frozen". Everything downstream waits on it: the domain, the wordmark, every link anybody shares, the OAuth consent screen's app name. Changing it after launch breaks all of them. | A naming decision is yours. |
