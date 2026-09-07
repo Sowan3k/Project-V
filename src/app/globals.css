@@ -113,8 +113,28 @@
    * all, which on a white page is invisible. Phase 12 found it and removed the usages; this
    * defines the token those usages wanted, so the guard that catches the next one has
    * something legitimate to allow.
+   *
+   * ─────────────────────────────────────────────────────────────────────────────────────
+   * **Re-fitted in Phase 13, and it had two faults at once.**
+   *
+   * It was written `oklch(0.972 0.014 254)`, whose blue channel converts to **1.0014** — a
+   * tenth of a percent outside sRGB. The browser clamps that, so the colour being painted was
+   * never the colour anybody measured. This is the same defect Phase 12B found in three of the
+   * eighteen category tones, in a token the gamut guard did not cover because it only looked
+   * at `cat-*`. It does now.
+   *
+   * And at that value `ink-500` came out at **4.48:1** on it and `brand-500` at 4.49 — both a
+   * hair under AA, on the selected row of the step index and the checked card of the report
+   * category grid, which is exactly where a reader is being told *which one is chosen*. Found
+   * by axe, not by the contrast guard, because the guard's background list did not include a
+   * tint that had since become a selection colour.
+   *
+   * Fitted rather than guessed: at hue 254 this is the **most chroma sRGB can hold** while
+   * clearing 4.55:1 for every text token in the palette. It is a fainter wash than before, and
+   * that is acceptable because colour has never been the only carrier in either place — the
+   * step-index row is also bold and `aria-current`, the choice card also gains a brand border.
    */
-  --color-brand-50: oklch(0.972 0.014 254);
+  --color-brand-50: oklch(0.978 0.01 254);
 
   --color-surface: oklch(1 0 0);
   --color-surface-muted: oklch(0.985 0.003 258);

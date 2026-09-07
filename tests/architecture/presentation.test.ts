@@ -99,7 +99,7 @@ describe('WCAG contrast — every text token against every background it sits on
    * it — and read out of the CSS, so the numbers cannot drift from the theme.
    */
   const TEXT_TOKENS = ['ink-900', 'ink-700', 'ink-500', 'brand-900', 'brand-700', 'brand-500', 'caution-900']
-  const BACKGROUNDS = ['surface', 'surface-muted', 'caution-50']
+  const BACKGROUNDS = ['surface', 'surface-muted', 'caution-50', 'brand-50']
 
   it('reads the palette out of globals.css', () => {
     const tokens = themeTokens()
@@ -175,11 +175,23 @@ describe('the six step categories are a measured palette, not a chosen one', () 
    * written 0.3% outside sRGB by rounding up after the chroma fit — far too small to see and
    * more than enough to make the measurement a fiction.
    */
-  it('keeps every category tone inside sRGB', () => {
+  /**
+   * **Every token, not only the category ones — widened in Phase 13.**
+   *
+   * This was scoped to `cat-*` because that is where Phase 12B found the defect: three of
+   * eighteen category tones written a fraction outside sRGB, because the chroma fit had been
+   * rounded up afterwards. Scoping it there left the rest of the palette unchecked, and the
+   * rest of the palette had one too — `brand-50` converted to a blue channel of 1.0014, so the
+   * colour the browser painted was never the colour this file measured.
+   *
+   * The argument for widening is the argument that motivated the test in the first place: a
+   * clamped token makes every contrast figure about it a fiction, and it does so silently.
+   * That is true of a brand tint exactly as it is of a category fill.
+   */
+  it('keeps every colour token inside sRGB', () => {
     const tokens = themeTokens()
     const clipping: string[] = []
     for (const [name, value] of tokens) {
-      if (!name.startsWith('cat-')) continue
       if (!inGamut(oklchToRgb(...value))) clipping.push(name)
     }
     expect(clipping, 'These tokens are outside sRGB and will be clamped by the browser').toEqual([])
