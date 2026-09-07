@@ -139,8 +139,10 @@ export default async function LocaleLayout({
           {t.common.skipToContent}
         </a>
         <div className="flex min-h-dvh flex-col">
-          <SiteHeader dictionary={t} locale={locale} />
-          <main id="main" className="flex-1">
+          <div className="vx-persist">
+            <SiteHeader dictionary={t} locale={locale} />
+          </div>
+          <main id="main" className="vx-enter flex-1">
             {children}
           </main>
           {/* `pb-16` on the shell, not on the footer: the bar is `position: fixed`, so it is

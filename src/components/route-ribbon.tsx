@@ -41,7 +41,7 @@ export function RouteRibbon({
   locale: string
 }) {
   return (
-    <li className="group border-b border-hairline bg-surface first:border-t">
+    <li className="vx-tile group border-b border-hairline bg-surface first:border-t">
       <Link
         href={`/${locale}/routes/${route.slug}`}
         className="block rounded-control px-2 py-4 focus:outline-2 hover:bg-surface-muted sm:px-3"

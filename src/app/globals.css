@@ -317,3 +317,209 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   Motion — Phase 12I, and every line of it is CSS
+   ══════════════════════════════════════════════════════════════════════════════════════════
+
+   The owner asked for page-change animation, motion, hover effects and tiles that react to the
+   mouse — "subtle changes but enough to make the website look dynamic and reactive".
+
+   **All of it is stylesheet.** No JavaScript, no library, no client component, nothing added to
+   any bundle. That is not restraint for its own sake: the read path has shipped exactly one
+   client component since Phase 5 and works with JavaScript disabled, and a student in Dhaka on
+   a slow connection is the person this product is for (Design-References.md). A motion layer
+   that costs them a download would be paid for by the person it is meant to delight.
+
+   The reduced-motion block at the foot of this file already neutralises every duration here,
+   and `@view-transition` is additionally disabled under it — a cross-fade is motion whether or
+   not a transition-duration governs it.
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+/*
+ * Page changes cross-fade — the modern MPA view transition.
+ *
+ * This is the whole "page changing animation", in three lines, with no router and no script:
+ * the browser holds the outgoing page, paints the incoming one and cross-fades between them.
+ * Browsers without support simply navigate as they always did, which is the correct fallback.
+ *
+ * It also disguises a slow navigation, which is the closest thing to a loading state this
+ * product can have without script (Phases.md 12H, decision D1): the old page stays put and
+ * legible rather than the screen going blank.
+ */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root) {
+  animation: vx-fade-out 90ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+::view-transition-new(root) {
+  animation: vx-rise-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes vx-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes vx-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/*
+ * The header keeps its own identity across a navigation.
+ *
+ * Without this the brand mark cross-fades with itself on every page change, which reads as a
+ * flicker. Naming it makes the browser treat it as the same object moving, so it simply stays.
+ */
+.vx-persist {
+  view-transition-name: vx-shell;
+}
+
+/*
+ * Content arrives rather than appearing.
+ *
+ * One shared animation on the page's main region, 240ms, six pixels. It is deliberately below
+ * the threshold at which anybody would call it an animation — the intent is that the page feels
+ * settled rather than stamped, and a reader who notices it has been distracted by it.
+ *
+ * `backwards` fill so the first frame is the start state: without it the content paints at full
+ * opacity for one frame and then jumps.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .vx-enter {
+    animation: vx-enter 240ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+}
+
+@keyframes vx-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/*
+ * Tiles react to the mouse — ribbons, destination links, step-index rows, choice cards.
+ *
+ * A 1px lift and a shadow, and the shadow is the part doing the work: §8.5.5 asks for "very
+ * light shadows" and warns against decorative excess, so the resting state stays flat and only
+ * the hovered tile gains depth. `translateY(-1px)` is small enough that a row of them does not
+ * appear to wobble as the pointer crosses.
+ *
+ * `:focus-within` is included on purpose. A keyboard user tabbing through a list of routes
+ * should get the same signal a mouse user gets from hovering; leaving it to `:hover` alone is
+ * how an interface ends up feeling dead to everyone not using a pointer.
+ */
+.vx-tile {
+  transition:
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 160ms ease;
+}
+
+.vx-tile:hover,
+.vx-tile:focus-within {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-raised);
+}
+
+/* Pressed. The lift collapses, which is what a real button does. */
+.vx-tile:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-panel);
+  transition-duration: 60ms;
+}
+
+/*
+ * Controls acknowledge the press.
+ *
+ * This is the smallest honest answer to "nothing happens when I tap". It cannot say *still
+ * working* — only script can do that, and that decision is the owner's (Phases.md D1) — but it
+ * does confirm within a frame that the tap landed, which is the feedback that was missing in
+ * the first 300ms of a 25-second cold start.
+ */
+button,
+[role='button'],
+a[class*='rounded-control'] {
+  transition:
+    transform 60ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+button:active,
+[role='button']:active,
+a[class*='rounded-control']:active {
+  transform: scale(0.985);
+}
+
+/*
+ * Links underline from the left rather than switching on.
+ *
+ * A background-size transition on a gradient, so no layout is touched and nothing reflows.
+ * Applied by opt-in class, never globally: a underline that grows is right for a navigational
+ * link and wrong for the fourteen underlined words inside a paragraph of route content.
+ */
+.vx-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  transition: background-size 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+}
+
+.vx-underline:hover,
+.vx-underline:focus-visible {
+  background-size: 100% 1px;
+}
+
+/*
+ * A road station lifts very slightly under the pointer.
+ *
+ * The station already gains a focus ring on hover and focus (see `.route-station-focus` above);
+ * this adds the physical cue that it is a thing you can open. Kept to half a pixel of scale
+ * because a station is drawn inside an SVG viewBox and a larger transform would visibly break
+ * its alignment with the road beneath it.
+ */
+.route-station-link {
+  transition: transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.route-station-link:hover {
+  transform: scale(1.015);
+}
+
+/*
+ * Disclosure contents open rather than snap.
+ *
+ * `interpolate-size` plus a height transition is what makes `<details>` animate at all without
+ * script. Where it is unsupported the disclosure opens instantly, exactly as it does today.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  details[open] > summary ~ * {
+    animation: vx-enter 180ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+}
+
+/*
+ * And the whole of the above is switched off for a reader who has asked for less motion.
+ *
+ * The block below already flattens every duration; `@view-transition` needs disabling
+ * separately, because a cross-fade is motion whether or not a transition-duration governs it.
+ */
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}

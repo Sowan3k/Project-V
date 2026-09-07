@@ -112,7 +112,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                     <li key={destination.country}>
                       <Link
                         href={`/${locale}/routes?to=${encodeURIComponent(destination.country)}`}
-                        className="flex items-baseline justify-between gap-3 rounded-control border border-hairline bg-surface px-3 py-2 hover:border-brand-500"
+                        className="vx-tile flex items-baseline justify-between gap-3 rounded-control border border-hairline bg-surface px-3 py-2 hover:border-brand-500"
                       >
                         <span className="text-meta font-semibold text-ink-900">
                           {destination.country}
