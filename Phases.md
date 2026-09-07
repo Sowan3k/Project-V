@@ -2345,6 +2345,13 @@ destination that made `searchRoutes({destinationCountry: 'ZZ'})` return a row wh
 expects none. The same pollution made the browse page unphotographable — the results were full of
 `read-1788781951507-…` slugs.
 
+> **Corrected 2026-09-07, after the demonstration run (Test.md §30).** The reset fixed **three**
+> of the ten. The other **seven were not pollution either** — they were `Test timed out in
+> 30000ms`, with no failed assertion among them, against a 30-second budget that was never
+> realistic for a suite averaging 14 seconds per test over the internet to Neon. Raised to 120s;
+> `lifecycle.db.test.ts` then passed all 19 unchanged. The original claim above was written from
+> a log truncated by my own `tail -20`.
+
 `neon branches reset test --parent`, then `scripts/mark-test-branch.mjs`, then re-seed the five
 launch candidates. **5 routes, nothing else.**
 

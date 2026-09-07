@@ -2900,3 +2900,61 @@ Verified afterwards: **5 routes, exactly the five launch candidates, and nothing
   but not yet demonstrated fixed.
 - **No test asserts the band's counts against known data.** It reads six aggregates; nothing
   proves `contributions` is the sum it claims to be.
+
+---
+
+## 30. The demonstration, and a correction to §29. 2026-09-07
+
+§29 said the 10 integration failures were test-data pollution. **That was half right, and the
+half that was wrong is the more interesting half.**
+
+### What actually happened
+
+| Run | Result |
+|---|---|
+| Before the branch reset | 3 files failed · **10 tests failed** |
+| After the branch reset, same 30s timeout | 2 files failed · **7 tests failed** |
+| `lifecycle.db.test.ts` alone, `--testTimeout=180000` | **19 passed, 0 failed** |
+
+The reset fixed three — the `ZZ` destination row and its neighbours were real pollution. **The
+remaining seven were never pollution and never a regression.** Every one failed with
+
+```
+Error: Test timed out in 30000ms.
+```
+
+and **not one failed an assertion.**
+
+### The root cause
+
+`vitest.db.config.mts` set `testTimeout: 30_000`. These tests do not run against a local
+Postgres — every write is a round trip to Neon over the internet, and a single test does dozens.
+`lifecycle.db.test.ts` builds *two* complete routes with steps, edges and fields, merges them,
+announces a change and reads back a shadow comparison. The full suite averages **~14 seconds per
+test**; the heaviest were never going to fit in 30.
+
+Telling detail: `hookTimeout` was already `120_000` — four times the test budget. Somebody had
+noticed setup was slow and had not yet noticed the tests were too.
+
+Raised to 120s, with the reasoning in the config rather than in a commit message.
+
+### The lesson, and it is the second time this session
+
+Earlier the same day, a journey write was diagnosed as "never saved" and a post-redirect-get fix
+was written for it. A direct database probe found every "lost" write present and correct at the
+right second. The fix was reverted.
+
+**Against a serverless database, a failure that moves between runs is latency until proven
+otherwise.** Twice in one session that cost time: once as a wrong fix, once as a wrong diagnosis
+recorded in this file as fact.
+
+**And a process note about this file specifically.** §29's claim was written after reading a log
+that my own command had truncated with `tail -20`. The three failures visible in it happened to
+be consistent with the pollution theory, and I recorded the theory as a finding. Capture the whole
+log, or say the log was partial.
+
+### Not tested
+
+- The full suite has not yet been demonstrated green end to end at the new timeout — that run is
+  in progress at the time of writing and its result belongs in the next entry.
+- Whether 120s is comfortably above the true worst case, or merely above the observed one.

@@ -56,7 +56,30 @@ export default defineConfig({
     // One file at a time: these share a database and would otherwise race.
     fileParallelism: false,
     env: patchedEnv,
-    testTimeout: 30_000,
+    /*
+     * 120s, raised from 30s on 2026-09-07 — and the reason matters more than the number.
+     *
+     * These tests do not run against a local Postgres. Every write is a round trip to Neon
+     * over the internet, and a single test here routinely does dozens: `lifecycle.db.test.ts`
+     * builds *two* complete routes with steps, edges and fields, merges them, announces a
+     * change and reads back a shadow comparison. The full suite averages ~14 seconds per test.
+     *
+     * At 30s, seven tests failed — every one of them with `Test timed out`, none with a failed
+     * assertion. Re-run at a realistic budget, all 19 lifecycle tests passed unchanged. **The
+     * code was never wrong; the clock was.**
+     *
+     * This is the second time in one session that latency was mistaken for a defect (Status.md,
+     * 2026-09-07: a "lost" journey write that a database probe found present and correct). The
+     * lesson is written down in both places: against a serverless database, a failure that
+     * moves between runs is latency until proven otherwise.
+     *
+     * 120s matches `hookTimeout`, which was already set four times higher than the test budget
+     * by somebody who had noticed setup was slow and had not yet noticed the tests were too. A
+     * timeout should be long enough that only a genuine hang trips it, and a hang here would
+     * still be caught: the suite as a whole takes ~41 minutes, so a test stuck for two minutes
+     * is visible without being fatal to the run.
+     */
+    testTimeout: 120_000,
     hookTimeout: 120_000,
   },
 })
