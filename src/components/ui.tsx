@@ -125,9 +125,7 @@ export function Panel({
       ? 'border-hairline bg-surface shadow-panel'
       : 'border-hairline bg-surface-muted'
   return (
-    <Component
-      className={`rounded-panel border ${surface} ${padded ? 'p-5' : ''} ${className}`}
-    >
+    <Component className={`rounded-panel border ${surface} ${padded ? 'p-5' : ''} ${className}`}>
       {children}
     </Component>
   )
@@ -177,15 +175,22 @@ export function buttonClass(
   tone: ButtonTone = 'primary',
   { size = 'default', className = '' }: { size?: ButtonSize; className?: string } = {},
 ): string {
-  const base =
-    'inline-flex items-center justify-center gap-2 rounded-control font-medium transition-colors'
+  const base = 'inline-flex items-center justify-center gap-2 rounded-control font-medium'
   const sizes: Record<ButtonSize, string> = {
     default: 'px-4 py-2.5 text-sm',
     compact: 'px-3 py-1.5 text-meta',
   }
+  /*
+   * The three filled tones carry a *surface* from Phase 12M — a vertical gradient, a hairline
+   * of light along the top edge, a seated bottom edge, and a sheen that sweeps on hover. The
+   * skin lives in `globals.css` under `.vx-btn-*` so the gradient stops can be written in
+   * `oklch` directly, out of reach of the arbitrary-value guard; the Tailwind fill beneath each
+   * one stays as the flat fallback, and every contrast figure the guards measure is measured
+   * against that fill rather than against the gradient.
+   */
   const tones: Record<ButtonTone, string> = {
-    primary: 'bg-brand-700 text-white hover:bg-brand-900',
-    secondary: 'border border-hairline bg-surface text-ink-900 hover:bg-surface-muted',
+    primary: 'vx-btn vx-btn-primary bg-brand-700 text-white',
+    secondary: 'vx-btn vx-btn-secondary border border-hairline bg-surface text-ink-900',
     /**
      * The one tone whose action has a consequence different in kind — Phase 12E.
      *
@@ -195,7 +200,7 @@ export function buttonClass(
      * deliberately the *same* attention colour as every other caution in the product (§7.3):
      * one colour meaning "read this", never a palette of severities.
      */
-    caution: 'bg-caution-900 text-white hover:bg-ink-900',
+    caution: 'vx-btn vx-btn-caution bg-caution-900 text-white',
     // Sizeless by nature: it is a link wearing a button's affordances, not a filled control.
     bare: 'px-1 py-0.5 text-sm text-brand-700 hover:underline',
   }
@@ -317,7 +322,13 @@ export function Stat({
 }
 
 /** A row of stats that wraps rather than scrolls — VR-14's evidence band. */
-export function StatBand({ children, className = '' }: { children: ReactNode; className?: string }) {
+export function StatBand({
+  children,
+  className = '',
+}: {
+  children: ReactNode
+  className?: string
+}) {
   return (
     <div className={`grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-6 ${className}`}>
       {children}
@@ -364,6 +375,57 @@ export function Breadcrumb({ crumbs, label }: { crumbs: readonly Crumb[]; label:
           </li>
         ))}
       </ol>
+    </nav>
+  )
+}
+
+/**
+ * Sibling views of one thing, as links — Phase 12M.
+ *
+ * ═════════════════════════════════════════════════════════════════════════════════════════
+ * The owner asked whether anywhere still needs a back button. Almost nowhere does: the route
+ * screens carry breadcrumbs, and every top-level destination is in the header and the bottom
+ * bar. **One pair of pages was genuinely stranded.** `/admin/routes` had nothing anywhere in
+ * the application linking to it — the header offers only `/admin/reports` — so route
+ * maintenance could be reached solely by an administrator who happened to remember the URL.
+ *
+ * The fix is not a back button. §7.1 already answers this shape: two sibling views of the same
+ * responsibility are **tabs**, each with its own URL. A back button would have returned the
+ * administrator to wherever they came from; what they actually need is the other queue.
+ *
+ * Ordinary links, so they deep-link, open in a new tab, and work with no JavaScript.
+ * `aria-current="page"` rather than colour alone, because the selected tab must be announced.
+ */
+export function TabNav({
+  label,
+  tabs,
+}: {
+  label: string
+  tabs: readonly {
+    readonly href: string
+    readonly label: string
+    readonly current: boolean
+  }[]
+}) {
+  return (
+    <nav aria-label={label} className="mt-4 border-b border-hairline">
+      <ul className="-mb-px flex flex-wrap gap-x-1">
+        {tabs.map((tab) => (
+          <li key={tab.href}>
+            <Link
+              href={tab.href}
+              aria-current={tab.current ? 'page' : undefined}
+              className={
+                tab.current
+                  ? 'inline-block border-b-2 border-brand-700 px-3 py-2 text-sm font-medium text-ink-900'
+                  : 'inline-block border-b-2 border-transparent px-3 py-2 text-sm text-ink-500 hover:border-hairline hover:text-ink-900'
+              }
+            >
+              {tab.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
     </nav>
   )
 }
@@ -609,7 +671,14 @@ export function Disclosure({
           aria-hidden="true"
           className="shrink-0 transition-transform group-open:rotate-90"
         >
-          <path d="M4 2.5 L8 6 L4 9.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M4 2.5 L8 6 L4 9.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
         <span className="underline decoration-hairline underline-offset-2">{summary}</span>
       </summary>

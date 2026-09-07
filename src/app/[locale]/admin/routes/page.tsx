@@ -13,9 +13,9 @@ import {
   EmptyState,
   FormField,
   inputClass,
-
   Panel,
   PanelHeader,
+  TabNav,
 } from '@/components/ui'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 import { getDictionary } from '@/i18n/get-dictionary'
@@ -74,11 +74,7 @@ export const dynamic = 'force-dynamic'
 
 const INPUT = inputClass('compact')
 
-export default async function AdminRoutesPage({
-  params,
-}: {
-  params: Promise<{ locale: string }>
-}) {
+export default async function AdminRoutesPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
   if (!isLocale(locale)) notFound()
   const t = await getDictionary(locale)
@@ -97,7 +93,26 @@ export default async function AdminRoutesPage({
   return (
     <PageCanvas className="py-8">
       <ContentColumn width="wide">
-        <h1 className="text-title font-semibold tracking-tight text-ink-900">{t.admin.routesTitle}</h1>
+        <h1 className="text-title font-semibold tracking-tight text-ink-900">
+          {t.admin.routesTitle}
+        </h1>
+        {/* The other queue, named — see `TabNav`. `/admin/routes` was reachable only by typing
+          its URL until Phase 12M. */}
+        <TabNav
+          label={t.admin.tabsLabel}
+          tabs={[
+            {
+              href: `/${locale}/admin/reports`,
+              label: t.admin.title,
+              current: false,
+            },
+            {
+              href: `/${locale}/admin/routes`,
+              label: t.admin.routesTitle,
+              current: true,
+            },
+          ]}
+        />
         <ContentColumn width="reading">
           <p className="mt-2 text-sm leading-6 text-ink-700">{t.admin.routesLede}</p>
           {/* The direction rule, stated where the person exercising it can read it. */}
@@ -162,7 +177,10 @@ export default async function AdminRoutesPage({
                     {flag.createdAt.toISOString().slice(0, 10)}
                   </p>
 
-                  <form action={resolveDuplicateFlagAction} className="mt-3 flex flex-wrap items-end gap-2">
+                  <form
+                    action={resolveDuplicateFlagAction}
+                    className="mt-3 flex flex-wrap items-end gap-2"
+                  >
                     <input type="hidden" name="locale" value={locale} />
                     <input type="hidden" name="flagId" value={flag.id} />
                     <FormField className="flex-1" label={t.admin.mergeNote} size="compact">
@@ -179,7 +197,9 @@ export default async function AdminRoutesPage({
         </section>
 
         <section className="mt-10">
-          <h2 className="text-section font-semibold tracking-tight text-ink-900">{t.admin.setState}</h2>
+          <h2 className="text-section font-semibold tracking-tight text-ink-900">
+            {t.admin.setState}
+          </h2>
           <ContentColumn width="reading">
             <p className="mt-1 text-xs leading-5 text-ink-500">{t.admin.mergeExplainer}</p>
           </ContentColumn>
@@ -187,17 +207,17 @@ export default async function AdminRoutesPage({
           {routes.length === 0 ? (
             <EmptyState title={t.admin.routesEmpty} body={t.admin.routesEmptyNote} />
           ) : (
-          <ul className="mt-4 space-y-4">
-            {routes.map((route) => (
-              <RouteMaintenanceRow
-                key={route.id}
-                route={route}
-                routes={routes}
-                locale={locale}
-                dictionary={t}
-              />
-            ))}
-          </ul>
+            <ul className="mt-4 space-y-4">
+              {routes.map((route) => (
+                <RouteMaintenanceRow
+                  key={route.id}
+                  route={route}
+                  routes={routes}
+                  locale={locale}
+                  dictionary={t}
+                />
+              ))}
+            </ul>
           )}
         </section>
       </ContentColumn>
@@ -333,7 +353,10 @@ function RouteMaintenanceRow({
             <form action={unmergeRouteAction} className="grid gap-2">
               <input type="hidden" name="locale" value={locale} />
               <input type="hidden" name="routeId" value={route.id} />
-              <button type="submit" className="justify-self-start text-meta text-brand-700 underline">
+              <button
+                type="submit"
+                className="justify-self-start text-meta text-brand-700 underline"
+              >
                 {t.admin.unmergeSubmit}
               </button>
             </form>

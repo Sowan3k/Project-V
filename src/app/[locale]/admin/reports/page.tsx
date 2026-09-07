@@ -11,6 +11,7 @@ import {
   inputClass,
   Panel,
   Rail,
+  TabNav,
 } from '@/components/ui'
 import { RECORDABLE_REPORT_OUTCOMES } from '@/domain/enums'
 import { isLocale } from '@/i18n/config'
@@ -90,6 +91,23 @@ export default async function AdminReportsPage({
   return (
     <PageCanvas className="py-8">
       <h1 className="text-title font-semibold tracking-tight text-ink-900">{t.admin.title}</h1>
+      {/* The other queue, named — see `TabNav`. `/admin/routes` was reachable only by typing
+          its URL until Phase 12M. */}
+      <TabNav
+        label={t.admin.tabsLabel}
+        tabs={[
+          {
+            href: `/${locale}/admin/reports`,
+            label: t.admin.title,
+            current: true,
+          },
+          {
+            href: `/${locale}/admin/routes`,
+            label: t.admin.routesTitle,
+            current: false,
+          },
+        ]}
+      />
       <ContentColumn width="reading">
         <p className="mt-2 text-sm leading-6 text-ink-700">{t.admin.lede}</p>
         <p className="mt-2 text-sm leading-6 text-ink-500">{t.admin.noRecommendation}</p>
@@ -105,66 +123,71 @@ export default async function AdminReportsPage({
                 <Panel as="li" key={summary.fieldId}>
                   <div className="grid gap-6 lg:grid-cols-2">
                     <div>
-                    <h2 className="text-panel font-semibold text-ink-900">{t.admin.evidence}</h2>
-                    <ul className="mt-2 space-y-0.5 text-sm text-ink-700">
-                      <li>{t.admin.openReports(summary.openReports)}</li>
-                      {/* The number that resists gaming: people, not reports (invariant 14). */}
-                      <li>{t.admin.distinctReporters(summary.distinctReporters)}</li>
-                      <li>
-                        {t.admin.firstReported}:{' '}
-                        {summary.firstReportedAt?.toISOString().slice(0, 16).replace('T', ' ') ?? '—'}
-                      </li>
-                      <li>
-                        {t.admin.lastReported}:{' '}
-                        {summary.lastReportedAt?.toISOString().slice(0, 16).replace('T', ' ') ?? '—'}
-                      </li>
-                    </ul>
-                    <ul className="mt-3 flex flex-wrap gap-1.5">
-                      {summary.reasons.map((reason) => (
-                        <li key={reason}>
-                          <Chip tone="caution">{t.reportReason[reason]}</Chip>
+                      <h2 className="text-panel font-semibold text-ink-900">{t.admin.evidence}</h2>
+                      <ul className="mt-2 space-y-0.5 text-sm text-ink-700">
+                        <li>{t.admin.openReports(summary.openReports)}</li>
+                        {/* The number that resists gaming: people, not reports (invariant 14). */}
+                        <li>{t.admin.distinctReporters(summary.distinctReporters)}</li>
+                        <li>
+                          {t.admin.firstReported}:{' '}
+                          {summary.firstReportedAt?.toISOString().slice(0, 16).replace('T', ' ') ??
+                            '—'}
                         </li>
-                      ))}
-                    </ul>
-                  </div>
+                        <li>
+                          {t.admin.lastReported}:{' '}
+                          {summary.lastReportedAt?.toISOString().slice(0, 16).replace('T', ' ') ??
+                            '—'}
+                        </li>
+                      </ul>
+                      <ul className="mt-3 flex flex-wrap gap-1.5">
+                        {summary.reasons.map((reason) => (
+                          <li key={reason}>
+                            <Chip tone="caution">{t.reportReason[reason]}</Chip>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
 
-                  <div>
-                    <h2 className="text-panel font-semibold text-ink-900">{t.admin.actions}</h2>
+                    <div>
+                      <h2 className="text-panel font-semibold text-ink-900">{t.admin.actions}</h2>
 
-                    <form action={quarantineFieldAction} className="mt-3 grid gap-2">
-                      <input type="hidden" name="locale" value={locale} />
-                      <input type="hidden" name="fieldId" value={summary.fieldId} />
-                      <FormField
-                        label={t.admin.quarantineReason}
-                        hint={t.admin.quarantineReasonHint}
-                        size="compact"
+                      <form action={quarantineFieldAction} className="mt-3 grid gap-2">
+                        <input type="hidden" name="locale" value={locale} />
+                        <input type="hidden" name="fieldId" value={summary.fieldId} />
+                        <FormField
+                          label={t.admin.quarantineReason}
+                          hint={t.admin.quarantineReasonHint}
+                          size="compact"
+                        >
+                          <input type="text" name="quarantineNote" className={INPUT} />
+                        </FormField>
+                        <button
+                          type="submit"
+                          className={buttonClass('caution', {
+                            size: 'compact',
+                            className: 'justify-self-start',
+                          })}
+                        >
+                          {t.admin.quarantine}
+                        </button>
+                      </form>
+
+                      <form action={releaseFieldAction} className="mt-3">
+                        <input type="hidden" name="locale" value={locale} />
+                        <input type="hidden" name="fieldId" value={summary.fieldId} />
+                        <button type="submit" className="text-meta text-brand-700 underline">
+                          {t.admin.release}
+                        </button>
+                      </form>
+
+                      <form
+                        action={handleReportAction}
+                        className="mt-4 grid gap-2 border-t border-hairline pt-3"
                       >
-                        <input type="text" name="quarantineNote" className={INPUT} />
-                      </FormField>
-                      <button
-                        type="submit"
-                        className={buttonClass('caution', {
-                          size: 'compact',
-                          className: 'justify-self-start',
-                        })}
-                      >
-                        {t.admin.quarantine}
-                      </button>
-                    </form>
-
-                    <form action={releaseFieldAction} className="mt-3">
-                      <input type="hidden" name="locale" value={locale} />
-                      <input type="hidden" name="fieldId" value={summary.fieldId} />
-                      <button type="submit" className="text-meta text-brand-700 underline">
-                        {t.admin.release}
-                      </button>
-                    </form>
-
-                    <form action={handleReportAction} className="mt-4 grid gap-2 border-t border-hairline pt-3">
-                      <input type="hidden" name="locale" value={locale} />
-                      <input type="hidden" name="fieldId" value={summary.fieldId} />
-                      <FormField label={t.admin.outcome} size="compact">
-                        {/*
+                        <input type="hidden" name="locale" value={locale} />
+                        <input type="hidden" name="fieldId" value={summary.fieldId} />
+                        <FormField label={t.admin.outcome} size="compact">
+                          {/*
                           Only outcomes this product can actually perform — audit F11.
 
                           The list used to be every outcome in the baseline's vocabulary, and
@@ -175,31 +198,31 @@ export default async function AdminReportsPage({
                           removal is a separate audited surface that does not exist yet
                           (src/domain/enums.ts, RECORDABLE_REPORT_OUTCOMES).
                         */}
-                        <select name="outcome" className={INPUT}>
-                          {RECORDABLE_REPORT_OUTCOMES.map((outcome) => (
-                            <option key={outcome} value={outcome}>
-                              {t.reportOutcome[outcome]}
-                            </option>
-                          ))}
-                        </select>
-                      </FormField>
-                      <FormField label={t.admin.outcomeNote} size="compact">
-                        <input type="text" name="outcomeNote" className={INPUT} />
-                      </FormField>
-                      <button
-                        type="submit"
-                        className={buttonClass('secondary', {
-                          size: 'compact',
-                          className: 'justify-self-start',
-                        })}
-                      >
-                        {t.admin.recordDecision}
-                      </button>
-                    </form>
+                          <select name="outcome" className={INPUT}>
+                            {RECORDABLE_REPORT_OUTCOMES.map((outcome) => (
+                              <option key={outcome} value={outcome}>
+                                {t.reportOutcome[outcome]}
+                              </option>
+                            ))}
+                          </select>
+                        </FormField>
+                        <FormField label={t.admin.outcomeNote} size="compact">
+                          <input type="text" name="outcomeNote" className={INPUT} />
+                        </FormField>
+                        <button
+                          type="submit"
+                          className={buttonClass('secondary', {
+                            size: 'compact',
+                            className: 'justify-self-start',
+                          })}
+                        >
+                          {t.admin.recordDecision}
+                        </button>
+                      </form>
 
-                    <p className="mt-3 text-meta leading-5 text-ink-500">
-                      {t.admin.quarantineIsNotDeletion}
-                    </p>
+                      <p className="mt-3 text-meta leading-5 text-ink-500">
+                        {t.admin.quarantineIsNotDeletion}
+                      </p>
                     </div>
                   </div>
                 </Panel>

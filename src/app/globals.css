@@ -34,10 +34,10 @@
    * carrying `lang="bn"`. Latin families almost never cover the script, so without it the
    * brand wordmark renders in a device default that differs on every platform.
    */
-  --font-sans: var(--font-interface), ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
-    sans-serif;
-  --font-bengali: var(--font-bengali-face), 'Noto Sans Bengali', ui-sans-serif, system-ui,
-    sans-serif;
+  --font-sans:
+    var(--font-interface), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-bengali:
+    var(--font-bengali-face), 'Noto Sans Bengali', ui-sans-serif, system-ui, sans-serif;
 
   /* ── Type scale ────────────────────────────────────────────────────────────────────────
    *
@@ -86,14 +86,17 @@
    * genuinely floating. Anything heavier turns into the SaaS dashboard §8.5 warns against.
    */
   --shadow-panel: 0 1px 2px 0 oklch(0.24 0.03 258 / 0.04), 0 1px 3px 0 oklch(0.24 0.03 258 / 0.06);
-  --shadow-raised: 0 4px 12px -2px oklch(0.24 0.03 258 / 0.08), 0 2px 6px -2px oklch(0.24 0.03 258 / 0.06);
+  --shadow-raised:
+    0 4px 12px -2px oklch(0.24 0.03 258 / 0.08), 0 2px 6px -2px oklch(0.24 0.03 258 / 0.06);
   /*
    * A third step, added in Phase 12K for the one element on a page that is primary.
    * Two elevations meant every panel carried the same weight and nothing led the eye —
    * which is most of what "flat" describes. Still soft and still low-opacity: §8.5.5 asks
    * for very light shadows and this is a wider, deeper spread rather than a darker one.
    */
-  --shadow-hero: 0 24px 48px -24px oklch(0.24 0.03 258 / 0.18), 0 8px 20px -12px oklch(0.24 0.03 258 / 0.10), 0 2px 6px -2px oklch(0.24 0.03 258 / 0.06);
+  --shadow-hero:
+    0 24px 48px -24px oklch(0.24 0.03 258 / 0.18), 0 8px 20px -12px oklch(0.24 0.03 258 / 0.1),
+    0 2px 6px -2px oklch(0.24 0.03 258 / 0.06);
 
   --color-ink-900: oklch(0.24 0.03 258);
   --color-ink-700: oklch(0.42 0.02 258);
@@ -572,7 +575,7 @@ a[class*='rounded-control']:active {
   background-color: var(--color-surface-muted);
   background-image:
     radial-gradient(70rem 40rem at 12% -18%, oklch(0.62 0.13 254 / 0.09), transparent 60%),
-    radial-gradient(60rem 38rem at 92% -12%, oklch(0.62 0.10 212 / 0.07), transparent 62%);
+    radial-gradient(60rem 38rem at 92% -12%, oklch(0.62 0.1 212 / 0.07), transparent 62%);
   background-repeat: no-repeat;
 }
 
@@ -621,13 +624,27 @@ a[class*='rounded-control']:active {
   .vx-draw svg > g {
     animation: vx-station-in 420ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
-  .vx-draw svg > g:nth-of-type(1) { animation-delay: 300ms; }
-  .vx-draw svg > g:nth-of-type(2) { animation-delay: 370ms; }
-  .vx-draw svg > g:nth-of-type(3) { animation-delay: 440ms; }
-  .vx-draw svg > g:nth-of-type(4) { animation-delay: 510ms; }
-  .vx-draw svg > g:nth-of-type(5) { animation-delay: 580ms; }
-  .vx-draw svg > g:nth-of-type(6) { animation-delay: 650ms; }
-  .vx-draw svg > g:nth-of-type(n + 7) { animation-delay: 720ms; }
+  .vx-draw svg > g:nth-of-type(1) {
+    animation-delay: 300ms;
+  }
+  .vx-draw svg > g:nth-of-type(2) {
+    animation-delay: 370ms;
+  }
+  .vx-draw svg > g:nth-of-type(3) {
+    animation-delay: 440ms;
+  }
+  .vx-draw svg > g:nth-of-type(4) {
+    animation-delay: 510ms;
+  }
+  .vx-draw svg > g:nth-of-type(5) {
+    animation-delay: 580ms;
+  }
+  .vx-draw svg > g:nth-of-type(6) {
+    animation-delay: 650ms;
+  }
+  .vx-draw svg > g:nth-of-type(n + 7) {
+    animation-delay: 720ms;
+  }
 }
 
 @keyframes vx-draw-road {
@@ -667,9 +684,197 @@ a[class*='rounded-control']:active {
   width: 3.5rem;
   height: 2px;
   border-radius: 2px;
-  background-image: linear-gradient(
-    to right,
-    var(--color-brand-700),
-    oklch(0.62 0.13 254 / 0)
+  background-image: linear-gradient(to right, var(--color-brand-700), oklch(0.62 0.13 254 / 0));
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   The pointer glow — Phase 12L
+   ══════════════════════════════════════════════════════════════════════════════════════════
+
+   A soft light behind the pointer. The component writes `--x` and `--y` on pointermove and
+   nothing else happens in JavaScript — the easing, the fade and the blend are all here, so a
+   mouse move costs one style write rather than a React render or an animation frame.
+
+   It sits *behind* the real cursor and never replaces it. The reference implementation set
+   `cursor: none`, which takes away a large or high-contrast pointer somebody configured
+   because they cannot reliably find a normal one.
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+.vx-pointer-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 26rem;
+  height: 26rem;
+  pointer-events: none;
+  opacity: 0;
+  /* Translated from the top-left corner, so the light is centred on the pointer. */
+  transform: translate3d(calc(var(--x, 50vw) - 13rem), calc(var(--y, 50vh) - 13rem), 0);
+  background: radial-gradient(
+    closest-side,
+    oklch(0.62 0.13 254 / 0.16),
+    oklch(0.62 0.13 254 / 0.06) 45%,
+    transparent 70%
   );
+  /*
+   * The trail. A transform transition is what gives the light its weight — it arrives a beat
+   * after the pointer rather than being welded to it, which is the whole effect. 420ms is slow
+   * enough to read as a follow and fast enough not to feel broken.
+   */
+  transition:
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 300ms ease;
+  will-change: transform;
+}
+
+.vx-pointer-glow[data-visible] {
+  opacity: 1;
+}
+
+/*
+ * Never over content. `z-index: 0` and a stacking context on the shell keep the light behind
+ * every panel, so it lights the page rather than washing over the words on it — which is also
+ * why no contrast figure anywhere changes.
+ */
+@media (prefers-reduced-motion: reduce), (pointer: coarse) {
+  .vx-pointer-glow {
+    display: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   Buttons with a surface — Phase 12M
+   ══════════════════════════════════════════════════════════════════════════════════════════
+
+   Owner: "the buttons are also boring… check if anyway we can use the previous given chromium
+   button style."
+
+   **What made that reference feel like metal was never the shader.** It was four things a
+   stylesheet does perfectly well: a vertical gradient so the face is lit from above, a hairline
+   highlight along the top edge, a darker edge along the bottom, and a shadow that collapses when
+   the control is pressed. The WebGL was paying for an animated sheen — and a sheen that sweeps
+   on hover is a background-position transition.
+
+   So this is that treatment, in the brand colour rather than black. Chrome-on-white would read
+   as a widget borrowed from somewhere else; the point is for the button to look *made*, not to
+   look like someone else's button.
+
+   No bundle, no GPU, no canvas, and it degrades to a flat fill anywhere gradients are not
+   painted.
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+.vx-btn {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transition:
+    transform 60ms ease,
+    box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 180ms ease;
+}
+
+/*
+ * The sheen. A wide, very low-alpha diagonal band parked off the left edge, which slides across
+ * on hover. `transform` only, so it composites on the GPU and costs nothing to animate; and it
+ * is behind the label because the label must never dip in contrast while it passes.
+ */
+.vx-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent 35%, oklch(1 0 0 / 0.18) 48%, transparent 62%);
+  transform: translateX(-100%);
+  transition: transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.vx-btn:hover::after,
+.vx-btn:focus-visible::after {
+  transform: translateX(100%);
+}
+
+/*
+ * Primary: lit from above, a hairline of light along the top edge, a darker seat at the bottom.
+ * The two inset shadows are what turn a flat fill into a face — the top one reads as the edge
+ * catching light, the bottom as the body of the control below it.
+ *
+ * Contrast is untouched: white on `--color-brand-700` is what the guard already measures, and
+ * the gradient runs between two tones either side of it rather than away from it.
+ */
+.vx-btn-primary {
+  background-image: linear-gradient(
+    to bottom,
+    oklch(0.5 0.115 256),
+    var(--color-brand-700) 55%,
+    oklch(0.4 0.1 257)
+  );
+  box-shadow:
+    inset 0 1px 0 0 oklch(1 0 0 / 0.22),
+    inset 0 -1px 0 0 oklch(0.24 0.03 258 / 0.35),
+    0 1px 2px 0 oklch(0.24 0.03 258 / 0.2),
+    0 4px 10px -4px oklch(0.31 0.08 258 / 0.45);
+}
+
+.vx-btn-primary:hover {
+  filter: brightness(1.06);
+  box-shadow:
+    inset 0 1px 0 0 oklch(1 0 0 / 0.28),
+    inset 0 -1px 0 0 oklch(0.24 0.03 258 / 0.35),
+    0 2px 4px 0 oklch(0.24 0.03 258 / 0.18),
+    0 10px 20px -8px oklch(0.31 0.08 258 / 0.5);
+}
+
+/* Pressed: the lift collapses and the face seats into its own shadow. */
+.vx-btn:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 2px 4px 0 oklch(0.24 0.03 258 / 0.3),
+    inset 0 1px 0 0 oklch(0.24 0.03 258 / 0.18);
+}
+
+/*
+ * Secondary: the same construction at a fraction of the strength. A white face still wants a
+ * top highlight and a seated bottom edge, or it reads as a rectangle with a border — which is
+ * what it read as before.
+ */
+.vx-btn-secondary {
+  background-image: linear-gradient(to bottom, oklch(1 0 0), oklch(0.975 0.003 258));
+  box-shadow:
+    inset 0 1px 0 0 oklch(1 0 0 / 0.9),
+    0 1px 2px 0 oklch(0.24 0.03 258 / 0.06),
+    0 2px 6px -2px oklch(0.24 0.03 258 / 0.08);
+}
+
+.vx-btn-secondary:hover {
+  box-shadow:
+    inset 0 1px 0 0 oklch(1 0 0 / 0.9),
+    0 2px 4px 0 oklch(0.24 0.03 258 / 0.08),
+    0 8px 16px -6px oklch(0.24 0.03 258 / 0.14);
+}
+
+/* The one control whose consequence differs in kind keeps its own colour and gains the face. */
+.vx-btn-caution {
+  background-image: linear-gradient(
+    to bottom,
+    oklch(0.47 0.1 62),
+    var(--color-caution-900) 55%,
+    oklch(0.36 0.08 60)
+  );
+  box-shadow:
+    inset 0 1px 0 0 oklch(1 0 0 / 0.2),
+    inset 0 -1px 0 0 oklch(0.24 0.03 258 / 0.35),
+    0 1px 2px 0 oklch(0.24 0.03 258 / 0.2),
+    0 4px 10px -4px oklch(0.42 0.09 62 / 0.4);
+}
+
+.vx-btn-caution:hover {
+  filter: brightness(1.06);
+}
+
+/* A reader who asked for less motion gets the surface without the sweep. */
+@media (prefers-reduced-motion: reduce) {
+  .vx-btn::after {
+    display: none;
+  }
 }

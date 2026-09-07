@@ -1219,6 +1219,8 @@ export const en = {
    *     legal and safety cases (FR-45, BR-15, invariant 4).
    */
   admin: {
+    // The two queues are siblings, so each names the other (Phase 12M).
+    tabsLabel: 'Moderation queues',
     title: 'Reported content',
     lede: 'Content that people have reported as unsafe, and what is known about each report.',
     noRecommendation:

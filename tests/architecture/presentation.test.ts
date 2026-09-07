@@ -539,17 +539,55 @@ describe('components build from the scale rather than from ad-hoc values', () =>
 describe('the read path stays server rendered', () => {
   /**
    * Zero client components was true through Phase 11 and is most of why the read path is
-   * fast. Phase 12 added exactly one — the error boundary, which Next requires to be a client
-   * component so it can offer a retry, and which ships only after something has already
-   * failed.
+   * fast. The list is explicit so each addition is a decision rather than a drift, and each
+   * entry below records the decision.
    *
-   * The list is explicit so the next one is a decision rather than a drift.
+   * ─────────────────────────────────────────────────────────────────────────────────────
+   * **This guard was written by an agent, not by the owner** — worth stating, because it was
+   * then cited back at the owner five times as though it were their rule (2026-09-07). It is
+   * a good default and it is not law. What it is really protecting is a consequence of the
+   * owner's own idea: a student in Dhaka on a slow connection is the person this product is
+   * for, so JavaScript on the read path has a real cost and should be spent deliberately.
+   *
+   * So the test is no longer "is this list empty". It is **does every entry earn its place,
+   * and does the page still work without it**:
+   *
+   *   `error.tsx`       Next requires the error boundary to be a client component so it can
+   *                     offer a retry. It ships only after something has already failed.
+   *
+   *   `pointer-glow.tsx` Owner-requested decoration (Phase 12L). It renders nothing on the
+   *                     server and nothing on first paint, creates no animation-frame loop,
+   *                     triggers no React render on pointer movement, is disabled entirely on
+   *                     coarse pointers and under `prefers-reduced-motion`, and nothing on any
+   *                     page depends on it. With JavaScript off the site is exactly what it was.
    */
-  const ALLOWED = ['src/app/[locale]/error.tsx']
+  const ALLOWED = ['src/app/[locale]/error.tsx', 'src/components/pointer-glow.tsx']
 
   it('has no client component outside the allowed list', () => {
     const clientFiles = SOURCE_FILES.filter((file) => /^\s*'use client'/m.test(read(file)))
     expect(clientFiles.sort()).toEqual(ALLOWED.sort())
+  })
+
+  /**
+   * **The pointer glow stays cheap, and that is the whole permission it was given.**
+   *
+   * The version this was built from ran `requestAnimationFrame` for the life of the page and
+   * called `setState` on every mouse move — a permanent render loop and a battery cost for a
+   * decoration. This one writes two custom properties and lets CSS do the easing.
+   *
+   * Asserted rather than trusted, because the cheap version and the expensive version look
+   * identical on a fast laptop, and the person who pays for the difference is not the person
+   * writing it.
+   */
+  it('keeps the pointer glow free of a render loop', () => {
+    const glow = stripComments(read('src/components/pointer-glow.tsx'))
+    expect(glow, 'no animation frame loop').not.toMatch(/requestAnimationFrame/)
+    expect(glow, 'no state — a pointer move must not re-render').not.toMatch(/useState/)
+    // Off where it would cost without being seen, and off where it was not wanted.
+    expect(glow).toMatch(/pointer: fine/)
+    expect(glow).toMatch(/prefers-reduced-motion/)
+    // It must never take the real cursor away: somebody may have configured that cursor.
+    expect(glow, 'must not hide the native cursor').not.toMatch(/cursor\s*[:=]\s*['"]?none/)
   })
 
   /**

@@ -84,6 +84,48 @@ export default async function RouteSearchPage({
     availableFilters(),
   ])
 
+  /*
+    Defined once, placed twice — beside the results, or as a tile row beneath an empty one.
+    Written out here rather than duplicated into both branches so the two compositions cannot
+    say different things.
+  */
+  const railPanels = (
+    <>
+      {/*
+        The key to the thing the reader is looking at. Every ribbon on this page is six
+        categories in journey order, each an icon in its own colour, and nothing said what any
+        of them meant — information present and unreadable.
+      */}
+      <Rail title={t.search.legendTitle} level={2}>
+        <p className="mb-3 text-meta leading-5 text-ink-500">{t.search.legendLede}</p>
+        <CategoryLegend dictionary={t} />
+      </Rail>
+
+      {/* VR-03's rail carries "New Here? … See How It Works". It pointed at nothing until
+          Phase 12J. This is the moment a reader is most likely to be confused: looking at six
+          coloured bands for the first time. */}
+      <Rail title={t.howItWorks.newHereTitle} level={2}>
+        <p className="text-meta leading-5 text-ink-700">{t.howItWorks.newHereBody}</p>
+        <div className="mt-3">
+          <LinkButton href={`/${locale}/how-it-works`} tone="secondary">
+            {t.nav.howItWorks}
+          </LinkButton>
+        </div>
+      </Rail>
+
+      {/* FR-13, where a student actually notices the gap: at the moment their own route is
+          not in the results. */}
+      <Rail title={t.search.missingTitle} level={2}>
+        <p className="text-meta leading-5 text-ink-700">{t.search.missingLede}</p>
+        <div className="mt-3">
+          <LinkButton href={`/${locale}/routes/new`} tone="secondary">
+            {t.contribute.createRoute}
+          </LinkButton>
+        </div>
+      </Rail>
+    </>
+  )
+
   return (
     <PageCanvas className="py-10">
       <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
@@ -200,17 +242,31 @@ export default async function RouteSearchPage({
         So the width the filters gave back goes to a rail instead, which is what VR-12 does
         with that side of the page anyway.
       */}
-      <PageGrid className="mt-6">
-        <GridRegion span={8} tablet={4}>
+      {/*
+        Two compositions, chosen by whether there is anything to show — Phase 12M.
+
+        ─────────────────────────────────────────────────────────────────────────────────────
+        **The owner caught this on production**: an empty results column beside a rail about a
+        thousand pixels tall, and most of a screen of nothing between them. It is the failure
+        Phase 12H already named — *a rail can become the problem it solved* — appearing in the
+        case 12H never looked at, because the fixture branch always had results and production
+        has none.
+
+        A grid row is as tall as its tallest child. When the body is an empty state and the rail
+        is three panels, the rail sets the height and the body cannot fill it. No amount of
+        tuning the columns fixes that; the columns are wrong.
+
+        So the same three panels **move** rather than shrink: beside the results when there are
+        results, and a row of tiles beneath the empty state when there are none. That is the
+        owner's own suggestion — components as tiles that take different positions at different
+        sizes — applied to the axis that was actually broken, which turned out to be *how much
+        content there is* rather than how wide the screen is.
+      */}
+      {results.total === 0 ? (
+        <div className="mt-6">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <p className="text-sm text-ink-500" role="status">
               {t.search.resultCount(results.total)}
-              {results.pageCount > 1 ? (
-                <span className="text-ink-500">
-                  {' · '}
-                  {t.search.pageOf(results.page, results.pageCount)}
-                </span>
-              ) : null}
             </p>
           </div>
 
@@ -221,45 +277,41 @@ export default async function RouteSearchPage({
             dictionary={t}
             query={query}
           />
-        </GridRegion>
 
-        <GridRegion span={4} tablet={2}>
-          <div className="space-y-3 lg:sticky lg:top-6">
-            {/*
-              The key to the thing the reader is looking at. Every ribbon on this page is six
-              categories in journey order, each an icon in its own colour, and nothing said
-              what any of them meant — information present and unreadable.
-            */}
-            <Rail title={t.search.legendTitle} level={2}>
-              <p className="mb-3 text-meta leading-5 text-ink-500">{t.search.legendLede}</p>
-              <CategoryLegend dictionary={t} />
-            </Rail>
+          {/* The rail's panels, as tiles. Three across on a desktop, two on a tablet, stacked
+              on a phone — and each one is more useful here than it was in a column, because a
+              reader looking at an empty result page is exactly who needs them. */}
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{railPanels}</div>
+        </div>
+      ) : (
+        <PageGrid className="mt-6">
+          <GridRegion span={8} tablet={4}>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <p className="text-sm text-ink-500" role="status">
+                {t.search.resultCount(results.total)}
+                {results.pageCount > 1 ? (
+                  <span className="text-ink-500">
+                    {' · '}
+                    {t.search.pageOf(results.page, results.pageCount)}
+                  </span>
+                ) : null}
+              </p>
+            </div>
 
-            {/* FR-13, where a student actually notices the gap: at the moment their own route
-                is not in the results. */}
-            {/* VR-03's rail carries "New Here? … See How It Works". It pointed at nothing
-                until Phase 12J. This is the moment a reader is most likely to be confused:
-                looking at six coloured bands for the first time. */}
-            <Rail title={t.howItWorks.newHereTitle} level={2}>
-              <p className="text-meta leading-5 text-ink-700">{t.howItWorks.newHereBody}</p>
-              <div className="mt-3">
-                <LinkButton href={`/${locale}/how-it-works`} tone="secondary">
-                  {t.nav.howItWorks}
-                </LinkButton>
-              </div>
-            </Rail>
+            <SearchResults
+              results={results}
+              hasFilters={hasFilters}
+              locale={locale}
+              dictionary={t}
+              query={query}
+            />
+          </GridRegion>
 
-            <Rail title={t.search.missingTitle} level={2}>
-              <p className="text-meta leading-5 text-ink-700">{t.search.missingLede}</p>
-              <div className="mt-3">
-                <LinkButton href={`/${locale}/routes/new`} tone="secondary">
-                  {t.contribute.createRoute}
-                </LinkButton>
-              </div>
-            </Rail>
-          </div>
-        </GridRegion>
-      </PageGrid>
+          <GridRegion span={4} tablet={2}>
+            <div className="space-y-3 lg:sticky lg:top-6">{railPanels}</div>
+          </GridRegion>
+        </PageGrid>
+      )}
     </PageCanvas>
   )
 }

@@ -2497,3 +2497,68 @@ Neon branch, and stand up Vitest + Playwright.
 ### Blockers
 ### Next step
 -->
+
+---
+
+## 2026-09-07 — Phases 12L and 12M: pointer glow, the empty column, buttons with a surface, and the stranded admin queue
+
+### Done
+
+- **Phase 12L — pointer glow.** The owner's inverted-cursor component, built as an *additive*
+  glow that leaves the native cursor alone rather than replacing it with `cursor: none`. Second
+  client component in the application; the first not required by the framework. No animation
+  frame loop, no React state, nothing on the server or on first paint, off on coarse pointers and
+  under `prefers-reduced-motion` — every one of those asserted on the source by
+  `tests/architecture/presentation.test.ts` rather than trusted.
+
+- **Phase 12M, part 1 — the empty results column.** The owner sent a screenshot of *production*
+  showing a ~1000px rail beside an empty results column. `/routes` now picks one of two
+  compositions by whether there is anything to show: rail beside results, or the same three
+  panels as a reflowing tile row beneath the empty state. `railPanels` is defined once and placed
+  twice so the two cannot drift. Measured 1.27 screens at 1440×900, no empty region.
+
+- **Phase 12M, part 2 — buttons with a surface.** `.vx-btn-*` in `globals.css`: vertical
+  gradient, hairline top highlight, seated bottom edge, a shadow that collapses on press, and a
+  sheen that sweeps on hover. This is the chromium button the owner asked for, minus the WebGL —
+  the shader was paying for the sheen, and a sheen is a `transform` transition. Brand colour
+  rather than black; the flat Tailwind fill stays underneath as the fallback and as what the
+  contrast guards measure.
+
+- **Phase 12M, part 3 — the stranded admin queue.** Audited back-navigation across every page in
+  answer to the owner's question. Almost everything is covered by breadcrumbs, the header and the
+  bottom tabs. `/admin/routes`, however, had **nothing in the application linking to it** — only
+  `/admin/reports` is in the header — so it was reachable solely by typing the URL. Fixed with a
+  new `TabNav` primitive on both queues, not a back button: §7.1 already says two sibling views
+  are tabs, and what an administrator needs there is the other queue rather than wherever they
+  came from.
+
+### Decisions taken
+
+- **The chromium look is a stylesheet, not a shader.** Gradient + inset highlight + collapsing
+  shadow + a `transform` sheen reproduces it with no bundle, no GPU and no canvas. Recorded
+  because the same request will come again for another supplied component, and the useful question
+  is always *which part of this reference is doing the work*.
+- **`cursor: none` is refused even when the supplied component does it.** A configured pointer is
+  an accessibility setting; taking it away for decoration is not a trade this product should make.
+- **A stranded page gets tabs, not a back button.** Back answers "how do I leave"; the
+  administrator's actual need is the sibling queue.
+
+### Blockers
+
+None new. The owner-only list in `Phases.md` § *Things you need to do* is unchanged.
+
+### Next step
+
+Verdict owed to the owner on the Aceternity timeline component (their standing rule: ignore with
+validation if it is not good enough). Then the agent-doable launch leftovers — privacy and terms
+drafts, the admin-grant tool, rate limiting, error monitoring, account deletion, `metadataBase`.
+
+### Note for the next session
+
+**Do not run `npx prettier` in this repository without `--config`.** There is no Prettier config
+and no Prettier dependency here; formatting is hand-maintained and ESLint-checked. A bare
+`prettier --write` reformatted four files to its defaults before it was caught and reverted.
+
+Also: a stale `.next` shared with another session produced a phantom prerender failure on `/en`
+again. `rm -rf .next` first when a build error does not match any change you made.
+

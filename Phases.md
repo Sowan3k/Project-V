@@ -1936,7 +1936,7 @@ action links on a field. They explain themselves once opened and not before.
 
 ---
 
-## Phase 12K — Visual depth, and the hero — ⬜ not started
+## Phase 12K — Visual depth, and the hero — ✅ complete (2026-09-07)
 
 **Owner, 2026-09-07:** *"the entire project looks very flat by looks… i am looking for a good hero
 section, where people usually land first."*
@@ -1988,6 +1988,94 @@ dependency, a GPU or a single byte of bundle.**
 **Decision needed from the owner before this can close:** how far §8.5.5 bends. Everything in the
 table above is defensible under a slightly looser reading; a shader hero is not, and needs its own
 answer.
+
+---
+
+## Phase 12L — A light that follows the pointer — ✅ complete (2026-09-07)
+
+The owner supplied an inverted-cursor component and asked for it. Built, with **one deliberate
+departure**: the reference set `document.body.style.cursor = 'none'` and painted a
+`mix-blend-difference` disc in its place. This one *adds* a glow behind the pointer and leaves the
+real cursor alone.
+
+The reason is not a rule, it is a consequence. A reader who has configured a large or
+high-contrast pointer did that because they cannot reliably find a normal one; `cursor: none`
+takes it away and replaces it with something they cannot configure. On a product for students
+reading visa conditions under time pressure, that is a bad trade for an effect.
+
+It is the **second** client component in the application, and the first not required by the
+framework. What it costs is bounded and asserted rather than trusted — no `requestAnimationFrame`
+loop (the reference ran one for the life of the page), no React state, so a pointer move triggers
+no re-render; nothing rendered on the server or on first paint; off entirely on coarse pointers
+and under `prefers-reduced-motion`. `tests/architecture/presentation.test.ts` now asserts all of
+that on the source, including that it never sets `cursor: none`.
+
+---
+
+## Phase 12M — The empty column, the flat buttons, and the stranded queue — ✅ complete (2026-09-07)
+
+Three pieces of owner feedback in one sitting, and the first of them came with a screenshot of
+**production**, which is the part worth recording.
+
+### 1. "A big chunk of empty space"
+
+`/en/routes` with no results: a rail about a thousand pixels tall beside an empty results column,
+and most of a screen of nothing between them. This is the failure Phase 12H already named — *a
+rail can become the problem it solved* — in the one case 12H never looked at, because the fixture
+branch always had results and production has none.
+
+A grid row is as tall as its tallest child. When the body is an empty state and the rail is three
+panels, the rail sets the height and the body cannot fill it. Tuning the column split does not
+help; the split is what is wrong.
+
+The owner's own suggestion was the fix: *"make the components of this website inside tiles like
+mobile widget and let it move in different position based on the screen sizes."* The same three
+panels now **move** rather than shrink — beside the results when there are results, a row of tiles
+beneath the empty state when there are none. Defined once in `railPanels` and placed twice, so the
+two compositions cannot drift. Measured: 1.27 screens at 1440×900, no empty region.
+
+The axis that was broken turned out to be *how much content there is* rather than how wide the
+screen is, which is worth remembering — the responsive breakpoints were already right.
+
+### 2. "The buttons are also boring"
+
+The owner asked whether the chromium button they had supplied earlier could be used. **What made
+that reference feel like metal was never the shader.** It was four things a stylesheet does
+perfectly well: a vertical gradient so the face is lit from above, a hairline of light along the
+top edge, a darker seated edge along the bottom, and a shadow that collapses when the control is
+pressed. The WebGL was paying for an animated sheen, and a sheen that sweeps on hover is a
+`transform` transition.
+
+So `.vx-btn-primary` / `-secondary` / `-caution` in `globals.css`, in the brand colour rather than
+black — chrome on white would read as a widget borrowed from somewhere else, and the point is for
+the button to look *made*, not to look like someone else's. No bundle, no GPU, no canvas, and the
+Tailwind fill stays underneath as the flat fallback so every contrast figure the guards measure is
+still measured against the fill rather than the gradient. The sheen is off under
+`prefers-reduced-motion`.
+
+### 3. "Check if we need a back button anywhere"
+
+Audited every page. Almost nowhere: the four route screens carry breadcrumbs, `/routes/new`,
+`/how-it-works` and `/contributors/[handle]` carry them too, and every top-level destination is in
+the header and the bottom tab bar.
+
+**One pair of pages was genuinely stranded.** `/admin/routes` had nothing anywhere in the
+application linking to it — the header offers only `/admin/reports` — so route maintenance could
+be reached solely by an administrator who happened to remember the URL. It is the same class of
+finding as audit F12, which had fixed the *other* one of the two.
+
+The fix is not a back button. §7.1 already answers this shape: two sibling views of the same
+responsibility are **tabs**, each with its own URL. A back button would return the administrator
+to wherever they came from; what they actually need is the other queue. New `TabNav` primitive —
+ordinary links, so they deep-link and work with no JavaScript, and `aria-current="page"` rather
+than colour alone.
+
+### Note on tooling
+
+`npx prettier --write` was run without a config and reformatted four files to its defaults
+(double quotes, semicolons) — this repository has **no Prettier config and no Prettier
+dependency**; its formatting is hand-maintained and ESLint-checked. It was reverted by re-running
+with the house style explicitly. **Do not run Prettier here without `--config`.**
 
 ---
 

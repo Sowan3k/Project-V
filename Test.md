@@ -2665,3 +2665,30 @@ whole read path with JavaScript disabled, and now creation.
 | 4 — Visual fidelity | 🟡 every machine-checkable line green (§24, §25); **the owner's review of the sheet is what remains** |
 
 Neither of the two open items is engineering.
+
+---
+
+## 25. Phase 12L / 12M — what was tested, 2026-09-07
+
+| What | How | Result |
+|---|---|---|
+| Pointer glow stays cheap | `presentation.test.ts` asserts on the source: no `requestAnimationFrame`, no `useState`, gated on `pointer: fine` and `prefers-reduced-motion`, never sets `cursor: none` | pass |
+| Client-component allowlist | Explicit list, now two entries, each with its decision recorded in the test | pass |
+| Glow follows the pointer, native cursor untouched | Browser probe: `data-visible="true"`, `--x` tracking, `body` computed `cursor: auto` | pass |
+| Empty `/routes` leaves no empty column | Built server at 1440×900 and 820×1100; full-page screenshot and `scrollHeight` | 1.27 and 1.40 screens, no empty region |
+| Button surface does not change the measured fill | Contrast guards run against the Tailwind fill, which is unchanged; gradient stops sit either side of it | pass |
+| Admin tabs | Both queues render `TabNav`; ordinary links with `aria-current` | pass |
+| Whole suite | `npm run lint`, `npx tsc --noEmit`, `npx vitest run` | clean, clean, 905 passed |
+| Production build | `rm -rf .next && npm run build` | clean |
+
+### Not tested
+
+- **No E2E covers the admin tabs.** Both queues are behind `requireAdministrator`, and there is
+  still no way to grant the admin role (owner-only item C). The tabs are asserted structurally
+  only.
+- **The button sheen and the glow are not visually regression-tested.** No screenshot baselines
+  exist in this repository; both were checked by eye against captures at 1440×900.
+- **Hero draw-in timing.** A `networkidle` screenshot catches the staggered station entrance
+  partway through and looks like missing stages. It is not — a probe at +2s shows all nine groups
+  at `opacity: 1`. **Any future screenshot test of `/en` must wait past ~1.1s** or it will fail
+  for the wrong reason.

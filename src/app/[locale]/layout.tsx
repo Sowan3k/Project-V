@@ -3,6 +3,7 @@ import { Anek_Bangla, Lexend } from 'next/font/google'
 import { notFound } from 'next/navigation'
 
 import { BottomTabs } from '@/components/bottom-tabs'
+import { PointerGlow } from '@/components/pointer-glow'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
 import { LOCALES, LOCALE_HTML_LANG, isLocale } from '@/i18n/config'
@@ -138,7 +139,8 @@ export default async function LocaleLayout({
         >
           {t.common.skipToContent}
         </a>
-        <div className="flex min-h-dvh flex-col">
+        <PointerGlow />
+        <div className="relative isolate flex min-h-dvh flex-col">
           <div className="vx-persist">
             <SiteHeader dictionary={t} locale={locale} />
           </div>
