@@ -120,7 +120,35 @@ export default async function HowItWorksPage({
             <FactList className="mt-4" layout="stacked" facts={t.howItWorks.actions} />
           </Panel>
 
-          {/* 4. The limits, stated by us rather than discovered by a reader. */}
+          {/* 4. Safety — Phase 18. The explanation used to live only inside the report form,
+                 so a reader deciding whether to trust the platform could not read how its
+                 safety system works without first finding something to report. The same
+                 dictionary entries as the form, so the two cannot disagree. No list of what
+                 was quarantined: whether to publish one is D6, and it is the owner's. */}
+          <div id="safety" className="mt-5 scroll-mt-6">
+            <Panel as="section">
+              <h2 className="text-section font-semibold text-ink-900">
+                {t.howItWorks.safetyTitle}
+              </h2>
+              <ContentColumn width="reading">
+                <p className="mt-1 text-meta leading-5 text-ink-500">{t.howItWorks.safetyLede}</p>
+              </ContentColumn>
+              <h3 className="mt-4 text-panel font-semibold text-ink-900">
+                {t.safety.whatHappensTitle}
+              </h3>
+              <NumberedFlow className="mt-3" stages={t.safety.whatHappens} />
+              <h3 className="mt-5 text-panel font-semibold text-ink-900">
+                {t.safety.quarantineHowTitle}
+              </h3>
+              <GuidanceList className="mt-2" lines={t.safety.quarantineHow} />
+              <p className="mt-4 text-meta leading-5 text-ink-700">{t.safety.reportPrivate}</p>
+              <p className="mt-1 text-meta leading-5 text-ink-700">
+                {t.howItWorks.safetyYourReports}
+              </p>
+            </Panel>
+          </div>
+
+          {/* 5. The limits, stated by us rather than discovered by a reader. */}
           <Panel as="section" tone="sunken" className="mt-5">
             <h2 className="text-section font-semibold text-ink-900">
               {t.howItWorks.limitsTitle}

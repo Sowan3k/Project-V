@@ -418,6 +418,11 @@ export const en = {
     newHereTitle: 'New here?',
     newHereBody:
       'Every band below is one whole route, compressed. Two minutes on what a ribbon, a road, a stage and a field are will make the rest of this site read easily.',
+    // Phase 18. How reporting works, readable without first finding something to report.
+    safetyTitle: 'If something is dangerous',
+    safetyLede:
+      'A phishing link, a scam, someone impersonating an office. Report it from the field it is on, and this is what happens next.',
+    safetyYourReports: 'If you have reported something, your account page shows what happened to it.',
     privacyTitle: 'What is private',
     privacyBody:
       'Your progress, your dates and your notes are visible only to you. No other user can see them, aggregate figures cannot be traced back to you, and a route changing underneath you never alters what you recorded.',
@@ -1136,6 +1141,14 @@ export const en = {
       'Your contributions, attributed to your handle: the revisions, confirmations, challenges and reports you have made.',
     keepsNothingElse:
       'No documents, no passport, no transcript, no certificate, no bank statement. There is no upload anywhere in this product, so there is nothing of that kind to store.',
+
+    // Phase 18, the half that needed no decision. Only the person who filed a report sees it.
+    reportsTitle: 'Reports you filed',
+    reportsLede: 'What happened to each one. Only you can see this list.',
+    reportsNone: 'You have not reported anything.',
+    reportOpen: 'Waiting for a moderator',
+    reportHandled: (date: string) => `Looked at on ${date}`,
+    reportFiledOn: (date: string) => `Reported on ${date}`,
 
     publicPageTitle: 'Your public page',
     publicPageLede:

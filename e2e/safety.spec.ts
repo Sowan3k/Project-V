@@ -2,10 +2,10 @@ import { randomUUID } from 'node:crypto'
 
 import { expect, test, type Browser, type BrowserContext } from '@playwright/test'
 
-import { UserRole } from '../src/domain/enums'
+import { ReportReason, UserRole } from '../src/domain/enums'
 import { generateHandle } from '../src/server/auth/handle'
 import { prisma } from '../src/server/db/client'
-import { quarantineField } from '../src/server/safety/service'
+import { quarantineField, reportField } from '../src/server/safety/service'
 
 /**
  * Safety in a browser — Phase 9. FR-35, FR-36, FR-37, §23.
@@ -164,5 +164,44 @@ test.describe('reporting and quarantine', () => {
     await expect(page.getByText(new RegExp(secret, 'i')).first()).toBeVisible()
 
     await admin.context.close()
+  })
+  /**
+   * Phase 18, the half D6 does not decide. A reporter can see what became of a report, and
+   * nobody else can. And how reporting works is readable without reporting anything.
+   */
+  test('a reporter sees their own report, and how reporting works is public', async ({
+    browser,
+    page,
+  }) => {
+    await page.goto('/en/how-it-works#safety')
+    await expect(page.getByRole('heading', { name: 'If something is dangerous' })).toBeVisible()
+
+    const field = await prisma.field.findFirstOrThrow({
+      where: { archivedAt: null, step: { route: { slug: 'e2e-test-route' } } },
+      select: { id: true },
+    })
+    const reporter = await signedIn(browser)
+    await reportField({
+      reporterId: reporter.userId,
+      fieldId: field.id,
+      reason: ReportReason.malicious_contact,
+    })
+
+    const mine = await reporter.context.newPage()
+    await mine.goto('/en/account')
+    const section = mine.locator('section, div').filter({
+      has: mine.getByRole('heading', { name: 'Reports you filed' }),
+    })
+    await expect(section.getByText('A contact that is being misused').first()).toBeVisible()
+    await expect(section.getByText('Waiting for a moderator').first()).toBeVisible()
+
+    // Somebody else's account page lists none of it.
+    const stranger = await signedIn(browser)
+    const theirs = await stranger.context.newPage()
+    await theirs.goto('/en/account')
+    await expect(theirs.getByText('You have not reported anything.')).toBeVisible()
+
+    await reporter.context.close()
+    await stranger.context.close()
   })
 })

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { ContentColumn, PageCanvas } from '@/components/layout'
@@ -7,6 +8,7 @@ import { Caution } from '@/components/trust'
 import { isLocale } from '@/i18n/config'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { currentViewer } from '@/server/auth'
+import { reportsFiledBy } from '@/server/safety/service'
 
 import { closeAccountAction } from './actions'
 
@@ -56,6 +58,10 @@ export async function generateMetadata({
   }
 }
 
+function isoDate(date: Date): string {
+  return date.toISOString().slice(0, 10)
+}
+
 export default async function AccountPage({
   params,
   searchParams,
@@ -72,6 +78,7 @@ export default async function AccountPage({
 
   const query = await searchParams
   const mismatch = query.confirm === 'mismatch'
+  const reports = await reportsFiledBy({ userId: viewer.id })
 
   return (
     <PageCanvas className="py-10">
@@ -114,6 +121,51 @@ export default async function AccountPage({
               {t.account.viewPublicPage}
             </LinkButton>
           </div>
+        </Panel>
+
+        {/* ── Reports you filed ─────────────────────────────────────────────────────────────
+            Phase 18. A reporter could never learn whether anyone looked. Scoped by this
+            viewer's id in the safety service; nobody else's report is reachable here, and
+            neither is the moderator's note or the reported value. */}
+        <Panel className="mt-4">
+          <h2 className="text-panel font-semibold text-ink-900">{t.account.reportsTitle}</h2>
+          {reports.length === 0 ? (
+            <p className="mt-2 text-sm leading-6 text-ink-700">{t.account.reportsNone}</p>
+          ) : (
+            <>
+              <p className="mt-2 text-sm leading-6 text-ink-500">{t.account.reportsLede}</p>
+              <ul className="mt-4 space-y-3">
+                {reports.map((report) => (
+                  <li
+                    key={report.id}
+                    className="rounded-control border border-hairline bg-surface-muted px-3 py-2"
+                  >
+                    <p className="text-sm font-medium text-ink-900">
+                      {t.reportReason[report.reason]}
+                    </p>
+                    <p className="mt-0.5 text-meta text-ink-700">
+                      <Link
+                        href={`/${locale}/routes/${report.routeSlug}?step=${encodeURIComponent(report.stepId)}#route-step-info`}
+                        className="text-brand-700 underline"
+                      >
+                        {report.routeTitle} · {report.stepLabel}
+                      </Link>
+                    </p>
+                    <p className="mt-1 text-meta text-ink-500">
+                      {t.account.reportFiledOn(isoDate(report.createdAt))}
+                    </p>
+                    <p className="mt-1 text-meta text-ink-900">
+                      {report.handledAt === null
+                        ? t.account.reportOpen
+                        : `${t.account.reportHandled(isoDate(report.handledAt))}${
+                            report.outcome === null ? '' : `: ${t.reportOutcome[report.outcome]}`
+                          }`}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </Panel>
 
         {/* ── Leaving ────────────────────────────────────────────────────────────────────

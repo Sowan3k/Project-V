@@ -338,3 +338,76 @@ export async function fieldsWithOpenReports(
 
   return Promise.all(grouped.map((row) => openReportsFor(adminId, row.fieldId)))
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   The reporter's own reports — Phase 18, the half D6 does not need to decide
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+/** One report as the person who filed it sees it. */
+export interface FiledReport {
+  readonly id: string
+  readonly reason: ReportReason
+  readonly createdAt: Date
+  /** Null until an administrator has looked at it. */
+  readonly handledAt: Date | null
+  readonly outcome: ReportOutcome | null
+  readonly routeSlug: string
+  readonly routeTitle: string
+  readonly stepId: string
+  readonly stepLabel: string
+}
+
+/**
+ * Every report this person filed, newest first, and what became of each — FR-33, FR-79.
+ *
+ * Before this, somebody who reported a phishing link could never learn whether anyone looked.
+ * A safety system nobody can see working is one people stop using.
+ *
+ * **Scoped by the reporter's own id, and it returns only what they already knew plus the
+ * outcome.** Reports stay off every public surface (§23.1, §23.3): no other person's report is
+ * reachable here, nothing says who else reported the same thing, and the administrator's
+ * internal note is not returned. The field's value is not returned either, so a quarantined
+ * link does not come back to the page through the reporter's own list (FR-36).
+ */
+export async function reportsFiledBy({
+  userId,
+}: {
+  readonly userId: string
+}): Promise<readonly FiledReport[]> {
+  const rows = await prisma.report.findMany({
+    where: { reporterId: userId },
+    select: {
+      id: true,
+      reason: true,
+      createdAt: true,
+      handledAt: true,
+      outcome: true,
+      field: {
+        select: {
+          step: {
+            select: {
+              id: true,
+              currentRevision: { select: { label: true } },
+              route: {
+                select: { slug: true, currentRevision: { select: { title: true } } },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+  })
+
+  return rows.map((row) => ({
+    id: row.id,
+    reason: row.reason,
+    createdAt: row.createdAt,
+    handledAt: row.handledAt,
+    outcome: row.outcome,
+    routeSlug: row.field.step.route.slug,
+    routeTitle: row.field.step.route.currentRevision?.title ?? row.field.step.route.slug,
+    stepId: row.field.step.id,
+    stepLabel: row.field.step.currentRevision?.label ?? '',
+  }))
+}
