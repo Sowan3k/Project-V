@@ -9,7 +9,7 @@ import {
   SeverityLegend,
 } from '@/components/changes'
 import { ContentColumn, GridRegion, PageGrid } from '@/components/layout'
-import { buttonClass, EmptyState, LinkButton, Rail, TabNav } from '@/components/ui'
+import { buttonClass, Disclosure, EmptyState, LinkButton, Rail, TabNav } from '@/components/ui'
 import type { ChangeRelevance, DisruptionRelevance } from '@/domain/changes'
 import type { ChangeSeverity } from '@/domain/enums'
 import { CHANGE_SEVERITIES } from '@/domain/enums'
@@ -236,6 +236,22 @@ export async function UpdatesView({
 
       <PageGrid className="mt-6">
         <GridRegion span={8} tablet={4}>
+          {/* On a phone the rail would sit above the list and push the first change most of a
+              screen down. So below `md` the filter folds into a disclosure, open when a filter
+              is in force so the reader can see what is applied, and the rail is hidden. The
+              "Affecting my journey" tab is the phone's summary. A native <details>, so it
+              opens without JavaScript. */}
+          <div className="mb-6 rounded-panel border border-hairline bg-surface p-4 md:hidden">
+            <Disclosure
+              summary={t.updates.filterTitle}
+              open={show !== 'both' || severities.length > 0}
+            >
+              <div className="mt-3">
+                <FilterForm action={here} show={show} severities={severities} dictionary={t} />
+              </div>
+            </Disclosure>
+          </div>
+
           {signedOutPrivateTab ? (
             <EmptyState
               title={t.updates.signedOut[tab].title}
@@ -271,7 +287,7 @@ export async function UpdatesView({
             </>
           )}
         </GridRegion>
-        <GridRegion span={4} tablet={2} className="order-first md:order-none">
+        <GridRegion span={4} tablet={2} className="hidden md:block">
           {rail}
         </GridRegion>
       </PageGrid>

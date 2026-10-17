@@ -141,6 +141,10 @@ test.describe('the Updates page', () => {
     await page.goto('/en/updates')
     await expect(page.getByText(`Informational one ${tag}`)).toBeVisible()
 
+    // On a phone the filter is folded into a disclosure. A native <details> opens with
+    // scripts off too, which is part of what this test proves.
+    const fold = page.locator('summary', { hasText: 'Filter' })
+    if (await fold.isVisible()) await fold.click()
     await page.getByRole('checkbox', { name: 'Could disrupt your path' }).check()
     await page.getByRole('button', { name: 'Apply' }).click()
 
@@ -174,7 +178,10 @@ test.describe('the Updates page', () => {
     await expect(page.getByText(`Elsewhere ${tag}`)).toHaveCount(0)
     // The relevance note, in the same words as on the route's own Changes tab.
     await expect(page.getByText('Ahead of you', { exact: true }).first()).toBeVisible()
-    await expect(page.getByText('Across the 2 routes you follow.')).toBeVisible()
+    // The rail summary is shown from the tablet breakpoint up; on a phone this tab is it.
+    if ((page.viewportSize()?.width ?? 0) >= 768) {
+      await expect(page.getByText('Across the 2 routes you follow.')).toBeVisible()
+    }
 
     await page.goto('/en/updates/elsewhere')
     await expect(page.getByText(`Elsewhere ${tag}`)).toBeVisible()
