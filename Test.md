@@ -3113,6 +3113,27 @@ one correctly. The URL now carries the run's own token.
    inside the result's link (nested interactive). The fix is a design call between compressing
    the ribbon on a phone and moving the scroll out of the link; recorded in `PENDING.md`.
 
+6. **CI run #81 caught my ribbon claim being false at 1280.** 313 passed and 1 failed: the
+   Phase 16 twin test at desktop-1280, 20px taller on all three tries. The counts sat in the
+   right-hand column, and at 1280 that column sets the row's height, because the title column
+   is wide enough that its text takes fewer lines. In CI the counts wrapped onto another line
+   there; locally they did not, so the local run had passed. The artifact holding CI's
+   screenshot could not be fetched from this container (blob storage is not on its network
+   allow-list), so the exact wrap was inferred, not seen.
+
+   Fixed by placing the counts where each width has room: beside the maturity chip below `xl`,
+   and on the origin line ("BD → DE") from `xl` up. Measured with a probe at 360, 640, 768, 1024,
+   1150, 1279, 1280, 1440 and 1920: the twins are identical in height at every width from 640
+   up, and the phone is 22px taller, the documented phone allowance. The origin line has 450px or
+   more to spare from `xl` up, against about 285px for the longest realistic counts. Two
+   placements that were tried and measured first: the meta line from `lg` wrapped at 1024, and a
+   real route's meta line (mechanism and intake) would wrap even at 1280.
+
+   **Least certain range: 1024 to 1279.** The counts are in the right-hand column there, which
+   has 21 to 63px of slack locally. CI renders that column wider than this container does, by
+   enough to add a line at 1280. If it does the same between 1024 and 1279, a ribbon with counts
+   can be one line taller in that range. No test viewport sits in it.
+
 ### The review sheet, from CI
 
 `ci.yml` has a fourth job, `review`, on pushes to main only. It seeds the hypothetical Germany

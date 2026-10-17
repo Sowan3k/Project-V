@@ -2533,7 +2533,10 @@ the surface built for comparing routes — carries neither of the first two.
 - ✅ A reader can view any past version of a route from the Changes tab, by date, deep-linkably
 - ✅ The ribbon shows follower count and recent-change count without gaining height, from the
   tablet breakpoint up. On a phone the right-hand column is full width and the line may wrap
-  once. Measured in `e2e/versions-and-ribbon.spec.ts` against a twin route with neither fact
+  once. Measured in `e2e/versions-and-ribbon.spec.ts` against a twin route with neither fact.
+  The first placement failed this in CI at 1280 (run #81); the counts now sit beside the
+  maturity chip below `xl` and on the origin line from `xl` up. The least certain range is 1024
+  to 1279 (Test.md §32, item 6)
 - ✅ Search ordering is unchanged, and its test still passes untouched
 - ✅ `Test.md` and `Status.md` record the run (Test.md §32)
 
