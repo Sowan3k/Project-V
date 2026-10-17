@@ -119,7 +119,7 @@ test.describe('anonymous reading journey', () => {
 
     // The trust surface must survive too. A student on a slow phone should still be able to
     // see that a route has not been checked by anyone — every disclosure is a <details>.
-    await expect(page.getByText(/does not verify routes/i)).toBeVisible()
+    await expect(page.getByText(/has been checked by an authority/i)).toBeVisible()
 
     /**
      * And the phone's primary navigation — Phase 12F.
@@ -243,8 +243,15 @@ test.describe('the trust surface is legible to a reader', () => {
 
     // Invariant 12 / BR-04 / D-19. This route has no reports against it — and the page must
     // not let that read as approval.
-    await expect(page.getByText(/does not verify routes/i)).toBeVisible()
+    //
+    // The copy pass of 2026-09-07 shortened the passport line to one sentence (house-style
+    // caps it at twenty words), and the sentence about silence moved to How it works, where a
+    // reader learning how the platform works reads it once. Both are still asserted, where
+    // each now lives.
+    await expect(page.getByText(/has been checked by an authority/i)).toBeVisible()
+    await page.goto('/en/how-it-works')
     await expect(page.getByText(/absence of a warning is not evidence/i)).toBeVisible()
+    await page.goto('/en/routes/e2e-test-route')
 
     // A new route shows its maturity honestly rather than hiding it (FR-74).
     await expect(page.getByText(/experimental/i).first()).toBeVisible()
