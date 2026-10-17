@@ -29,7 +29,8 @@ carries its own source, its own last-confirmed date, and its own history.
 Sign in and you can **follow** a route. That gives you a private journey: the live public route,
 plus your own progress, your own target dates, your own notes. Nobody else can see any of it. If
 the public route changes while you are partway along it, you are shown what changed, where, and
-whether it lands ahead of you or behind you.
+whether it lands ahead of you or behind you. The **Updates** page collects those changes across
+every route you follow, so you do not have to open each one to find out.
 
 Anyone signed in can improve a route. Four actions, deliberately small: **add**, **update**,
 **confirm** that something is still true, or **challenge** something that is not. Every one of
@@ -114,8 +115,8 @@ two columns instead of five.
 ## Where the project stands
 
 The application is built and tested end to end. Search, ribbons, roads, steps, fields, private
-journeys, the contribution loop, change propagation, shadow comparison, reporting and quarantine
-all work.
+journeys, the contribution loop, change propagation, shadow comparison, the cross-route Updates
+page, reporting and quarantine all work.
 
 What does not exist yet is route content. The production database holds zero routes and always
 has, because of a rule the whole project rests on:

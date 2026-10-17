@@ -4,100 +4,56 @@ Copy everything below the line into a fresh session.
 
 ---
 
-Continue work on Vindeshi Express. Start by reading `Status.md` (session 16 is the most
-recent), then `Phases.md`, then `Test.md` §14, §23 and §24, then `CLAUDE.md` — especially §6
-(the 25 invariants), §7.2, §7.3, §10.2 and §11.
+Continue work on Vindeshi Express. Read `PENDING.md` first, then the latest entry in `Status.md`
+(2026-10-17), then `Test.md` §32, then `CLAUDE.md` (kept locally, not in git), especially §6 (the
+25 invariants), §7 and §11.
 
 ## Where things stand
 
-`main` is at `54714b1`, working tree clean, **CI run #62 green on all three jobs**. Production
-is migrated and live — `/en/routes` renders. 903 unit and architecture tests pass.
+Phases 0 to 16 are complete, and the half of Phase 18 that needed no owner decision. Gates 1 and
+3 have passed. Gate 4 waits only on the owner's review of the contact sheet, which CI now
+produces as the `visual-review-sheet` artifact on every push to main. Gate 2 waits on the
+owner's researched route content.
 
-Phases 0–12D are complete. **Phase 12E is partly done**: the community surfaces have been
-brought onto the design system (panels, radii, headings from the token scale), but they have
-**not** been recomposed against their visual references. That is the first job.
+CI on main was red from run #75 until 2026-10-17 because five tests had gone stale. All are
+fixed. Check the latest run before starting anything.
 
-## What to do, in order
+## What an agent can do now
 
-### 1. Finish Phase 12E — recompose against the mockups
+1. **The ribbon keyboard defect** (Test.md §32, item 5). On a phone a long ribbon scrolls inside
+   its search result and the scroll area has no keyboard access. Ask the owner to choose between
+   compressing the ribbon on a phone and moving the scroll out of the link, or propose one with a
+   screenshot of each. It only shows with a route of 10+ stages, so seed the Germany fixture
+   (`npm run fixture:germany`) to see it.
+2. **Pagination on the Updates page.** It shows the 50 most recent changes and says so. Real
+   volume is low today; this matters once it is not.
+3. Anything the owner has approved in `PENDING.md` since 2026-10-17: rate limiting (B3), Phase 17
+   (D5), the public quarantine list (D6), contribution items 5 and 6 (FR-80).
 
-The surfaces are aligned to the system but still laid out roughly. Recompose each against its
-reference in `Visual References/`:
+## Settled, do not re-litigate
 
-- **VR-08 — update a field.** Current value beside proposed value, with route/step/field
-  context, applicability, reason and source. **Do not build VR-08's "reviewed by the
-  community / goes live when confirmed" staging** — updates go live immediately and a Phase 8
-  guard enforces it (§8.6).
-- **VR-09 — create a route.** The basics form, then the route itself, with its step strip
-  drawn by the renderer.
-- **VR-10 — updates and disruptions** for one route: the four severity levels, and the
-  permanent-change vs temporary-disruption distinction made visual. **No "Subscribe to
-  Alerts", no alert settings, no second Impact axis** (§35, §41.2). A cross-route updates feed
-  is out of scope and would be a change request.
-- **VR-11 — report and safety.** Category grid, detail form, "what happens next", quarantine
-  explanation. **No screenshot upload** (§8.6), **no Safety Leaderboard** (§25), and the
-  recently-quarantined list is **not public** (Phase 9 — reports are not a public board).
-- The contributor page and the two admin queues.
+- **No admin "delete route".** CLAUDE.md §10.2.
+- **Production is never seeded.** Hypothetical routes live only on a disposable database.
+- **No proactive notifications.** The Updates page is the mechanism (§35).
+- **Severity filters, it never orders or decides relevance.** The effective date decides.
+- **The read path ships one client component** (the error boundary) and works with JavaScript
+  disabled. Every new control so far has been a plain form or a native `<details>`.
 
-Every deliberate departure from a mockup goes in writing into `Phases.md`, under the rule at
-the top of the 12B–12G section: *an unexplained departure from a mockup is a defect, an
-explained one is a decision.*
+## Traps that cost time
 
-### 2. Phase 12F — mobile and tablet as their own product
-
-Bottom tab bar (Explore / My Journey / Updates / Profile), route-as-tabs on a phone with the
-horizontal step-chip strip, a genuinely two-panel tablet composition. VR-12 and VR-13.
-
-### 3. Phase 12G — visual acceptance
-
-Screenshot suite in CI at 360/768/1280/1440 published as artifacts, a fidelity checklist per
-mockup in `Test.md`, then Gate 4.
-
-### 4. Phase 13
-
-Gates 1, 3 and 4 run against hypothetical routes. Gate 2 waits for the owner's researched
-content.
-
-## Settled — do not re-litigate
-
-- **No admin "delete route".** Reasoning is in CLAUDE.md §10.2. Test fixtures are removed by
-  resetting the disposable Neon `test` branch, never by a delete path in the product.
-- **Production is never seeded.** The owner researches and supplies real route content himself
-  before launch. Hypothetical routes are fine for testing and must be removed afterwards.
-- **Gate ordering:** 12E → 12F → 12G → Gates 1, 3, 4 (fixtures) → owner's content → Gate 2.
-- **Both CLAUDE.md §11 palette decisions are closed** (2026-09-04): the six category colours
-  are fitted and measured; there is deliberately **no** route-maturity palette, and a test
-  fails if a `--color-lifecycle-*` token appears.
-- **The read path ships one client component** (the error boundary). Keep it that way — server
-  rendering is the performance strategy, and the whole read path must work with JavaScript
-  disabled.
-
-## Traps that have already cost time — read Test.md §24
-
-- **A 200 status code does not mean a page works.** A caught error renders through the error
-  boundary and still returns 200. Verify by content: grep for the page's own text *and* for the
-  error-boundary string.
-- **Kill anything on port 3100 before running Playwright locally.** `reuseExistingServer` is
-  now opt-in, but a stale server plus `rm -rf .next` produced hours of phantom failures.
-- **A full local E2E run is not the test CI runs.** `fullyParallel` against a remote Neon
-  branch fails ~25 tests on latency alone; CI uses a local `postgres:18` container. Run single
-  specs with `--workers=1` locally, and trust CI for the full suite.
-- **Integration tests locally need `--testTimeout=120000`.** Eight of them exceed the 30s
-  default against Neon and pass in ~39s. Not defects.
-- **An empty result from a fan-out means nothing ran until proven otherwise.** A review
-  workflow returned `{"confirmed": []}` after all seven agents died on a session limit. Check
-  the journal for `result` lines before believing an all-clear.
-- **`.next` is shared between `next dev` and `next build`.** Do not run a production build
-  while a dev server is up.
-
-## Owner actions outstanding
-
-- **Accept or reject the ribbon and road direction** against VR-03 and VR-04. This is the one
-  unticked exit criterion on both 12C and 12D, and everything after builds on it.
+- **Kill the Playwright server in its own command.** Chained after a failing command with `&&`,
+  the kill does not run, the old server keeps serving while `.next` is rebuilt, and every test
+  fails for no product reason.
+- **In a cloud container, Chromium may not match Playwright's revision.** Use a config outside the
+  repo that sets `launchOptions.executablePath`, and `REVIEW_CHROMIUM_PATH` for the review shooter.
+- **A dynamic `await import('../src/...')` in a spec fails under Node 22** (the `@/` alias does
+  not resolve). CI uses Node 24. Prefer static imports in specs.
+- **The shared seed route accumulates across runs and viewports.** Give every test its own route
+  or a run-specific token, and never assert on a constant string other runs also write.
+- **A 200 status does not mean a page works.** Check the page's own text and the error boundary's.
 
 ## Working rules
 
-Update `Status.md` at the end of the session, `Test.md` after any test run that finds
-something, and mark phase progress in `Phases.md`. Commit messages cite FR/BR/D ids. Split
-unrelated work into separate commits — a 42-file commit labelled as a ribbon fix has already
-happened once and made the record misleading.
+Update `Status.md` at the end of the session, `Test.md` after any test run that finds something,
+`Phases.md` for phase progress, and `PENDING.md` when an owner item is resolved. Commit messages
+cite FR/BR/D ids. Split unrelated work into separate commits.

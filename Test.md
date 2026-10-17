@@ -3023,3 +3023,117 @@ silent rather than announce a zero.
   including the exact text.
 - **No test covers a contributor confirming a step where they wrote *some* fields.** The refusal
   is silent by design so the other fields still confirm; only the single-field case is proved.
+
+## 32. Phases 14, 15, 16 and half of 18, and the stale tests that kept CI red. 2026-10-17
+
+### Where main stood
+
+CI had been red on main since run #75. The unit job was green; the integration and end-to-end
+jobs were not, and none of it was a product defect:
+
+| Failing | Why | Fixed in |
+|---|---|---|
+| 2 integration tests in `contribution.db.test.ts` | They had the field's own author give a confirmation, and ecb824e refused self-confirmation, correctly | e0aba96 |
+| `route-journey.spec.ts` ×2, every viewport | Still looked for "does not verify routes", which the copy pass (ab4beeb) removed | 152cd42 |
+| `safety.spec.ts` "report is offered…", every viewport | Still looked for a `<select>` that Phase 12E replaced with VR-11's radio grid | 168ea9b |
+| `contribute.spec.ts` challenge, two viewports | Strict text match. Now scoped to the open step, because the note also appears in the Phase 15 list | 72ad96a |
+| `accessibility.spec.ts`, flaky | axe measured during the 240ms fade-in (`vx-enter`) | 65e647f |
+
+### How this session ran things
+
+No Neon access from the cloud container, so everything ran against a local Postgres 16 with
+the `platform_meta` test marker, the same way CI uses a `postgres:18` container. The pre-installed
+Chromium is revision 1194 and Playwright 1.62 wants 1234, so a scratch config outside the repo
+set `launchOptions.executablePath`. The server was built once and run with
+`E2E_REUSE_SERVER=1`.
+
+**Trap, recorded because it cost a run.** A kill command chained after a typecheck with `&&`
+did not run when the typecheck failed, so the old server kept serving while `.next` was rebuilt
+underneath it. Every test then failed for no product reason. Kill the server in its own command.
+
+### Results
+
+| Suite | Result |
+|---|---|
+| Lint, typecheck | clean |
+| Unit and architecture | 927 passed (4 new: `needs-help.test.ts`) |
+| Integration | 201 passed (16 new across `updates`, `needs-help`, `ribbon-signals`, `reports-filed`) |
+| End to end, whole suite, 4 viewports | 306 passed, 4 failed, 6 skipped (last full run, after Phase 18) |
+
+**The 4 local failures are environmental, and fail identically on untouched main.**
+`presentation.spec.ts:110` uses `await import('../src/renderer')`, and under this container's
+Node 22 the `@/` alias inside the imported module does not resolve. Checked by running the same
+test from a clean worktree of `origin/main`: same error. CI runs Node 24, and in CI run #80 it
+passes. `safety.spec.ts` had the same problem with a dynamic import of the safety service; that
+one is now a static import (7feef4e), and the spec passes 20/20 locally.
+
+**The quarantine test then failed for a different reason, and it was the test.** It asserted a
+constant shortened URL was absent from the page, but every run and every viewport used the same
+URL, and the earlier runs that died at the dynamic import had added their field without
+quarantining it. Twelve such fields sat on the seed route. The product withheld every quarantined
+one correctly. The URL now carries the run's own token.
+
+### What the new tests prove
+
+- **Phase 14.** `tests/db/updates.db.test.ts`: the feed spans routes, newest announcement first;
+  a severity filter narrows without reordering; an ended or resolved disruption drops out while
+  all four rows remain on the route; a follower's reports cover only their own followed routes.
+  And the effective-date test: two changes announced at the same instant on the same finished
+  step get different bearings because their effective dates differ. `e2e/updates.spec.ts`: the
+  anonymous view, the signed-out private tab, filtering with JavaScript disabled, a follower with
+  two routes, and the navigation at every width.
+- **Phase 15.** The list lengths equal the passport's counts on a route with one field of each
+  kind; a challenge answered by a revision leaves the list; a quarantined value is not repeated;
+  a field on an archived step is marked. `e2e/needs-help.spec.ts`: passport link → list →
+  field, with the field in the viewport and the road on the page, with and without scripts.
+- **Phase 16.** Followers exclude unfollowed journeys; recent changes exclude anything outside
+  90 days; the ribbon and the route page agree. In a browser, the ribbon is the same height as a
+  twin without the facts at 768 and 1280 (within a pixel), and `?at=` shows the chosen day,
+  refuses a day outside the route's life, and works with scripts off.
+
+### Found by the new tests
+
+1. **Contrast.** Not-running disruptions at `opacity-80` failed WCAG AA. Present on the route
+   Changes tab since Phase 10; its audit fixture has no ended disruption, so nothing saw it.
+2. **Focus under the bottom bar.** At 360px the Apply button scrolled to the bottom edge and sat
+   behind the fixed bar. `scroll-padding-bottom` below `md` fixes it for every page.
+3. **Three guards fired, all correctly.** `'other'` as a tab id (enum single-source),
+   `'disputed'` as a React key (same guard), and `versionInvalid` as a dictionary key (the change
+   vocabulary bans "invalid" so nothing can call progress invalid).
+
+4. **The Updates filter on a phone.** Seen on the review sheet, not by a test: at 360px the
+   anonymous summary and the open filter pushed the first change about 550px down. Below `md`
+   the filter now folds into a native disclosure (open when a filter is active) and the rail is
+   hidden. The JavaScript-disabled filter test opens it first, which also proves it opens with
+   scripts off.
+5. **Open, not fixed: a long ribbon's scroll area on a phone has no keyboard access.** axe
+   `scrollable-region-focusable` on `/en/routes` at 360 and 390, once the 13-stage Germany fixture
+   was on the first page. CI never sees it because its search page holds only short test routes.
+   It will appear with real content. A tabindex cannot go on the scroll area because it sits
+   inside the result's link (nested interactive). The fix is a design call between compressing
+   the ribbon on a phone and moving the scroll out of the link; recorded in `PENDING.md`.
+
+### The review sheet, from CI
+
+`ci.yml` has a fourth job, `review`, on pushes to main only. It seeds the hypothetical Germany
+fixture into its own throwaway Postgres, builds the review copy, photographs every anonymous
+screen at four widths, and uploads `scripts/review/out/` as the `visual-review-sheet` artifact.
+Run locally first with the same steps: 52 captures, 0 overflows, 3 session-only screens listed
+as not captured. The sheet now includes Updates, What needs help and How reporting works.
+`shoot.mjs` gained `REVIEW_CHROMIUM_PATH` for a machine whose browser does not match Playwright.
+
+### Not tested
+
+- **The version picker against a route with history over several days.** Revisions cannot be
+  back-dated (the triggers refuse UPDATE), so every fixture route was created today and the
+  picker can only be exercised on today. `shadowSince` itself is covered by the Phase 10
+  integration tests with real cut points.
+- **The Updates page with more than fifty changes.** The limit note renders at fifty; there is no
+  pagination yet, and no test fills it.
+- **None of the new screens has been photographed** for the Gate 4 contact sheet.
+- **Phase 18 half.** `tests/db/reports-filed.db.test.ts` proves the outcome appears after
+  handling, the moderator's note does not, and one person never sees another person's report
+  about the same field. The safety spec proves the account page shows it and a stranger's does
+  not. Account closure was not re-tested against reports. Closing keeps the user row (with no
+  email, no sessions and no OAuth link), so the reports stay attached to it, but nobody can sign
+  in as it again to open the list.

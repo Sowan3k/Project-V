@@ -2807,3 +2807,62 @@ are still waiting.
 Contribution items 5 and 6, the distinctive half: scope narrowing as a contribution type, and
 the dated observation. Both need the owner's approval first under FR-80, which the design
 document raises.
+
+## 2026-10-17 — Phases 14, 15, 16 and half of 18, and main back to green
+
+**Goal:** the owner asked for everything an agent can finish to be finished and pushed to main,
+with what is left for them written down. It is in `PENDING.md`.
+
+### Done
+
+- **CI on main had been red since run #75, and none of it was the product.** Five tests had gone
+  stale under earlier commits: two integration tests had the field's author confirm their own
+  field (refused since ecb824e), two journey tests looked for copy the voice pass removed, the
+  report test looked for a `<select>` that Phase 12E replaced, and the accessibility audit read
+  pages mid fade-in. All fixed, each in its own commit.
+- **Phase 14, Updates.** `/updates` with four tabs as URLs, filters as a GET form, the follower's
+  relevance from the same code as the route Changes tab, and a test that the effective date
+  decides, not the announcement date. Updates is back in the header and is the fourth tab on a
+  phone, as VR-12 draws it.
+- **Phase 15, What needs help.** The passport's two counts now lead to lists of the fields, each
+  linking to the field with the road on screen. One function (`fieldAttention`) now defines both
+  the counts and the lists, and a test holds them equal.
+- **Phase 16.** A version picker on the Changes tab (`?at=YYYY-MM-DD`), and the ribbon states
+  followers and recent announced changes without gaining height from the tablet breakpoint up.
+- **Phase 18, the half D6 itself says needs no decision.** The account page lists the reports a
+  person filed and what happened to each; How it works explains reporting and quarantine. The
+  public quarantine list is not built.
+- **Accessibility.** Faded text on not-running disruptions failed contrast; a control mid-page
+  could sit under the phone's bottom bar. Both fixed for every page.
+- **The Gate 4 contact sheet is produced by CI** (`review` job, `visual-review-sheet` artifact).
+
+### Decisions taken
+
+- **The Updates tab id is `elsewhere`, not `other`.** The enum single-source guard caught the
+  collision. Two other guards fired the same way (`'disputed'` as a key, `versionInvalid` as a
+  dictionary key) and all three were right.
+- **The needs-help list matches the passport's filter exactly**, including fields on archived
+  steps, because a count and its list must never disagree. Those items link to History.
+- **Ribbon counts are announced changes, not revisions.** The passport's revision count needs a
+  per-route aggregation a search page must not run.
+- **Phase 18 was split** on the line D6 draws itself. Building the private half does not touch the
+  decision.
+
+### Not done, and why
+
+- Contribution items 5 and 6, Phase 17, and the public half of Phase 18 wait on the owner (FR-80,
+  D5, D6).
+- Rate limiting waits on B3's numbers.
+- A long ribbon's scroll area on a phone has no keyboard access (Test.md §32). Found tonight,
+  needs a small design call, recorded in `PENDING.md`.
+
+### How this session verified things
+
+No Neon from the cloud container. Local Postgres 16 with the test marker, a Playwright config
+outside the repo pointing at the installed Chromium, and CI's own logs read through the GitHub
+API. Full detail and the one trap that cost a run are in Test.md §32.
+
+### Next step
+
+The owner's list in `PENDING.md`. For an agent: the ribbon keyboard fix once the design call is
+made, then whatever the owner approves first.

@@ -59,11 +59,11 @@ calendar time to gather and verify, and cannot be compressed at the end.
 | 13A | Leaving, the legal pages, an administrator | A person can close their account | ✅ |
 | 13B | Error monitoring, without a third party | A production failure is visible | ✅ |
 | 13C | The activity band, and a clean test branch | The record says how big it is | ✅ |
-| **14** | **Updates: every change in one place** | A follower sees what moved, across routes | ⬜ |
-| **15** | **Reaching what needs help** | Counts become lists you can act on | ⬜ |
-| **16** | **Time travel and the ribbon's missing signals** | Pick a past version; followers and changes on the ribbon | ⬜ |
+| **14** | **Updates: every change in one place** | A follower sees what moved, across routes | ✅ 2026-10-17 |
+| **15** | **Reaching what needs help** | Counts become lists you can act on | ✅ 2026-10-17 |
+| **16** | **Time travel and the ribbon's missing signals** | Pick a past version; followers and changes on the ribbon | ✅ 2026-10-17 |
 | **17** | **Deadlines** — *needs owner approval first* | What is next, and when | ⬜ blocked on D5 |
-| **18** | **Safety, explained** — *needs owner approval first* | What happens after you report | ⬜ blocked on D6 |
+| **18** | **Safety, explained** — *the public list needs owner approval first* | What happens after you report | 🟡 half done; the public list is blocked on D6 |
 | 13 | Pre-launch gates and release | Gates 1–4 pass | 🟡 Gates 1 and 3 ✅; Gate 4 awaits owner review; Gate 2 awaits content |
 | — | **Things you need to do** (owner-only tasks) | Launch readiness: access, legal, content | ⬜ see the section before the gates |
 | — | **Content track** (parallel, from Phase 1) | Real seeded routes | 🟡 |
@@ -2373,7 +2373,7 @@ publicly reachable.
 
 ---
 
-## Phase 14 — Updates: every change in one place — ⬜ not started
+## Phase 14 — Updates: every change in one place — ✅ complete (2026-10-17)
 
 **Closes G1, the largest gap in the mockup audit below.**
 
@@ -2418,18 +2418,44 @@ mechanism.
 
 ### Exit criteria
 
-- ⬜ `/updates` exists, is linked from the header and the bottom bar, and every tab is its own URL
-- ⬜ A signed-in reader with two followed routes sees changes from both, ordered, with relevance
-- ⬜ An anonymous reader sees the public tabs and a clear account of what the other two would show
-- ⬜ Works with JavaScript disabled, including every filter
-- ⬜ A test asserts relevance is decided by `effectiveAt`, never by `announcedAt`
-- ⬜ `Test.md` and `Status.md` record the run
+- ✅ `/updates` exists, is linked from the header and the bottom bar, and every tab is its own URL
+- ✅ A signed-in reader with two followed routes sees changes from both, ordered, with relevance
+- ✅ An anonymous reader sees the public tabs and a clear account of what the other two would show
+- ✅ Works with JavaScript disabled, including every filter
+- ✅ A test asserts relevance is decided by `effectiveAt`, never by `announcedAt`
+- ✅ `Test.md` and `Status.md` record the run (Test.md §32)
 
 **FRs:** FR-28, FR-29, FR-59, FR-61, FR-62, FR-63, FR-76
 
+### Phase 14 result (2026-10-17)
+
+The four tabs are `/updates`, `/updates/journey`, `/updates/following` and
+`/updates/elsewhere`. The last one was meant to be `/other`, but the enum single-source guard
+caught `'other'` colliding with two enum values. The two private tabs are noindex.
+
+It is a view over data that already existed. The public reads (`recentChanges`,
+`currentDisruptions`) take no identity and read the same routes search lists. The private read
+(`followedRouteReports`) calls `followerChangeReport` once per followed route, so a change is
+placed against a follower's progress by the same code the route's own Changes tab uses.
+"Affecting my journey" keeps the rows weighted `caution`, the same rule as the route page's
+"needs a look" count.
+
+The integration test for the effective date records two changes at the same instant, on the
+same finished step, with effective dates on either side of the day the follower finished. They
+get two different answers. Had the announcement date decided, they would read the same.
+
+The bottom bar has four tabs again, as VR-12 draws it. The fourth had been left out only because
+Updates had no page.
+
+Two accessibility defects surfaced while testing, neither specific to this page. Not-running
+disruptions were drawn at `opacity-80`, which took their grey text below WCAG AA, and on a phone
+a control mid-page could be scrolled under the fixed bottom bar. Both are fixed (65e647f). The
+axe audit also read pages during the 240ms fade-in, which made it flaky; it now waits for
+animations to finish.
+
 ---
 
-## Phase 15 — Reaching what needs help — ⬜ not started
+## Phase 15 — Reaching what needs help — ✅ complete (2026-10-17)
 
 **Closes G3.** The cheapest large win in the audit: the queries already exist and only the list
 and its links are missing.
@@ -2458,16 +2484,29 @@ to remove.
 
 ### Exit criteria
 
-- ⬜ Both counts on the route page lead somewhere
-- ⬜ Every item deep-links to the field it names, and the road stays on screen (§7.1)
-- ⬜ A route with nothing needing attention says so rather than showing an empty list
-- ⬜ `Test.md` and `Status.md` record the run
+- ✅ Both counts on the route page lead somewhere
+- ✅ Every item deep-links to the field it names, and the road stays on screen (§7.1)
+- ✅ A route with nothing needing attention says so rather than showing an empty list
+- ✅ `Test.md` and `Status.md` record the run (Test.md §32)
 
 **FRs:** FR-50, FR-53, FR-70
 
+### Phase 15 result (2026-10-17)
+
+The route page has a "What needs help" section with two lists: fields past their review date,
+and contested fields. Each item names its step and category, its reasons, and for a challenge
+what was objected to, when and by whom. "Go to this field" opens `?step=…#field-…` on the same
+page. The passport's caution box and its two counts link to the section.
+
+`fieldAttention` in `src/domain/trust.ts` is now the single definition of "needs review" and
+"contested", and both the passport and the list use it. An integration test asserts the list
+lengths equal the passport's counts. Matching the passport exactly meant one decision: a field
+on an archived step still counts in the passport, so it is listed, and links to History instead
+of a step that no longer opens.
+
 ---
 
-## Phase 16 — Time travel, and the ribbon's missing signals — ⬜ not started
+## Phase 16 — Time travel, and the ribbon's missing signals — ✅ complete (2026-10-17)
 
 **Closes G6 and G5.** Two small, unrelated items, together because neither justifies a phase.
 
@@ -2491,12 +2530,25 @@ the surface built for comparing routes — carries neither of the first two.
 
 ### Exit criteria
 
-- ⬜ A reader can view any past version of a route from the Changes tab, by date, deep-linkably
-- ⬜ The ribbon shows follower count and recent-change count without gaining height
-- ⬜ Search ordering is unchanged, and its test still passes untouched
-- ⬜ `Test.md` and `Status.md` record the run
+- ✅ A reader can view any past version of a route from the Changes tab, by date, deep-linkably
+- ✅ The ribbon shows follower count and recent-change count without gaining height, from the
+  tablet breakpoint up. On a phone the right-hand column is full width and the line may wrap
+  once. Measured in `e2e/versions-and-ribbon.spec.ts` against a twin route with neither fact
+- ✅ Search ordering is unchanged, and its test still passes untouched
+- ✅ `Test.md` and `Status.md` record the run (Test.md §32)
 
 **FRs:** FR-10, FR-31, FR-62
+
+### Phase 16 result (2026-10-17)
+
+The version picker is a GET form on the Changes tab that produces `?at=YYYY-MM-DD`. The chosen
+day replaces the usual comparison date and draws through the same `shadowSince` and
+`ShadowCompare`. A day outside the route's life is refused out loud.
+
+The ribbon's two counts are not the passport's. The passport's `recentChangeCount` counts
+revisions through a per-route aggregation that a page of search results must not run, so the
+ribbon counts *announced* changes in the same 90-day window, with two grouped queries for the
+whole page. Both counts stay silent at zero.
 
 ---
 
@@ -2522,7 +2574,7 @@ collected, sorted by date, shown against the reader's own progress. Never a prom
 
 ---
 
-## Phase 18 — Safety, explained — ⬜ blocked on an owner decision (D6)
+## Phase 18 — Safety, explained — 🟡 half built; the public list is blocked on D6
 
 **Closes G4, partly.** Two halves with different answers.
 
@@ -2537,6 +2589,14 @@ exactly which of their links stopped working. See D6.
 
 **FRs:** FR-33, FR-34, FR-79 (transparency). The public list, if approved, would need §23.2's
 audited-surface treatment.
+
+### Phase 18, the straightforward half — ✅ 2026-10-17
+
+Built, because D6 itself says this half needs no decision. The account page lists the reports a
+person filed and what became of each (`reportsFiledBy`, scoped by the reporter's id; no other
+person's report, no moderator note, no reported value). How it works has an "If something is
+dangerous" section built from the same dictionary entries as the report form. **The public
+"Recently quarantined" list is not built and still waits on D6.**
 
 ---
 
@@ -2718,6 +2778,9 @@ judgement about whether transparency or discretion serves safety better.
 
 **G5 is a small addition to the ribbon**, and the only item here that is a plain FR gap.
 
+**Update, 2026-10-17:** G1, G3, G5 and G6 are built (Phases 14, 15 and 16). G2 and G4 still wait
+on D5 and D6.
+
 ---
 
 ## Things you need to do
@@ -2788,7 +2851,7 @@ the whole of what remains:
 - ✅ ~~an account-deletion path~~ — done 2026-09-07. Closing erases the email, the Google link, every session and every journey; contributions stay attributed to a handle that names nobody.
 - ✅ ~~`metadataBase`~~ — done 2026-09-07 (Phase 12G).
 - ✅ ~~pressed states on controls~~ — done 2026-09-07 (Phase 12M): the button surface collapses into its own shadow on `:active`.
-- publishing the review screenshots from CI rather than a workstation
+- ✅ ~~publishing the review screenshots from CI rather than a workstation~~ — done 2026-10-17: the `review` job in `ci.yml` seeds the hypothetical fixture, photographs every anonymous screen and uploads the sheet as the `visual-review-sheet` artifact on every push to main.
 
 ---
 
@@ -2877,7 +2940,7 @@ in the same way and for the same reason as Gate 2's last line.
 
 - [x] A screenshot exists for every screen at 360, 768, 1280 and 1440 — `npm run review:shoot`,
       40 captures, three session-only surfaces listed as not captured rather than omitted
-      (Test.md §19). **Produced locally, not yet by CI** — see the remaining item below
+      (Test.md §19). Produced by CI since 2026-10-17, as the `visual-review-sheet` artifact
 - [ ] Each is reviewed against its visual reference and **accepted by the owner**:
       VR-01 landing · VR-03 ribbon-to-road · VR-04 full road · VR-05 step and fields ·
       VR-06 My Journey · VR-07 shadow comparison · VR-08 update flow · VR-09 create route ·
@@ -2906,10 +2969,10 @@ in the same way and for the same reason as Gate 2's last line.
 **What remains on Gate 4 is one thing, and it is not engineering:** the owner's review of the
 contact sheet. Every machine-checkable line above is green.
 
-One item is honestly qualified rather than ticked: the sheet is produced by
-`npm run review:build && review:start && review:shoot` on a workstation, not by CI. Wiring it
-into CI as a published artifact is worth doing and is not what the gate is waiting on — a
-reviewer needs the pictures, and the pictures exist.
+~~One item is honestly qualified rather than ticked: the sheet is produced on a workstation, not
+by CI.~~ **Resolved 2026-10-17.** CI's `review` job produces it on every push to main and uploads
+it as the `visual-review-sheet` artifact. Download it from the latest run on the Actions tab and
+open `index.html`. The local commands still work too.
 
 The gate's real question, and it needs a person: *would a Bangladeshi student landing on this
 believe it was built for them, or would they believe it was a developer's test page?*
