@@ -38,6 +38,12 @@ const url = process.env.TEST_DATABASE_URL
 interface Fixture {
   readonly amina: string
   readonly bikash: string
+  /**
+   * A third person, because the field's author can no longer confirm their own field. Two
+   * tests below once used the author as the second confirmer, and broke the day
+   * self-confirmation was refused (tests/db/self-confirmation.db.test.ts).
+   */
+  readonly chitra: string
 }
 
 let who: Fixture
@@ -45,11 +51,12 @@ let who: Fixture
 beforeAll(async () => {
   if (!url) return
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`
-  const [amina, bikash] = await Promise.all([
+  const [amina, bikash, chitra] = await Promise.all([
     prisma.user.create({ data: { handle: generateHandle(), email: `c1-${suffix}@example.test` } }),
     prisma.user.create({ data: { handle: generateHandle(), email: `c2-${suffix}@example.test` } }),
+    prisma.user.create({ data: { handle: generateHandle(), email: `c3-${suffix}@example.test` } }),
   ])
-  who = { amina: amina.id, bikash: bikash.id }
+  who = { amina: amina.id, bikash: bikash.id, chitra: chitra.id }
 }, 180_000)
 
 async function newRoute(userId: string): Promise<{ routeId: string; slug: string }> {
@@ -245,7 +252,7 @@ describe.skipIf(!url)('CONFIRM and CHALLENGE are different actions — FR-17, FR
 
     await confirmField({ actor: { id: who.bikash }, fieldId })
     await confirmField({ actor: { id: who.bikash }, fieldId })
-    await confirmField({ actor: { id: who.amina }, fieldId })
+    await confirmField({ actor: { id: who.chitra }, fieldId })
 
     const fields = await getStepFields(stepId)
     // Three confirmations, two people. A count that could not tell those apart would not be
@@ -381,7 +388,7 @@ describe.skipIf(!url)('FR-33, invariant 11 — a contribution never impersonates
     // Confirmations do not promote a claim. Ten people agreeing about a queue does not make
     // it an official statement (invariant 14, BR-32).
     await confirmField({ actor: { id: who.bikash }, fieldId: field.fieldId })
-    await confirmField({ actor: { id: who.amina }, fieldId: field.fieldId })
+    await confirmField({ actor: { id: who.chitra }, fieldId: field.fieldId })
 
     const fields = await getStepFields(step.stepId)
     expect(fields[0]?.sourceClass).toBe(SourceClass.community_submission)
