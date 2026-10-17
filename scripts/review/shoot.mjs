@@ -41,7 +41,11 @@ const out = resolve('scripts/review/out')
 const references = resolve('Visual References')
 mkdirSync(out, { recursive: true })
 
-const browser = await chromium.launch()
+// REVIEW_CHROMIUM_PATH is for a machine whose installed browser does not match the Playwright
+// version, as in some cloud containers. CI installs the matching one and leaves this unset.
+const browser = await chromium.launch(
+  process.env.REVIEW_CHROMIUM_PATH ? { executablePath: process.env.REVIEW_CHROMIUM_PATH } : {},
+)
 /** One row per screen per width: what was captured, and whether the page overflowed. */
 const captured = []
 const skipped = []

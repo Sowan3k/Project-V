@@ -100,6 +100,35 @@ export const SCREENS = [
       'Two roads on a shared numbered spine, with the change summary leading. It has to answer what changed, where, when, how much, and whether it touches this reader.',
   },
   {
+    id: 'needs-help',
+    title: 'Route: what needs help',
+    path: route('#needs-help'),
+    reference: '14-experimental-disputed-route-state.png',
+    criterion: '15',
+    crops: [{ id: 'list', selector: '#needs-help' }],
+    look:
+      'VR-14\'s "Fields Need Review" and "Open Challenges" as two lists below the road. Each item names its step and leads to the field. Contested must not read as wrong, and the list must not read as a verdict on the route (invariants 14, 15). No comment threads.',
+  },
+  {
+    id: 'updates',
+    title: 'Updates across routes',
+    path: '/en/updates',
+    reference: '10-updates-and-temporary-disruptions.png',
+    criterion: '14',
+    look:
+      'VR-10\'s tabs by scope, the four levels told apart by weight and word rather than four colours, and the permanent-change and temporary-disruption distinction on the face of every card. No "Subscribe to Alerts" and no unread count (§8.6, §35). On the fixture branch this may be sparse; judge the composition, not the volume.',
+  },
+  {
+    id: 'safety-explained',
+    title: 'How reporting works',
+    path: '/en/how-it-works#safety',
+    reference: '11-report-safety-and-quarantine.png',
+    criterion: '18 (half)',
+    crops: [{ id: 'section', selector: '#safety' }],
+    look:
+      'What happens after a report and how quarantine works, readable without reporting anything. No public list of quarantined items: that is D6 and waits on the owner.',
+  },
+  {
     id: 'history',
     title: 'Route history',
     path: route('/history'),

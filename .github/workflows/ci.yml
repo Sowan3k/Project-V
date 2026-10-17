@@ -165,3 +165,83 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  review:
+    name: visual review sheet
+    # Gate 4's contact sheet, produced by CI rather than on somebody's workstation. Added
+    # 2026-10-17. It photographs every anonymous screen at 360, 768, 1280 and 1440 and
+    # publishes the sheet as an artifact for the owner to review against Visual References/.
+    # It judges nothing except horizontal overflow; the review itself is a person's (Gate 4).
+    #
+    # Only on pushes to main: it is a picture of what shipped, not a check on a proposal.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: vindeshi
+          POSTGRES_PASSWORD: vindeshi
+          POSTGRES_DB: vindeshi_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://vindeshi:vindeshi@localhost:5432/vindeshi_test
+      DATABASE_URL_UNPOOLED: postgresql://vindeshi:vindeshi@localhost:5432/vindeshi_test
+      TEST_DATABASE_URL: postgresql://vindeshi:vindeshi@localhost:5432/vindeshi_test
+      # Throwaway and public by design, as in the e2e job. Signs cookies nobody will hold.
+      AUTH_SECRET: ci-only-secret-not-used-anywhere-else
+      AUTH_URL: http://localhost:3101
+      AUTH_TRUST_HOST: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Apply migrations to an empty database
+        run: npx prisma migrate deploy
+
+      - name: Mark the throwaway database as a test database
+        run: npx prisma db execute --url "$DATABASE_URL" --file ci/mark-test-database.sql
+
+      - name: Load the hypothetical Germany fixture
+        # The route the sheet photographs. Hypothetical, labelled as a fixture, and gone with
+        # the container (CLAUDE.md §10.2). Production is never seeded.
+        run: npx tsx scripts/fixtures/germany-rwth-direct.ts
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build the review copy
+        run: node scripts/review/build.mjs
+
+      - name: Start it
+        run: |
+          NEXT_DIST_DIR=.next-review npx next start -p 3101 > review-server.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:3101/en && exit 0
+            sleep 2
+          done
+          cat review-server.log
+          exit 1
+
+      - name: Photograph every screen
+        run: node scripts/review/shoot.mjs
+
+      - name: Publish the contact sheet
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-review-sheet
+          path: scripts/review/out/
+          retention-days: 30
