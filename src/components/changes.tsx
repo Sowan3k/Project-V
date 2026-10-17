@@ -358,8 +358,9 @@ function RelevanceNote({
     return <div className="mt-3 border-t border-hairline pt-2">{body}</div>
   }
   // Weightless. Still stated, quietly — a follower who marked a change "not applicable to me"
-  // should still be able to see it and change their mind (§13.3).
-  return <div className="mt-3 border-t border-hairline pt-2 opacity-70">{body}</div>
+  // should still be able to see it and change their mind (§13.3). Quiet by position and the
+  // absence of a marker, not by opacity, which took this text below WCAG AA (Phase 14).
+  return <div className="mt-3 border-t border-hairline pt-2">{body}</div>
 }
 
 /**
@@ -522,10 +523,16 @@ export function DisruptionCard({
 
   return (
     <li
+      /*
+        Not running reads as quieter through the ground, not through transparency. It was
+        `opacity-80`, which took the grey text on the card below WCAG AA; the Updates page's
+        axe audit caught it on an upcoming disruption (Phase 14). `surface-muted` is a ground
+        every text token is measured against in presentation.test.ts.
+      */
       className={`rounded-panel border p-4 ${
         disruption.active
           ? 'border-caution-500/40 bg-caution-50'
-          : 'border-hairline bg-surface opacity-80'
+          : 'border-hairline bg-surface-muted'
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">

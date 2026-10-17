@@ -68,10 +68,27 @@ const seeded = !process.env.E2E_BASE_URL
  * in the architecture suite on the tokens themselves. The two catch different things — a token
  * pair nobody uses, and a use nobody predicted.
  */
-function audit(page: Page) {
+async function audit(page: Page) {
+  await settled(page)
   return new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze()
+}
+
+/**
+ * Wait for the page's entrance motion to finish before measuring it — Phase 14.
+ *
+ * `main` fades in from opacity 0 over 240ms (`vx-enter`). An audit that starts inside that
+ * window reads every colour partly blended into the ground: `ink-500` measured 4.49:1 on a
+ * page where it is 4.6:1 at rest. Which pages failed depended on how fast each one rendered,
+ * so the suite flaked on unchanged screens and failed every time on the quickest one, the
+ * signed-out Updates tab. Motion stays on; the audit just reads the page a reader actually sits
+ * on, not one frame of its arrival.
+ */
+async function settled(page: Page): Promise<void> {
+  await page.waitForFunction(() =>
+    document.getAnimations().every((animation) => animation.playState !== 'running'),
+  )
 }
 
 /** Readable output: axe's own `help` text plus where it landed. */

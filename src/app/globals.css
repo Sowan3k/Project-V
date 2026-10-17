@@ -284,6 +284,23 @@
   color-scheme: light;
 }
 
+/*
+ * Nothing scrolled into view lands under the phone's bottom bar (Phase 14).
+ *
+ * The bar is `position: fixed`, 56px plus the home-indicator inset, and the shell pads the end
+ * of the page for it. That keeps the *footer* clear, but a control in the middle of a page can
+ * still be scrolled to the bottom edge of the viewport and sit behind the bar: tabbing to it,
+ * or following a link to it, would leave a focused element the reader cannot see (WCAG 2.4.11).
+ * Found by the Updates spec at 360px, where the filter's Apply button ended up under the bar.
+ *
+ * `768px` is Tailwind's `md`, the width at which the bar is hidden.
+ */
+@media (max-width: 767.98px) {
+  html {
+    scroll-padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+}
+
 body {
   background-color: var(--color-surface-muted);
   color: var(--color-ink-900);
