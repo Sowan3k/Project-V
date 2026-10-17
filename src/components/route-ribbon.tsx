@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { RibbonTrust } from '@/components/trust'
 import type { Dictionary } from '@/i18n/dictionaries/en'
 import { Ribbon } from '@/renderer'
-import type { RouteSummary } from '@/server/routes/read'
+import { RECENT_ACTIVITY_WINDOW_DAYS } from '@/domain/trust'
+import type { RibbonSignals, RouteSummary } from '@/server/routes/read'
 
 import { FlyWindowNote, rendererStrings } from './route-shared'
 
@@ -82,6 +83,7 @@ export function RouteRibbon({
             <div className="min-w-0 flex-1 text-xs">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                 <RibbonTrust trust={route.trust} dictionary={t} />
+                <RibbonSignalsNote signals={route.signals} dictionary={t} />
               </div>
               <p className="mt-1.5 leading-5">
                 <FlyWindowNote window={route.flyWindow} dictionary={t} compact />
@@ -113,5 +115,38 @@ export function RouteRibbon({
         <p className="mt-1 text-micro text-ink-500 sm:hidden">{t.route.ribbonContinue}</p>
       </Link>
     </li>
+  )
+}
+
+/**
+ * Followers and recent announced changes — FR-10, Phase 16, VR-03's "followers" and "2 changes".
+ *
+ * On the line that already holds the maturity chip, in the column that is shorter than the
+ * title beside it, so from the tablet breakpoint up the ribbon gains no height. On a phone the
+ * column is full width and the line may wrap once.
+ *
+ * Silent at zero, as the journey panel is: "0 following" on a new route is true and tells a
+ * reader nothing they can use. And neither number orders anything (invariant 14): search sorts
+ * by recency alone, and a test asserts it.
+ */
+function RibbonSignalsNote({
+  signals,
+  dictionary: t,
+}: {
+  signals: RibbonSignals
+  dictionary: Dictionary
+}) {
+  if (signals.followerCount === 0 && signals.recentAnnouncedChanges === 0) return null
+  return (
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-700">
+      {signals.followerCount === 0 ? null : (
+        <span>{t.route.ribbonFollowers(signals.followerCount)}</span>
+      )}
+      {signals.recentAnnouncedChanges === 0 ? null : (
+        <span>
+          {t.route.ribbonRecentChanges(signals.recentAnnouncedChanges, RECENT_ACTIVITY_WINDOW_DAYS)}
+        </span>
+      )}
+    </span>
   )
 }

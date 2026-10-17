@@ -42,6 +42,7 @@ const route: RouteSummary = {
     disputedCount: 0,
     quarantinedCount: 0,
   },
+  signals: { followerCount: 0, recentAnnouncedChanges: 0 },
 }
 
 describe('the route wayfinding surface', () => {

@@ -549,6 +549,10 @@ export const en = {
     roadLabel: 'The full road',
     steps: 'Steps',
     stepCount: (n: number) => (n === 1 ? '1 step' : `${n} steps`),
+    // Phase 16, FR-10. Stated on the ribbon; never a reason for its position in the list.
+    ribbonFollowers: (n: number) => `${n} following`,
+    ribbonRecentChanges: (n: number, days: number) =>
+      n === 1 ? `1 change in ${days} days` : `${n} changes in ${days} days`,
 
     /**
      * Labels for the route header's stat band — Phase 12D, VR-04/VR-05.
@@ -1586,6 +1590,14 @@ export const en = {
     sinceLastChange: 'The route before the most recent change',
     currentRoute: 'The route now',
     asOf: (date: string) => `as it stood on ${date}`,
+    // Phase 16, VR-07's "View other versions". A day, chosen by the reader.
+    versionPickerLabel: 'See the route as it stood on',
+    versionPickerSubmit: 'Show',
+    versionPickerReset: 'Back to the usual comparison',
+    versionOn: 'The route on the day you chose',
+    versionRefused:
+      'That day cannot be shown. Pick a day between when this route was created and today.',
+    versionUnchanged: 'Nothing on this route has changed since that day.',
     today: 'today',
 
     summaryTitle: 'Scale of change',

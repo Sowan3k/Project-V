@@ -66,7 +66,61 @@ export interface RouteSummary {
    * the road but never a different set (`RouteTrustInput extends RouteTrustSnapshot`).
    */
   readonly trust: RouteTrustSnapshot
+  /** Two facts the ribbon states, FR-10. Phase 16. */
+  readonly signals: RibbonSignals
 }
+
+/**
+ * Followers and recently announced changes, as a ribbon states them — FR-10, Phase 16, VR-03.
+ *
+ * **Facts stated, never inputs.** A follower count on a comparison surface is the exact shape
+ * invariant 14 warns about, so nothing orders, badges or promotes by either number, and the
+ * search ordering is untouched (its own test asserts there is no rank anywhere in it).
+ *
+ * `recentAnnouncedChanges` counts `RouteChange` rows announced inside the passport's display
+ * window. It is not the passport's `recentChangeCount`, which counts revisions through a
+ * per-route aggregation a page of search results must not run (see `RouteTrustSnapshot`).
+ */
+export interface RibbonSignals {
+  readonly followerCount: number
+  readonly recentAnnouncedChanges: number
+}
+
+/** Two grouped queries for a whole page of routes, however many there are. */
+async function ribbonSignals(
+  routeIds: readonly string[],
+  now: Date,
+): Promise<Map<string, RibbonSignals>> {
+  const byRoute = new Map<string, RibbonSignals>()
+  if (routeIds.length === 0) return byRoute
+
+  const since = new Date(now.getTime() - RECENT_ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1000)
+  const [followers, changes] = await Promise.all([
+    // The same definition as `followerAggregates`: an unfollowed journey is not a follower.
+    prisma.journey.groupBy({
+      by: ['routeId'],
+      where: { routeId: { in: [...routeIds] }, archivedAt: null },
+      _count: { _all: true },
+    }),
+    prisma.routeChange.groupBy({
+      by: ['routeId'],
+      where: { routeId: { in: [...routeIds] }, announcedAt: { gte: since, lte: now } },
+      _count: { _all: true },
+    }),
+  ])
+
+  const followerCount = new Map(followers.map((row) => [row.routeId, row._count._all]))
+  const changeCount = new Map(changes.map((row) => [row.routeId, row._count._all]))
+  for (const routeId of routeIds) {
+    byRoute.set(routeId, {
+      followerCount: followerCount.get(routeId) ?? 0,
+      recentAnnouncedChanges: changeCount.get(routeId) ?? 0,
+    })
+  }
+  return byRoute
+}
+
+const NO_SIGNALS: RibbonSignals = { followerCount: 0, recentAnnouncedChanges: 0 }
 
 const toGraph = (
   steps: { id: string; archivedAt: Date | null; currentRevision: { label: string; category: string; earliestStartOffsetDays: number | null; typicalDurationDays: number | null } | null }[],
@@ -272,7 +326,11 @@ export async function searchRoutes(
     take: ROUTES_PER_PAGE,
   })
 
-  const standings = await fieldStandings(routes.map((route) => route.id), now)
+  const routeIds = routes.map((route) => route.id)
+  const [standings, signals] = await Promise.all([
+    fieldStandings(routeIds, now),
+    ribbonSignals(routeIds, now),
+  ])
 
   const summaries = routes.map((route) => {
     const graph = toGraph(route.steps, route.edges)
@@ -300,6 +358,7 @@ export async function searchRoutes(
         disputedCount: standing?.disputedCount ?? 0,
         quarantinedCount: standing?.quarantinedCount ?? 0,
       },
+      signals: signals.get(route.id) ?? NO_SIGNALS,
     }
   })
 
@@ -604,6 +663,7 @@ async function _getRouteBySlug(
   const standings = await fieldStandings([route.id], now)
   const activity = await routeActivity(route.id, now)
   const followers = await followerAggregates(route.id)
+  const signals = (await ribbonSignals([route.id], now)).get(route.id) ?? NO_SIGNALS
   const standing = standings.get(route.id)
 
   return {
@@ -640,6 +700,7 @@ async function _getRouteBySlug(
       ...activity,
       ...followers,
     },
+    signals,
     steps: route.steps.map((s) => ({
       id: s.id,
       label: s.currentRevision?.label ?? '',

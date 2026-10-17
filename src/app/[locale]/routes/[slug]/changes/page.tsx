@@ -96,8 +96,10 @@ export async function generateMetadata({
 
 export default async function RouteChangesPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; slug: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const { locale, slug } = await params
   if (!isLocale(locale)) notFound()
@@ -108,6 +110,8 @@ export default async function RouteChangesPage({
 
   const viewer = await currentViewer()
   const now = new Date()
+  const query = await searchParams
+  const version = chosenVersion(query.at, route.createdAt, now)
 
   // The follower-scoped read takes a user id and filters on it; the anonymous one takes no
   // identity at all. Two functions in two directories, on opposite sides of the privacy line.
@@ -206,7 +210,17 @@ export default async function RouteChangesPage({
         <p className="mt-2 text-sm leading-6 text-ink-700">{t.changes.lede}</p>
       </ContentColumn>
 
-      {report === null ? (
+      <VersionPicker
+        action={`/${locale}/routes/${slug}/changes`}
+        version={version}
+        createdAt={route.createdAt}
+        now={now}
+        dictionary={t}
+      />
+
+      {version.kind === 'chosen' ? (
+        <ChosenVersion routeId={route.id} at={version.at} label={version.label} dictionary={t} />
+      ) : report === null ? (
         <AnonymousComparison routeId={route.id} dictionary={t} />
       ) : (
         <FollowerPanel report={report} routeId={route.id} dictionary={t} />
@@ -295,6 +309,126 @@ export default async function RouteChangesPage({
         </p>
       </ContentColumn>
     </RouteContext>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   Any past version, by date — Phase 16, VR-07's "View other versions"
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+type Version =
+  | { readonly kind: 'default' }
+  | { readonly kind: 'chosen'; readonly at: Date; readonly label: string }
+  | { readonly kind: 'refused'; readonly asked: string }
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * What `?at=` asked for. A day, read as the end of that day in UTC, so "the route on the 5th"
+ * includes everything written on the 5th.
+ *
+ * **Date-keyed, and correctly.** "What did this look like on the 5th?" is a temporal question,
+ * the same one `loadRouteGraphAt` answers for a follower's start date (CLAUDE.md §5). It is a
+ * different question from "what did this announcement change?", which never uses a date.
+ *
+ * Anything that is not a real day between the route's creation and today is refused out loud
+ * rather than quietly replaced, so a shared link that no longer makes sense says so.
+ */
+function chosenVersion(
+  raw: string | string[] | undefined,
+  createdAt: Date,
+  now: Date,
+): Version {
+  const asked = Array.isArray(raw) ? raw[0] : raw
+  if (asked === undefined || asked === '') return { kind: 'default' }
+  if (!ISO_DAY.test(asked)) return { kind: 'refused', asked }
+  const at = new Date(`${asked}T23:59:59.999Z`)
+  if (Number.isNaN(at.getTime()) || at.toISOString().slice(0, 10) !== asked) {
+    return { kind: 'refused', asked }
+  }
+  const createdDay = createdAt.toISOString().slice(0, 10)
+  const today = now.toISOString().slice(0, 10)
+  if (asked < createdDay || asked > today) return { kind: 'refused', asked }
+  return { kind: 'chosen', at, label: asked }
+}
+
+function VersionPicker({
+  action,
+  version,
+  createdAt,
+  now,
+  dictionary: t,
+}: {
+  action: string
+  version: Version
+  createdAt: Date
+  now: Date
+  dictionary: Dictionary
+}) {
+  return (
+    <form
+      method="get"
+      action={action}
+      className="mt-4 flex flex-wrap items-end gap-3 rounded-panel border border-hairline bg-surface px-4 py-3"
+    >
+      <label className={LABEL}>
+        {t.changes.versionPickerLabel}
+        <input
+          type="date"
+          name="at"
+          required
+          min={createdAt.toISOString().slice(0, 10)}
+          max={now.toISOString().slice(0, 10)}
+          defaultValue={version.kind === 'chosen' ? version.label : undefined}
+          className={INPUT}
+        />
+      </label>
+      <button type="submit" className={buttonClass('secondary', { size: 'compact' })}>
+        {t.changes.versionPickerSubmit}
+      </button>
+      {version.kind === 'default' ? null : (
+        <Link href={action} className="pb-1.5 text-meta text-brand-700 underline">
+          {t.changes.versionPickerReset}
+        </Link>
+      )}
+      {version.kind !== 'refused' ? null : (
+        <p className="w-full text-meta text-caution-900">{t.changes.versionRefused}</p>
+      )}
+    </form>
+  )
+}
+
+/**
+ * The route on the chosen day, beside the route now. The same `shadowSince` and the same
+ * `ShadowCompare` as the other two readings, given a date the reader picked.
+ */
+async function ChosenVersion({
+  routeId,
+  at,
+  label,
+  dictionary: t,
+}: {
+  routeId: string
+  at: Date
+  label: string
+  dictionary: Dictionary
+}) {
+  const shadow = await shadowSince(routeId, at)
+  return (
+    <div className="mt-6">
+      <ShadowCompare
+        before={shadow.before}
+        after={shadow.after}
+        comparison={shadow.comparison}
+        fieldsChanged={shadow.fieldsChanged}
+        beforeLabel={t.changes.versionOn}
+        beforeDate={label}
+        dictionary={t}
+      />
+      {shadow.anyChange ? null : (
+        <p className="mt-3 text-sm text-ink-700">{t.changes.versionUnchanged}</p>
+      )}
+    </div>
   )
 }
 
