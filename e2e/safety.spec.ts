@@ -5,6 +5,7 @@ import { expect, test, type Browser, type BrowserContext } from '@playwright/tes
 import { UserRole } from '../src/domain/enums'
 import { generateHandle } from '../src/server/auth/handle'
 import { prisma } from '../src/server/db/client'
+import { quarantineField } from '../src/server/safety/service'
 
 /**
  * Safety in a browser — Phase 9. FR-35, FR-36, FR-37, §23.
@@ -119,7 +120,11 @@ test.describe('reporting and quarantine', () => {
     await page.getByText(/add information to this step/i).click()
     const addForm = page.locator('form').filter({ has: page.getByRole('button', { name: /add this information/i }) })
     await addForm.locator('textarea[name="valueText"]').fill(`Apply here ${secret}`)
-    await addForm.locator('input[name="sourceUrl"]').fill('https://bit.ly/definitely-not-real')
+    // The URL carries this run's token too. A constant one was shared by every viewport and
+    // every run, so a field another run added, and had not quarantined yet, put the same URL
+    // in this page's HTML.
+    const shortLink = `bit.ly/definitely-not-real-${secret}`
+    await addForm.locator('input[name="sourceUrl"]').fill(`https://${shortLink}`)
     await page.getByRole('button', { name: /add this information/i }).click()
     await expect(page.getByText(new RegExp(secret, 'i')).first()).toBeVisible()
 
@@ -138,7 +143,6 @@ test.describe('reporting and quarantine', () => {
     // assertion below is that `secret` appears nowhere in the HTML. Two tokens, two jobs.
     const noteToken = `note-${randomUUID().slice(0, 8)}`
     const note = `Shortened link impersonating an embassy — ${noteToken}`
-    const { quarantineField } = await import('../src/server/safety/service')
     await quarantineField({ adminId: admin.userId, fieldId: added.id, note })
 
     await page.goto('/en/routes/e2e-test-route')
@@ -147,7 +151,7 @@ test.describe('reporting and quarantine', () => {
     // The value is not in the HTML at all — withheld server-side, not styled away.
     const html = await page.content()
     expect(html).not.toContain(secret)
-    expect(html).not.toContain('bit.ly/definitely-not-real')
+    expect(html).not.toContain(shortLink)
 
     // And the reader is told, and told why — located by this run's own note.
     await expect(page.getByText(noteToken, { exact: false })).toBeVisible()
