@@ -83,8 +83,10 @@ test.describe('Phase 16', () => {
     await page.goto('/en/routes?to=IE')
     const busyRow = page.locator('main li').filter({ hasText: `Ribbon twin busy- ${tag}` })
     const quietRow = page.locator('main li').filter({ hasText: `Ribbon twin quiet ${tag}` })
-    await expect(busyRow.getByText('2 following')).toBeVisible()
-    await expect(busyRow.getByText('1 change in 90 days')).toBeVisible()
+    // Two placements exist, one per breakpoint range, and CSS shows one of them. Whichever is
+    // visible must carry both facts.
+    await expect(busyRow.getByText(/2 following/).filter({ visible: true })).toHaveCount(1)
+    await expect(busyRow.getByText(/1 change in 90 days/).filter({ visible: true })).toHaveCount(1)
     // Silent at zero.
     await expect(quietRow.getByText(/following|changes? in 90 days/)).toHaveCount(0)
 

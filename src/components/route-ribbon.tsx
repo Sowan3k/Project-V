@@ -52,6 +52,9 @@ export function RouteRibbon({
           <div className="min-w-0 flex-1">
             <p className="text-meta font-medium text-brand-700">
               {route.originCountry} → {route.destinationCountry}
+              {/* From `xl` up the two counts ride this line, the one line in the title column
+                  that is always short; below `xl` they sit beside the maturity chip. */}
+              <RibbonSignalsInline signals={route.signals} dictionary={t} />
             </p>
             <h3 className="mt-0.5 text-panel font-semibold tracking-tight text-ink-900 group-hover:text-brand-700">
               {route.title}
@@ -83,7 +86,7 @@ export function RouteRibbon({
             <div className="min-w-0 flex-1 text-xs">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                 <RibbonTrust trust={route.trust} dictionary={t} />
-                <RibbonSignalsNote signals={route.signals} dictionary={t} />
+                <RibbonSignalsNote signals={route.signals} dictionary={t} className="xl:hidden" />
               </div>
               <p className="mt-1.5 leading-5">
                 <FlyWindowNote window={route.flyWindow} dictionary={t} compact />
@@ -121,32 +124,62 @@ export function RouteRibbon({
 /**
  * Followers and recent announced changes — FR-10, Phase 16, VR-03's "followers" and "2 changes".
  *
- * On the line that already holds the maturity chip, in the column that is shorter than the
- * title beside it, so from the tablet breakpoint up the ribbon gains no height. On a phone the
- * column is full width and the line may wrap once.
+ * **Placed where each width has room, so the ribbon gains no height.** A ribbon row is as tall
+ * as its taller column. Below `xl` the title column is the narrower one and the right-hand
+ * column has slack, so the counts sit beside the maturity chip. From `xl` up the title column is
+ * wide, its text fits on fewer lines, and the right-hand column sets the height: counts placed
+ * there wrapped onto another line in CI and added 20px at 1280. So from `xl` up they ride the
+ * origin line ("BD → DE"), which is always short and has 450px or more to spare there. Not the
+ * meta line, which a real route with a mechanism and an intake already fills, and not from `lg`,
+ * where the title column is 280px and even the origin line can wrap (all measured, Test.md §32).
+ * Two placements, one chosen by CSS; the hidden one is `display: none` and is read by nobody.
  *
  * Silent at zero, as the journey panel is: "0 following" on a new route is true and tells a
  * reader nothing they can use. And neither number orders anything (invariant 14): search sorts
  * by recency alone, and a test asserts it.
  */
+function signalLines(signals: RibbonSignals, t: Dictionary): string[] {
+  return [
+    ...(signals.followerCount === 0 ? [] : [t.route.ribbonFollowers(signals.followerCount)]),
+    ...(signals.recentAnnouncedChanges === 0
+      ? []
+      : [t.route.ribbonRecentChanges(signals.recentAnnouncedChanges, RECENT_ACTIVITY_WINDOW_DAYS)]),
+  ]
+}
+
 function RibbonSignalsNote({
+  signals,
+  dictionary: t,
+  className = '',
+}: {
+  signals: RibbonSignals
+  dictionary: Dictionary
+  className?: string
+}) {
+  const lines = signalLines(signals, t)
+  if (lines.length === 0) return null
+  return (
+    <span
+      className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-700 ${className}`}
+    >
+      {lines.map((line) => (
+        <span key={line}>{line}</span>
+      ))}
+    </span>
+  )
+}
+
+/** The same facts on the origin line, from `xl` up, in the ink of the meta line below it. */
+function RibbonSignalsInline({
   signals,
   dictionary: t,
 }: {
   signals: RibbonSignals
   dictionary: Dictionary
 }) {
-  if (signals.followerCount === 0 && signals.recentAnnouncedChanges === 0) return null
+  const lines = signalLines(signals, t)
+  if (lines.length === 0) return null
   return (
-    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-700">
-      {signals.followerCount === 0 ? null : (
-        <span>{t.route.ribbonFollowers(signals.followerCount)}</span>
-      )}
-      {signals.recentAnnouncedChanges === 0 ? null : (
-        <span>
-          {t.route.ribbonRecentChanges(signals.recentAnnouncedChanges, RECENT_ACTIVITY_WINDOW_DAYS)}
-        </span>
-      )}
-    </span>
+    <span className="hidden font-normal text-ink-500 xl:inline">{` · ${lines.join(' · ')}`}</span>
   )
 }
