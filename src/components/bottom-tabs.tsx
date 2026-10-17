@@ -17,15 +17,12 @@ import { currentViewer } from '@/server/auth'
  * phone needs a different *information architecture*, not a narrower one.
  *
  * ─────────────────────────────────────────────────────────────────────────────────────────
- * **Three tabs, not VR-12's four, and the missing one is Updates.**
+ * **Four tabs, as VR-12 draws them.**
  *
- * There is no cross-route updates feed in this product. It was explicitly outside Phase 10's
- * scope, Phases.md records that adding one "is a change request first", and proactive
- * notification is deferred entirely (§35, §8.6) — so a fourth tab would lead nowhere. The
- * site header made exactly this argument about VR-01's five desktop nav items and dropped
- * three of them: **a nav link to a page that does not exist is worse than an absent one**, and
- * inventing the page to justify the tab is adding scope from a picture. Change activity for a
- * route lives on that route's Changes tab, which is where a reader is when they want it.
+ * Until Phase 14 there were three. The fourth, Updates, had nowhere to lead: there was no
+ * cross-route updates page, and a tab that leads nowhere is worse than an absent one. Phase 14
+ * built the page, so the tab came back. Proactive notification is still deferred (§35, §8.6):
+ * the tab carries no unread count, because this page is how a reader learns of change.
  *
  * **Account is one tab that means two things**, because on this platform they are the same
  * thing. Signed in it goes to the reader's own contributor page — the same page everybody else
@@ -58,6 +55,7 @@ export async function BottomTabs({
   const tabs = [
     { id: 'explore', href: `/${locale}/routes`, label: t.nav.explore, icon: <ExploreIcon /> },
     { id: 'journey', href: `/${locale}/journeys`, label: t.nav.myJourney, icon: <JourneyIcon /> },
+    { id: 'updates', href: `/${locale}/updates`, label: t.nav.updates, icon: <UpdatesIcon /> },
     {
       /*
        * Phase 12F pointed this at the signed-in person's *public contributor page*, because
@@ -111,7 +109,7 @@ export async function BottomTabs({
 }
 
 /*
- * Three marks, drawn here rather than imported.
+ * Four marks, drawn here rather than imported.
  *
  * They are fixed navigation furniture — no route data reaches them and they render identically
  * for every destination — which is the case invariant 24 permits without qualification, in the
@@ -145,6 +143,22 @@ function JourneyIcon() {
         strokeLinecap="round"
       />
       <circle cx="10" cy="8" r="2.4" fill="currentColor" />
+    </svg>
+  )
+}
+
+/** A page with lines on it and a fold: what changed, written down. No dot, no count (§35). */
+function UpdatesIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="20" height="20" fill="none" className="shrink-0">
+      <path
+        d="M5 3.5h7l3 3v10H5z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path d="M12 3.5v3h3" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M7.5 10h5M7.5 13h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   )
 }

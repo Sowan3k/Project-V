@@ -47,6 +47,9 @@ const PUBLIC_PAGES: readonly (readonly [string, string])[] = [
   ['sign in', '/en/signin'],
   ['add a route', '/en/routes/new'],
   ['my journeys', '/en/journeys'],
+  // Phase 14. Both the public list and a private tab as an anonymous reader sees it.
+  ['updates', '/en/updates'],
+  ['updates, affecting my journey', '/en/updates/journey'],
   ['not found', '/en/routes/definitely-not-a-real-route'],
 ]
 

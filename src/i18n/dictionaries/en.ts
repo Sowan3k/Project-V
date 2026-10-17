@@ -85,11 +85,10 @@ export const en = {
     // better one on a phone: the header link names the noun you are going to, the bottom tab
     // names what you are about to do.
     //
-    // There is no "Updates" tab. VR-12 draws four, and the fourth would need a cross-route
-    // updates feed, which is out of scope (§35) and would be a change request — a tab leading
-    // nowhere is worse than an absent one, which is the argument this header already made
-    // about VR-01's five desktop items.
+    // Phase 14 added the fourth tab VR-12 draws. It had been left out because there was no
+    // cross-route updates page for it to lead to; now there is one.
     explore: 'Explore',
+    updates: 'Updates',
     account: 'Account',
     phoneNavigation: 'Main sections',
   },
@@ -111,6 +110,7 @@ export const en = {
     routeChanges: (route: string) => `What has changed — ${route}`,
     routeHistory: (route: string) => `History — ${route}`,
     routeJourney: (route: string) => `My journey — ${route}`,
+    updatesTitle: 'Updates',
   },
 
   principles: {
@@ -1785,6 +1785,65 @@ export const en = {
     signInToRecord: 'Sign in to record a change or a disruption.',
     noAlerts:
       'We do not send emails or push notifications. Changes appear here and on your journey when you next look.',
+  },
+
+  /**
+   * The Updates page: every change and disruption in one place. Phase 14, VR-10.
+   *
+   * No email, push or unread count anywhere in here (§35). This page is the mechanism.
+   */
+  updates: {
+    title: 'Updates',
+    lede: 'Changes and disruptions across every route, newest first.',
+    tabsLabel: 'Which updates',
+    tab: {
+      all: 'All',
+      journey: 'Affecting my journey',
+      following: 'Routes I follow',
+      elsewhere: 'Everything else',
+    },
+    onRoute: 'Route:',
+    changesTitle: 'Changes',
+    disruptionsTitle: 'Disruptions now or coming up',
+    noChanges: 'No changes to show.',
+    noDisruptions: 'No disruptions are in effect or coming up.',
+    limitNote: (n: number) => `The ${n} most recent.`,
+
+    filterTitle: 'Filter',
+    filterType: 'Show',
+    type: {
+      both: 'Changes and disruptions',
+      changes: 'Changes only',
+      disruptions: 'Disruptions only',
+    },
+    filterSeverity: 'Level',
+    filterSeverityHint: 'Tick none to see every level.',
+    apply: 'Apply',
+    clear: 'Clear filters',
+
+    signedOut: {
+      journey: {
+        title: 'Sign in to see what lands ahead of you',
+        body: 'Follow a route and this tab lists the changes on steps you have not finished, before you reach them.',
+      },
+      following: {
+        title: 'Sign in to see the routes you follow',
+        body: 'Follow a route and every change on it collects here.',
+      },
+    },
+    notFollowingTitle: 'You are not following a route yet',
+    notFollowingBody: 'Follow a route and its changes collect here.',
+    nothingAheadTitle: 'Nothing needs you right now',
+    nothingAheadBody: 'No change or disruption touches a step you have not finished.',
+
+    summaryTitle: 'What lands ahead of you',
+    summaryLede: (routes: number) =>
+      routes === 1 ? 'Across the route you follow.' : `Across the ${routes} routes you follow.`,
+    summaryNone: 'Nothing is waiting on you.',
+    summaryDisruptions: (n: number) =>
+      n === 1 ? '1 disruption touches your next steps.' : `${n} disruptions touch your next steps.`,
+    summarySignedOut: 'Sign in and follow a route to see which of these land ahead of you.',
+    answerOnRoute: 'Tell us if this applies to you',
   },
 
   /**

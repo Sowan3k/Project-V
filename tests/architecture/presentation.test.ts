@@ -730,6 +730,8 @@ describe('the application presents itself as a finished product', () => {
       'src/app/[locale]/signin/page.tsx',
       'src/app/[locale]/admin/reports/page.tsx',
       'src/app/[locale]/admin/routes/page.tsx',
+      // Phase 14: the journey-scoped Updates tabs. Signed in they carry a reader's position.
+      'src/app/[locale]/updates/[tab]/page.tsx',
     ]) {
       expect(read(page), page).toMatch(/robots: \{ index: false/)
     }

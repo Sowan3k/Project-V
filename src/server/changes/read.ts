@@ -2,6 +2,7 @@ import type { AnnouncedChange, Disruption, ShadowComparison } from '@/domain/cha
 import { compareVersions, isDisruptionActive } from '@/domain/changes'
 import type { ChangeSeverity, FieldApplicability, RouteChangeKind } from '@/domain/enums'
 import type { RouteGraph } from '@/domain/graph/types'
+import { SEARCHABLE_LIFECYCLE_STATES } from '@/domain/lifecycle'
 import { prisma } from '@/server/db/client'
 import { loadRouteGraph, loadRouteGraphAt } from '@/server/revisions/read'
 
@@ -141,26 +142,163 @@ export async function disruptionsForRoute(
     orderBy: [{ startsAt: 'desc' }, { id: 'desc' }],
   })
 
-  return rows.map((row) => {
-    const disruption: Disruption = {
-      id: row.id,
-      severity: row.severity,
-      startsAt: row.startsAt,
-      endsAt: row.endsAt,
-      resolvedAt: row.resolvedAt,
-      locationScope: row.locationScope,
-      stepId: row.stepId,
-    }
-    return {
-      ...disruption,
-      title: row.title,
-      detail: row.detail,
-      resolvedNote: row.resolvedNote,
-      stepLabel: row.step?.currentRevision?.label ?? null,
-      authorHandle: row.author?.handle ?? null,
-      active: isDisruptionActive(disruption, now),
-    }
+  return rows.map((row) => toDisruptionView(row, now))
+}
+
+function toDisruptionView(
+  row: {
+    id: string
+    severity: ChangeSeverity
+    title: string
+    detail: string | null
+    startsAt: Date
+    endsAt: Date | null
+    resolvedAt: Date | null
+    resolvedNote: string | null
+    locationScope: string | null
+    stepId: string | null
+    step: { currentRevision: { label: string } | null } | null
+    author: { handle: string } | null
+  },
+  now: Date,
+): DisruptionView {
+  const disruption: Disruption = {
+    id: row.id,
+    severity: row.severity,
+    startsAt: row.startsAt,
+    endsAt: row.endsAt,
+    resolvedAt: row.resolvedAt,
+    locationScope: row.locationScope,
+    stepId: row.stepId,
+  }
+  return {
+    ...disruption,
+    title: row.title,
+    detail: row.detail,
+    resolvedNote: row.resolvedNote,
+    stepLabel: row.step?.currentRevision?.label ?? null,
+    authorHandle: row.author?.handle ?? null,
+    active: isDisruptionActive(disruption, now),
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   Across routes: the Updates page (Phase 14)
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+/** Enough of a route to name it and link to it from a row on the Updates page. */
+export interface FeedRoute {
+  readonly id: string
+  readonly slug: string
+  readonly title: string
+}
+
+export interface FeedChange extends ChangeView {
+  readonly route: FeedRoute
+}
+
+export interface FeedDisruption extends DisruptionView {
+  readonly route: FeedRoute
+}
+
+export interface FeedFilter {
+  /** Leave out these routes. The "everything else" tab passes the reader's followed routes. */
+  readonly excludeRouteIds?: readonly string[]
+  /** Only these levels. Empty or absent means every level. */
+  readonly severities?: readonly ChangeSeverity[]
+  readonly limit?: number
+  readonly now?: Date
+}
+
+/**
+ * The routes the Updates page reads from: exactly the routes search lists.
+ *
+ * Dormant, archived, merged and removed routes leave search (Phase 11), so they leave this
+ * page too. A route nobody can find should not announce itself here. A follower still sees
+ * changes on a dormant route they follow, through their own journey, not through this feed.
+ */
+function listedRoutes(excludeRouteIds: readonly string[] | undefined) {
+  return {
+    archivedAt: null,
+    mergedIntoId: null,
+    lifecycleState: { in: [...SEARCHABLE_LIFECYCLE_STATES] },
+    ...(excludeRouteIds === undefined || excludeRouteIds.length === 0
+      ? {}
+      : { id: { notIn: [...excludeRouteIds] } }),
+  }
+}
+
+const FEED_ROUTE_SELECT = {
+  id: true,
+  slug: true,
+  currentRevision: { select: { title: true } },
+} as const
+
+function toFeedRoute(row: {
+  id: string
+  slug: string
+  currentRevision: { title: string } | null
+}): FeedRoute {
+  return { id: row.id, slug: row.slug, title: row.currentRevision?.title ?? row.slug }
+}
+
+/**
+ * Announced changes on every listed route, newest announcement first. FR-28, FR-62, FR-76.
+ *
+ * Ordered by when each was recorded, and by nothing else. The list may sort by announcement;
+ * deciding whether a change *reaches* a follower is a different question, answered by the
+ * effective date in `changeRelevance` (invariant 21). Severity filters the list but never
+ * orders it: a contributor's judgement narrows what a reader asked to see, and it does not
+ * get to promote one row over another (CLAUDE.md §5).
+ */
+export async function recentChanges({
+  excludeRouteIds,
+  severities,
+  limit = 50,
+}: FeedFilter = {}): Promise<readonly FeedChange[]> {
+  const rows = await prisma.routeChange.findMany({
+    where: {
+      route: listedRoutes(excludeRouteIds),
+      ...(severities === undefined || severities.length === 0
+        ? {}
+        : { severity: { in: [...severities] } }),
+    },
+    select: { ...CHANGE_SELECT, route: { select: FEED_ROUTE_SELECT } },
+    orderBy: [{ announcedAt: 'desc' }, { id: 'desc' }],
+    take: limit,
   })
+
+  return rows.map((row) => ({ ...toChangeView(row), route: toFeedRoute(row.route) }))
+}
+
+/**
+ * Disruptions in effect now or announced for later, on every listed route. FR-32, FR-63.
+ *
+ * One that has ended, or was resolved, drops out here because the query compares against
+ * `now`, not because anything rewrote it. The row is untouched and still on the route's own
+ * Changes tab with the rest of its history (invariant 19, BR-08).
+ */
+export async function currentDisruptions({
+  excludeRouteIds,
+  severities,
+  limit = 50,
+  now = new Date(),
+}: FeedFilter = {}): Promise<readonly FeedDisruption[]> {
+  const rows = await prisma.temporaryDisruption.findMany({
+    where: {
+      route: listedRoutes(excludeRouteIds),
+      OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+      AND: [{ OR: [{ resolvedAt: null }, { resolvedAt: { gt: now } }] }],
+      ...(severities === undefined || severities.length === 0
+        ? {}
+        : { severity: { in: [...severities] } }),
+    },
+    select: { ...DISRUPTION_SELECT, route: { select: FEED_ROUTE_SELECT } },
+    orderBy: [{ startsAt: 'desc' }, { id: 'desc' }],
+    take: limit,
+  })
+
+  return rows.map((row) => ({ ...toDisruptionView(row, now), route: toFeedRoute(row.route) }))
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════

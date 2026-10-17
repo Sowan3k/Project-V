@@ -166,6 +166,56 @@ export async function followerChangeReport(
   }
 }
 
+/**
+ * One followed route, with what its changes mean for this follower. Phase 14.
+ */
+export interface FollowedRouteReport {
+  readonly route: { readonly id: string; readonly slug: string; readonly title: string }
+  readonly report: FollowerChangeReport
+}
+
+/**
+ * Every route this person follows, each with its own change report. Phase 14, FR-28, FR-29.
+ *
+ * The Updates page reads this for its two private tabs. It is `followerChangeReport` once per
+ * followed route, so a change is placed against this follower's progress by exactly the same
+ * code as on the route's own Changes tab, and the two pages cannot disagree about whether a
+ * change lands ahead of them.
+ *
+ * Archived journeys are left out, as they are everywhere else: unfollowing is how somebody
+ * says a route is no longer theirs.
+ */
+export async function followedRouteReports(
+  userId: string,
+  { now = new Date() }: { now?: Date } = {},
+): Promise<readonly FollowedRouteReport[]> {
+  const journeys = await prisma.journey.findMany({
+    where: { userId, archivedAt: null },
+    select: {
+      route: { select: { id: true, slug: true, currentRevision: { select: { title: true } } } },
+    },
+    orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+  })
+
+  const reports = await Promise.all(
+    journeys.map(async ({ route }) => {
+      const report = await followerChangeReport(userId, route.id, { now })
+      return report === null
+        ? null
+        : {
+            route: {
+              id: route.id,
+              slug: route.slug,
+              title: route.currentRevision?.title ?? route.slug,
+            },
+            report,
+          }
+    }),
+  )
+
+  return reports.filter((entry): entry is FollowedRouteReport => entry !== null)
+}
+
 /* ══════════════════════════════════════════════════════════════════════════════════════════
    The follower's own answer — §13.3
    ══════════════════════════════════════════════════════════════════════════════════════════ */

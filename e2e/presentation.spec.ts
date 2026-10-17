@@ -377,16 +377,15 @@ test.describe('the phone gets a bottom tab bar, and larger screens do not', () =
     }
   })
 
-  test('offers three real links, each a comfortable touch target', async ({ page }) => {
+  test('offers four real links, each a comfortable touch target', async ({ page }) => {
     test.skip((page.viewportSize()?.width ?? 0) >= TABLET_MIN, 'phone only')
     await page.goto('/en/routes')
 
     const links = page.getByRole('navigation', { name: 'Main sections' }).getByRole('link')
-    // Three, not VR-12's four: there is no cross-route updates feed to point a fourth at,
-    // and a tab that leads nowhere is worse than an absent one.
-    await expect(links).toHaveCount(3)
+    // Four, as VR-12 draws them. Updates joined in Phase 14, once its page existed.
+    await expect(links).toHaveCount(4)
 
-    for (let index = 0; index < 3; index += 1) {
+    for (let index = 0; index < 4; index += 1) {
       const link = links.nth(index)
       // A real destination, so the bar works with JavaScript disabled and can be opened in a
       // new tab like any other link.

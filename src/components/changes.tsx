@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 import { ComparisonRows } from '@/components/shadow-compare'
 import { ContributorLink, Disclosure, inputClass } from '@/components/ui'
 import { Caution } from '@/components/trust'
@@ -64,7 +66,7 @@ const INPUT = inputClass('compact')
  * `critical` alone gets the attention colour and an icon, because it is the only level whose
  * definition is that it can invalidate the path somebody is on.
  */
-function SeverityChip({
+export function SeverityChip({
   severity,
   dictionary: t,
 }: {
@@ -262,6 +264,40 @@ function ChangeDates({ change, dictionary: t }: { change: ChangeView; dictionary
    One announced change
    ══════════════════════════════════════════════════════════════════════════════════════════ */
 
+/** The route a row belongs to, on a page that lists rows from many routes. */
+export interface CardRoute {
+  readonly slug: string
+  readonly title: string
+}
+
+/**
+ * Which route, linked to its Changes tab. Phase 14.
+ *
+ * On a route's own Changes tab the route is the page, so this is absent. On the Updates page
+ * a row without it would be a change to nothing in particular.
+ */
+function RouteLine({
+  route,
+  locale,
+  dictionary: t,
+}: {
+  route: CardRoute
+  locale: string
+  dictionary: Dictionary
+}) {
+  return (
+    <p className="mt-1 text-xs text-ink-500">
+      {t.updates.onRoute}{' '}
+      <Link
+        href={`/${locale}/routes/${route.slug}/changes`}
+        className="font-medium text-brand-700 underline"
+      >
+        {route.title}
+      </Link>
+    </p>
+  )
+}
+
 /**
  * A change as an anonymous reader sees it — no relevance, because there is no journey to
  * measure against, and inventing one would be a lie.
@@ -270,11 +306,14 @@ export function AnnouncedChangeCard({
   change,
   locale,
   dictionary: t,
+  route,
   children,
 }: {
   change: ChangeView
   locale: string
   dictionary: Dictionary
+  /** Given on the Updates page, where rows from many routes sit in one list (Phase 14). */
+  route?: CardRoute
   children?: React.ReactNode
 }) {
   return (
@@ -284,6 +323,7 @@ export function AnnouncedChangeCard({
           {/* BR-27's distinction on the face of the card, not only in the heading above the
               list — a card reached by deep link arrives without its heading. */}
           <ChangeTypeMark kind="permanent" dictionary={t} />
+          {route === undefined ? null : <RouteLine route={route} locale={locale} dictionary={t} />}
           <h3 className="mt-1 text-sm font-semibold text-ink-900">{change.title}</h3>
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -327,7 +367,7 @@ export function AnnouncedChangeCard({
  * carries `completion_preserved` and stops; a change ahead of them earns a caution. Nothing
  * here is a number.
  */
-function RelevanceNote({
+export function RelevanceNote({
   relevance,
   dictionary: t,
 }: {
@@ -504,12 +544,15 @@ export function DisruptionCard({
   relevance,
   dictionary: t,
   now,
+  route,
   children,
 }: {
   disruption: DisruptionView
   relevance?: DisruptionRelevance
   dictionary: Dictionary
   now: Date
+  /** Given on the Updates page, with the locale its link needs (Phase 14). */
+  route?: CardRoute & { readonly locale: string }
   children?: React.ReactNode
 }) {
   const remaining = disruption.active ? daysRemaining(disruption, now) : null
@@ -538,6 +581,9 @@ export function DisruptionCard({
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="min-w-0">
           <ChangeTypeMark kind="temporary" dictionary={t} />
+          {route === undefined ? null : (
+            <RouteLine route={route} locale={route.locale} dictionary={t} />
+          )}
           <h3 className="mt-1 text-sm font-semibold text-ink-900">{disruption.title}</h3>
         </div>
         <div className="flex flex-wrap gap-1.5">

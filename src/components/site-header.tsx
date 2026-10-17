@@ -16,12 +16,13 @@ import { currentViewer, signOut } from '@/server/auth'
  * previously rendered as two words in a row.
  *
  * **The navigation is what exists, and nothing more.** VR-01, VR-03 and VR-04 show five
- * items — Routes, My Journey, Updates, Community, Resources. Three of those are pages this
- * product does not have and is not scheduled to build; a nav link to a page that does not
+ * items — Routes, My Journey, Updates, Community, Resources. Community and Resources are pages
+ * this product does not have and is not scheduled to build; a nav link to a page that does not
  * exist is worse than an absent one, and inventing the pages to justify the nav would be
- * adding scope from a picture. So: Routes always, My Journey when there is a journey to
- * see, and the sign-in that unlocks it. The arrangement is the mockups'; the contents are
- * ours (Phases.md — a mockup is binding on arrangement, not on assertion).
+ * adding scope from a picture. So: Routes and Updates always, My Journey when there is a
+ * journey to see, and the sign-in that unlocks it. Updates joined in Phase 14, when the page
+ * it points at was built. The arrangement is the mockups'; the contents are ours (Phases.md —
+ * a mockup is binding on arrangement, not on assertion).
  *
  * The signed-in state shows the **pseudonymous handle**, never an email or a name. The
  * session does not carry either, so this could not render one by mistake (§24.3).
@@ -76,6 +77,12 @@ export async function SiteHeader({
         <nav aria-label={t.common.primaryNavigation} className="ml-auto flex items-center gap-x-5">
           <Link href={`/${locale}/routes`} className={phoneHiddenNavLink}>
             {t.nav.routes}
+          </Link>
+
+          {/* Phase 14. Public, so it is shown signed out too: changes to public routes are
+              public knowledge, and the page says what signing in would add to it. */}
+          <Link href={`/${locale}/updates`} className={phoneHiddenNavLink}>
+            {t.nav.updates}
           </Link>
 
           {/* Phase 12J. A reader who does not know what a ribbon is needs the explanation
