@@ -133,7 +133,12 @@ function FieldRow({
   const trust = toFieldTrustInput(field)
 
   return (
-    <li className="rounded-control border border-hairline bg-surface-muted p-3">
+    // `id` so the route's needs-help list can link straight to this field (Phase 15). The
+    // scroll margin clears the step header, which is sticky above the fields.
+    <li
+      id={`field-${field.id}`}
+      className="scroll-mt-32 rounded-control border border-hairline bg-surface-muted p-3"
+    >
       <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">
         {t.fieldCategory[field.category]}
       </p>

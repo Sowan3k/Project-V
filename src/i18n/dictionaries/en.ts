@@ -23,7 +23,7 @@ import type {
   StepChangeMark,
 } from '@/domain/changes'
 import type { LinkCautionId } from '@/domain/links'
-import type { FieldGroupId, FieldSignalId, RouteCautionId } from '@/domain/trust'
+import type { AttentionReason, FieldGroupId, FieldSignalId, RouteCautionId } from '@/domain/trust'
 
 /**
  * English interface strings.
@@ -768,6 +768,8 @@ export const en = {
       confirmed: (n: number) => `${n} confirmed by someone`,
       needsReview: (n: number) => `${n} past their review date`,
       disputed: (n: number) => `${n} disputed or contested`,
+      /** Phase 15. The counts lead to the fields they count. */
+      seeWhich: 'See which fields',
       recentChanges: (n: number, days: number) =>
         n === 1 ? `1 change in the last ${days} days` : `${n} changes in the last ${days} days`,
       /**
@@ -1785,6 +1787,34 @@ export const en = {
     signInToRecord: 'Sign in to record a change or a disruption.',
     noAlerts:
       'We do not send emails or push notifications. Changes appear here and on your journey when you next look.',
+  },
+
+  /**
+   * What needs help on one route — Phase 15, VR-14's "Fields Need Review" and "Open Challenges".
+   *
+   * Written so a contested field never reads as a defective one (invariant 15), and so the list
+   * reads as a worklist for somebody who knows the answer, not as a verdict on the route.
+   */
+  needsHelp: {
+    title: 'What needs help',
+    lede: 'Fields past their review date, and fields people disagree about. If you know the answer to one, go to it and fix it.',
+    reviewTitle: (n: number) => `Past their review date (${n})`,
+    contestedTitle: (n: number) => `Contested (${n})`,
+    none: 'Nothing on this route is past its review date, and nothing on it is contested.',
+    noneReview: 'Nothing is past its review date.',
+    noneContested: 'Nothing is contested.',
+    contestedIsNotWrong:
+      'Contested does not mean wrong. Two contributors disagree, or a question is waiting for an answer.',
+    reason: {
+      review_due: 'Its review date has passed',
+      expired: 'Its stated end date has passed',
+      disputed_source: 'Marked as disputed',
+      forked: 'Two contributors corrected it differently',
+      challenged: 'Someone challenged it',
+    } satisfies Record<AttentionReason, string>,
+    goToField: 'Go to this field',
+    archivedStep: 'On an archived step. See it in the history',
+    withheld: 'Withheld by a moderator',
   },
 
   /**

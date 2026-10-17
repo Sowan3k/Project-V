@@ -226,7 +226,15 @@ test.describe('the contribution loop', () => {
     await row.locator('textarea[name="note"]').fill('That link goes nowhere now.')
     await row.getByRole('button', { name: /^flag it$/i }).click()
 
-    await expect(page.getByText(/that link goes nowhere now/i)).toBeVisible()
+    // On the field itself, and (Phase 15) on the route's needs-help list, which is where a
+    // contributor looking for something to fix will find it.
+    // `.first()`: the seed route is shared by every viewport, so it may carry several.
+    await expect(
+      page.locator('#route-step-info').getByText(/that link goes nowhere now/i).first(),
+    ).toBeVisible()
+    await expect(
+      page.locator('#needs-help').getByText(/that link goes nowhere now/i).first(),
+    ).toBeVisible()
     await expect(page.getByText(/broken link/i).first()).toBeVisible()
 
     // The value itself is untouched: a challenge says "this may be wrong", not "this is".

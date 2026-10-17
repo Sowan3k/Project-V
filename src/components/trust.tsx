@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 import { classifyLink } from '@/domain/links'
 import type { LinkTrustClass } from '@/domain/enums'
 import { RouteLifecycleState as Lifecycle } from '@/domain/enums'
@@ -236,12 +238,16 @@ export function ExternalSourceLink({
  */
 export function RoutePassportPanel({
   trust,
+  needsHelpHref,
   dictionary: t,
 }: {
   trust: RouteTrustInput
+  /** Where the route's needs-help list is. The two counts lead there (Phase 15, FR-50). */
+  needsHelpHref?: string
   dictionary: Dictionary
 }) {
   const passport = routePassport(trust)
+  const somethingNeedsHelp = passport.needsReviewCount > 0 || passport.disputedCount > 0
 
   return (
     <section
@@ -290,6 +296,13 @@ export function RoutePassportPanel({
           {passport.cautions.map((caution) => (
             <Caution key={caution}>{t.trust.routeCaution[caution]}</Caution>
           ))}
+          {needsHelpHref === undefined || !somethingNeedsHelp ? null : (
+            <p className="pt-1 text-xs">
+              <Link href={needsHelpHref} className="font-medium text-brand-700 underline">
+                {t.trust.passport.seeWhich}
+              </Link>
+            </p>
+          )}
         </div>
       )}
 
@@ -297,7 +310,7 @@ export function RoutePassportPanel({
         <summary className="cursor-pointer text-xs text-brand-700">
           {t.trust.passport.moreDetail}
         </summary>
-        <RoutePassportEvidence passport={passport} dictionary={t} />
+        <RoutePassportEvidence passport={passport} needsHelpHref={needsHelpHref} dictionary={t} />
       </details>
 
       <p className="mt-3 border-t border-hairline pt-3 text-xs leading-5 text-ink-500">
@@ -309,9 +322,11 @@ export function RoutePassportPanel({
 
 function RoutePassportEvidence({
   passport,
+  needsHelpHref,
   dictionary: t,
 }: {
   passport: RoutePassport
+  needsHelpHref?: string
   dictionary: Dictionary
 }) {
   const rows: [string, string][] = [
@@ -328,20 +343,42 @@ function RoutePassportEvidence({
     ],
   ]
 
-  const counts: string[] = [
-    t.trust.passport.confirmed(passport.confirmedCount),
-    t.trust.passport.disputed(passport.disputedCount),
-    t.trust.passport.needsReview(passport.needsReviewCount),
-    t.trust.passport.recentChanges(passport.recentChangeCount, RECENT_ACTIVITY_WINDOW_DAYS),
-    t.trust.passport.followers(passport.followerCount),
+  // The two counts of things somebody could fix are links when they are not zero: a count a
+  // reader cannot act on is a number, and a count that leads to the fields is a worklist.
+  const linked = (line: string, count: number): React.ReactNode =>
+    needsHelpHref === undefined || count === 0 ? (
+      line
+    ) : (
+      <Link href={needsHelpHref} className="text-brand-700 underline">
+        {line}
+      </Link>
+    )
+  const counts: { key: string; line: React.ReactNode }[] = [
+    { key: 'confirmed', line: t.trust.passport.confirmed(passport.confirmedCount) },
+    {
+      key: 'contested',
+      line: linked(t.trust.passport.disputed(passport.disputedCount), passport.disputedCount),
+    },
+    {
+      key: 'review',
+      line: linked(
+        t.trust.passport.needsReview(passport.needsReviewCount),
+        passport.needsReviewCount,
+      ),
+    },
+    {
+      key: 'recent',
+      line: t.trust.passport.recentChanges(passport.recentChangeCount, RECENT_ACTIVITY_WINDOW_DAYS),
+    },
+    { key: 'followers', line: t.trust.passport.followers(passport.followerCount) },
   ]
 
   return (
     <div className="mt-2 text-xs text-ink-700">
       <p className="text-ink-500">{t.trust.passport.lede}</p>
       <ul className="mt-2 space-y-0.5">
-        {counts.map((line) => (
-          <li key={line}>{line}</li>
+        {counts.map(({ key, line }) => (
+          <li key={key}>{line}</li>
         ))}
       </ul>
       <dl className="mt-2 space-y-0.5">

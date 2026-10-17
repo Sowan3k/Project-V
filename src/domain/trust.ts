@@ -256,6 +256,58 @@ export function fieldGroup(sourceClass: SourceClass): FieldGroupId {
 export const FIELD_GROUP_ORDER: readonly FieldGroupId[] = ['group_disputed', 'group_official', 'group_community']
 
 // ─────────────────────────────────────────────────────────────────────────────────────────
+// What needs help, field by field — Phase 15, FR-50, FR-53, FR-70
+// ─────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Why a field is on a route's "needs help" list. Each is a stored fact, none a judgement.
+ *
+ * `review_due` and `expired` come from dates a contributor stored, so nothing here decides a
+ * fact is stale after some number of days (CLAUDE.md §11). The other three are the three ways
+ * a field is contested: somebody said so in the source class, two contributors disagreed
+ * structurally (a fork), or somebody raised a challenge nobody has answered.
+ */
+export type AttentionReason = 'review_due' | 'expired' | 'disputed_source' | 'forked' | 'challenged'
+
+export interface FieldAttentionInput {
+  readonly reviewDueAt: Date | null
+  readonly expiresAt: Date | null
+  readonly sourceClass: SourceClass
+  readonly hasForkedHistory: boolean
+  readonly openChallengeCount: number
+}
+
+export interface FieldAttention {
+  /** Past a stored review or expiry date. Empty means it does not need review. */
+  readonly needsReview: readonly AttentionReason[]
+  /** Contested, for any of three reasons. Empty means it is not contested. */
+  readonly contested: readonly AttentionReason[]
+}
+
+/**
+ * The single definition of "needs review" and "disputed" for one field.
+ *
+ * The route passport counts with it and the needs-help list lists with it, so a route can
+ * never say "3 need review" and then show two. Contested is not the same as wrong: a fork is
+ * two people who disagree, and the field says so rather than pretending to know which is right
+ * (invariant 15).
+ */
+export function fieldAttention(input: FieldAttentionInput, now: Date): FieldAttention {
+  const past = (date: Date | null): boolean => date !== null && date.getTime() <= now.getTime()
+
+  const needsReview: AttentionReason[] = []
+  if (past(input.reviewDueAt)) needsReview.push('review_due')
+  if (past(input.expiresAt)) needsReview.push('expired')
+
+  const contested: AttentionReason[] = []
+  if (input.sourceClass === Source.disputed_under_review) contested.push('disputed_source')
+  if (input.hasForkedHistory) contested.push('forked')
+  if (input.openChallengeCount > 0) contested.push('challenged')
+
+  return { needsReview, contested }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────
 // Route-level passport — FR-10, FR-11, FR-62, FR-74
 // ─────────────────────────────────────────────────────────────────────────────────────────
 

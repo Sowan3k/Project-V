@@ -14,6 +14,7 @@ import {
 import { ContentColumn } from '@/components/layout'
 import { Panel } from '@/components/ui'
 import { FlagDuplicateForm } from '@/components/lifecycle'
+import { NeedsHelp } from '@/components/needs-help'
 import { RouteContext } from '@/components/route-context'
 import { RouteMap } from '@/components/route-map'
 import { StartHere } from '@/components/start-here'
@@ -29,6 +30,7 @@ import {
   getRouteBySlug,
   getRouteStructure,
   getStepFields,
+  routeAttention,
   searchRoutes,
 } from '@/server/routes/read'
 
@@ -113,6 +115,10 @@ export default async function RoutePage({
         ? null
         : t.route.durationShort(node.step.typicalDurationDays),
   })
+
+  // The road's order, for the needs-help list (Phase 15).
+  const stepOrder = new Map(ordered.map((node) => [node.step.id, node.ordinal]))
+  const attention = await routeAttention(route.id)
 
   const start =
     ordered.length === 0
@@ -227,6 +233,16 @@ export default async function RoutePage({
           </div>
         )}
       </section>
+
+      {/* Phase 15. What the passport counts, as a list that leads to each field. Below the
+          step it would open, so following a link keeps the road on screen above it. */}
+      <NeedsHelp
+        attention={attention}
+        locale={locale}
+        slug={route.slug}
+        stepOrder={stepOrder}
+        dictionary={t}
+      />
 
       {/*
         VR-09's "Build Your Road", where the road is — Phase 12E, FR-14.

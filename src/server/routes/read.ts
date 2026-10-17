@@ -8,13 +8,15 @@ import type {
   SourceClass,
   StudyLevel,
 } from '@/domain/enums'
-import { JourneyStepStatus, SourceClass as Source, StepCategory, StepEdgeKind } from '@/domain/enums'
+import { JourneyStepStatus, StepCategory, StepEdgeKind } from '@/domain/enums'
 import { expectedFlyWindow, type FlyWindow } from '@/domain/fly-window'
 import { SEARCHABLE_LIFECYCLE_STATES } from '@/domain/lifecycle'
 import type { RouteGraph } from '@/domain/graph/types'
 import { incompletenessViolations } from '@/domain/graph/validate'
 import {
+  fieldAttention,
   RECENT_ACTIVITY_WINDOW_DAYS,
+  type AttentionReason,
   type RouteTrustInput,
   type RouteTrustSnapshot,
 } from '@/domain/trust'
@@ -161,15 +163,22 @@ async function fieldStandings(
     const current = byRoute.get(routeId)
     if (!current || field.currentRevision === null) continue
 
-    const past = (date: Date | null): boolean => date !== null && date.getTime() <= now.getTime()
-    const needsReview = past(field.reviewDueAt) || past(field.currentRevision.expiresAt)
     // Three independent ways a field counts as disputed, and a reader should see any of
     // them: somebody said so in the source class, two contributors disagreed structurally,
-    // or somebody raised a challenge nobody has answered (FR-18, FR-49, FR-70).
-    const disputed =
-      field.currentRevision.sourceClass === Source.disputed_under_review ||
-      forkedFieldIds.has(field.id) ||
-      field._count.challenges > 0
+    // or somebody raised a challenge nobody has answered (FR-18, FR-49, FR-70). Decided by
+    // `fieldAttention`, which the route's needs-help list also uses (Phase 15).
+    const attention = fieldAttention(
+      {
+        reviewDueAt: field.reviewDueAt,
+        expiresAt: field.currentRevision.expiresAt,
+        sourceClass: field.currentRevision.sourceClass,
+        hasForkedHistory: forkedFieldIds.has(field.id),
+        openChallengeCount: field._count.challenges,
+      },
+      now,
+    )
+    const needsReview = attention.needsReview.length > 0
+    const disputed = attention.contested.length > 0
 
     byRoute.set(routeId, {
       informationCount: current.informationCount + 1,
@@ -722,6 +731,129 @@ export async function getStepFields(stepId: string): Promise<readonly FieldView[
       },
     ]
   })
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   What needs help on one route — Phase 15
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+/** One field on a route's needs-help list, with enough to recognise it and go to it. */
+export interface AttentionItem {
+  readonly fieldId: string
+  readonly stepId: string
+  readonly stepLabel: string
+  /** The step left the current road. Its fields stay in history and still count (invariant 4). */
+  readonly stepArchived: boolean
+  readonly category: FieldCategory
+  /** Null when the field is quarantined: a withheld value is not repeated here either (FR-36). */
+  readonly valueText: string | null
+  readonly reasons: readonly AttentionReason[]
+  /** The unanswered challenges, newest first: what, why, when and by whom (FR-49). */
+  readonly challenges: readonly ChallengeView[]
+}
+
+export interface RouteAttention {
+  readonly needsReview: readonly AttentionItem[]
+  readonly contested: readonly AttentionItem[]
+}
+
+/**
+ * The fields behind the passport's "needs review" and "disputed" counts — Phase 15, FR-50.
+ *
+ * The counts already existed; there was no way to get from a count to the fields, so a
+ * contributor who wanted to help had to open every step and look. This is the list.
+ *
+ * Same fields, same rule as the passport: live fields on the route, classified by
+ * `fieldAttention`. A test asserts the list lengths equal the passport's counts.
+ *
+ * **A list of problems, not a ranking.** Items keep the stable order of the query (step, then
+ * field creation); the page reorders steps into the road's own order. Nothing reads these
+ * lists to rank or demote a route (invariant 14).
+ */
+export async function routeAttention(
+  routeId: string,
+  now: Date = new Date(),
+): Promise<RouteAttention> {
+  const [fields, forkedGroups] = await Promise.all([
+    prisma.field.findMany({
+      // The passport's own filter, deliberately: live fields, on any step of the route. A field
+      // on an archived step still counts there, so it is listed here, marked as such.
+      where: { archivedAt: null, step: { routeId } },
+      select: {
+        id: true,
+        stepId: true,
+        category: true,
+        reviewDueAt: true,
+        quarantinedAt: true,
+        step: { select: { archivedAt: true, currentRevision: { select: { label: true } } } },
+        currentRevision: { select: { valueText: true, sourceClass: true, expiresAt: true } },
+        challenges: {
+          where: { resolvedAt: null },
+          select: {
+            id: true,
+            reason: true,
+            note: true,
+            createdAt: true,
+            author: { select: { handle: true } },
+          },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        },
+      },
+      orderBy: [{ stepId: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+    }),
+    prisma.fieldRevision.groupBy({
+      by: ['fieldId', 'previousRevisionId'],
+      where: {
+        previousRevisionId: { not: null },
+        field: { archivedAt: null, step: { routeId } },
+      },
+      _count: { _all: true },
+      having: { previousRevisionId: { _count: { gt: 1 } } },
+    }),
+  ])
+
+  const forked = new Set(forkedGroups.map((group) => group.fieldId))
+  const needsReview: AttentionItem[] = []
+  const contested: AttentionItem[] = []
+
+  for (const field of fields) {
+    const current = field.currentRevision
+    if (current === null) continue
+
+    const attention = fieldAttention(
+      {
+        reviewDueAt: field.reviewDueAt,
+        expiresAt: current.expiresAt,
+        sourceClass: current.sourceClass,
+        hasForkedHistory: forked.has(field.id),
+        openChallengeCount: field.challenges.length,
+      },
+      now,
+    )
+    if (attention.needsReview.length === 0 && attention.contested.length === 0) continue
+
+    const base = {
+      fieldId: field.id,
+      stepId: field.stepId,
+      stepLabel: field.step.currentRevision?.label ?? '',
+      stepArchived: field.step.archivedAt !== null,
+      category: field.category,
+      valueText: field.quarantinedAt === null ? current.valueText : null,
+      challenges: field.challenges.map((challenge) => ({
+        id: challenge.id,
+        reason: challenge.reason,
+        note: challenge.note,
+        authorHandle: challenge.author?.handle ?? null,
+        createdAt: challenge.createdAt,
+      })),
+    }
+    if (attention.needsReview.length > 0) {
+      needsReview.push({ ...base, reasons: attention.needsReview })
+    }
+    if (attention.contested.length > 0) contested.push({ ...base, reasons: attention.contested })
+  }
+
+  return { needsReview, contested }
 }
 
 export interface HistoryEntry {

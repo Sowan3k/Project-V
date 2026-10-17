@@ -245,7 +245,11 @@ export function RouteContext({
                 is right when it holds one summary, and wrong when it holds a column of
                 content taller than the viewport. */}
             <div className={`space-y-3 ${rail === undefined ? 'lg:sticky lg:top-6' : ''}`}>
-              <RoutePassportPanel trust={route.trust} dictionary={t} />
+              <RoutePassportPanel
+                trust={route.trust}
+                needsHelpHref={`/${locale}/routes/${route.slug}#needs-help`}
+                dictionary={t}
+              />
               {rail}
             </div>
           </GridRegion>
