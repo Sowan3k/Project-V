@@ -63,8 +63,10 @@ test.describe('reporting and quarantine', () => {
     // Text only — nowhere to attach anything (§8.6, invariants 6 and 7).
     expect(await page.locator('input[type="file"]').count()).toBe(0)
 
-    const row = page.locator('main li').filter({ has: page.locator('select[name="reportReason"]') }).first()
-    await row.locator('select[name="reportReason"]').selectOption('phishing_or_scam')
+    // A grid of described choices since Phase 12E (VR-11), not a <select>. The spec had kept
+    // looking for the select it replaced.
+    const row = page.locator('main li').filter({ has: page.locator('input[name="reportReason"]') }).first()
+    await row.getByRole('radio', { name: /phishing or a scam/i }).check()
     await row.locator('textarea[name="reportDetail"]').fill('That link is not the embassy.')
     await row.getByRole('button', { name: /send this report/i }).click()
 
